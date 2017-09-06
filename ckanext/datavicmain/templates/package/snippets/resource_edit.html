@@ -1,0 +1,20 @@
+{% ckan_extends %}
+
+{% block form %}
+
+  {% for field_id, field_attributes in h.resource_extra_fields %}
+      {{ form.input(field_id, 
+            label=_(field_attributes['label']), id='field-' + field_id, 
+            placeholder=_(field_attributes['label']), 
+            value=data.get(field_id), 
+            error=errors.get(field_id), 
+            classes=['control-medium']) 
+      }}
+  {% endfor %}
+  
+  xxx
+
+{{ super() }}
+
+yyy
+{% endblock %}

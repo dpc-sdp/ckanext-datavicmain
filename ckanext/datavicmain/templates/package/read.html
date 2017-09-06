@@ -1,0 +1,34 @@
+{% ckan_extends %}
+
+{# Note: The parent template has aliased c.pkg_dict as pkg #}
+
+{% block package_description %}
+  {{ super() }}
+
+  {# Add our custom "music_title" field to the dataset read page. #}
+  {% if pkg.get('music_genre') %}
+    <section id="dataset-music_title" class="resources module-content">
+    <p><strong>{{ _('Music Title') }}</strong>: {{ pkg.music_title }}</p>
+    </section>
+  {% endif %}
+ 
+  {# Add our custom "music_genre" field to the dataset read page. #}
+  {% if pkg.get('music_genre') %}
+    <section id="dataset-music_genre" class="resources module-content">
+    <p><strong>{{ _('Music Genre') }}</strong>: {{ pkg.music_genre.0 }}</p>
+    </section>
+  {% endif %}
+
+  {% for field_id, field_attributes in h.dataset_extra_fields %}
+    {% if pkg.get(field_id) %}
+      <section id="dataset-{{ field_id }}" class="resources module-content">
+        <p><strong>{{ _( field_attributes['label'] ) }}</strong>: {{ pkg.get(field_id) }}</p>
+      </section>
+    {% endif %}
+  {% endfor %}
+
+  <section id="dataset-helloword_author" class="resources module-content">
+    <strong>Extended By:</strong> <span>{{ pkg.get('helloworld', {}).get('author', 'n/a') }}</span>
+  </section>
+
+{% endblock %}
