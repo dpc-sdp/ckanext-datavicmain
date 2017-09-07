@@ -29,12 +29,6 @@ setup(
 
         datavicmain_dataset = ckanext.datavicmain.plugins:DatasetForm
 
-        [paste.paster_command]
-        
-        helloworld = ckanext.datavicmain.commands:Command
-        
-        helloworld-greet = ckanext.datavicmain.commands:Greet
-
         [fanstatic.libraries]
 
 	""",
