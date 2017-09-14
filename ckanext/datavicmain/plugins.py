@@ -48,7 +48,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         ('bounding_box', {'label': 'Bounding Box'}),
         ('vertical_coverage', {'label': 'Vertical Coverage'}),
         ('temporal_range_coverage', {'label': 'Temporal Range/Coverage'}),
-        ('program_url', {'label': 'Program URL'}),
+        ('data_source_url', {'label': 'Data Source URL'}),
         ('data_quality_trust_statement', {'label': 'Data Quality / Trust Statement'})
     ]
 
@@ -84,6 +84,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         ( 'licensing_other',  { 'label': 'Licensing - other' } ),
         ( 'disclaimer',  { 'label': 'Disclaimer' } ),
         ( 'attribution_statement',  { 'label': 'Attribution Statement' } ),
+        ( 'program_url',  { 'label': 'Program URL' } ),
         ( 'iar_entry_review_date',  { 'label': 'IAR entry review date' } ),
         ( 'primary_purpose_of_collection',  { 'label': 'Purpose (primary purpose of collection)' } ),
         ( 'related_information_asset',  { 'label': 'Related Information Asset', 'field_type': 'yes_no' } ),
