@@ -48,7 +48,6 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         ('bounding_box', {'label': 'Bounding Box'}),
         ('vertical_coverage', {'label': 'Vertical Coverage'}),
         ('temporal_range_coverage', {'label': 'Temporal Range/Coverage'}),
-        ('data_source_url', {'label': 'Data Source URL'}),
         ('data_quality_trust_statement', {'label': 'Data Quality / Trust Statement'})
     ]
 
@@ -59,6 +58,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         ( 'personal_information',  { 'label': 'Personal Information', 'description': 'Does the asset contain personal or sensitive personal information?', 'field_type': 'yes_no' } ),
         ( 'personal_information_if_yes',  { 'label': "If 'yes'" } ),
         ( 'business_classification',  { 'label': 'Business Classification' } ),
+        ( 'type_category',  { 'label': 'Type / Category' } ),
         ( 'record_disposal_category',  { 'label': 'Record Disposal Category' } ),
         ( 'disposal_category',  { 'label': 'Disposal Category' } ),
         ( 'disposal_category_other',  { 'label': 'Disposal Category - other' } ),
