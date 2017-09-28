@@ -33,7 +33,6 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     YES_NO_OPTIONS = ['yes', 'no',]
 
     RESOURCE_EXTRA_FIELDS = [
-        ('extract', {'label': 'Extract'}),
         ('location', { 'label': 'Location'}),
         ('date_creation_acquisition', {'label': 'Date of Creation or Acquisition'}),
         # Last updated is a core field..
@@ -53,6 +52,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     # Format (tuple): ( 'field_id', { 'field_attribute': 'value' } )
     DATASET_EXTRA_FIELDS = [
+        ( 'licensing_other',  { 'label': 'Licensing - other' } ),
+        ('extract', {'label': 'Extract'}),
         ( 'reason_inactivity', { 'label': 'Reason for Inactivity' } ),
         ( 'date_inactive', { 'label': 'Date Inactive' } ),
         ( 'personal_information',  { 'label': 'Personal Information', 'description': 'Does the asset contain personal or sensitive personal information?', 'field_type': 'yes_no' } ),
@@ -81,7 +82,6 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         ( 'bil_integrity',  { 'label': 'Business Impact Level (BIL) - Integrity' } ),
         ( 'bil_availability',  { 'label': 'Business Impact Level (BIL) - Availability' } ),
         ( 'copyright_statement',  { 'label': 'Copyright Statement' } ),
-        ( 'licensing_other',  { 'label': 'Licensing - other' } ),
         ( 'disclaimer',  { 'label': 'Disclaimer' } ),
         ( 'attribution_statement',  { 'label': 'Attribution Statement' } ),
         ( 'program_url',  { 'label': 'Program URL' } ),

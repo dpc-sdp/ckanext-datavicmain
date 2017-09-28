@@ -6,6 +6,20 @@ Add widgets for our basic custom (extension-specific) fields
 
 #}
 
+{% block package_basic_fields_license %}
+
+  {{ super() }}
+
+  {{ form.input('licensing_other', 
+        label=_('Licensing - other'), id='field-licensing_other', 
+        placeholder=_('Licensing - other'), 
+        value=data.get('licensing_other'), 
+        error=errors.get('licensing_other'), 
+        classes=['control-medium']) 
+  }}
+
+{% endblock %}
+
 {% block package_basic_fields_custom %}
 
   {{ super() }}

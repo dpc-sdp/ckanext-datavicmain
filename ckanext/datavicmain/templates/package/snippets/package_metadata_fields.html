@@ -39,7 +39,7 @@ your custom field won't work!!
             selected = data.get(field_id, None), 
             attrs = { 'data-module': 'no-autocomplete' }) 
       }}
-    {% else %}
+    {% elif field_id != 'licensing_other'  %}
       {{ form.input(field_id, 
             label=_(field_attributes['label']), id='field-' + field_id, 
             placeholder=_(field_attributes['label']), 
