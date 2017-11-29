@@ -39,13 +39,27 @@ your custom field won't work!!
             selected = data.get(field_id, None), 
             attrs = { 'data-module': 'no-autocomplete' }) 
       }}
+    {% elif field_id == 'workflow_status'  %}
+      {{ form.select(field_id,
+            label = _(field_attributes['label']),
+            options = h.workflow_status_options(data.get(field_id, None), data.get('owner_org', None)),
+            selected = data.get(field_id, None),
+            attrs = { 'data-module': 'no-autocomplete' })
+      }}
+    {% elif field_id == 'organization_visibility'  %}
+      {{ form.select(field_id,
+            label = _(field_attributes['label']),
+            options = h.organization_visibility_options(),
+            selected = data.get(field_id, None),
+            attrs = { 'data-module': 'no-autocomplete' })
+      }}
     {% elif field_id != 'licensing_other'  %}
-      {{ form.input(field_id, 
-            label=_(field_attributes['label']), id='field-' + field_id, 
-            placeholder=_(field_attributes['label']), 
-            value=data.get(field_id), 
-            error=errors.get(field_id), 
-            classes=['control-medium']) 
+      {{ form.input(field_id,
+            label=_(field_attributes['label']), id='field-' + field_id,
+            placeholder=_(field_attributes['label']),
+            value=data.get(field_id),
+            error=errors.get(field_id),
+            classes=['control-medium'])
       }}
     {% endif %}
     {% if field_attributes['description'] %}

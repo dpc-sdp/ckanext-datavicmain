@@ -5,6 +5,7 @@ import time
 import jsonpickle
 import copy
 import logging
+import ckan.authz as authz
 
 import ckan.model           as model
 import ckan.plugins         as p
@@ -13,9 +14,17 @@ import ckan.logic           as logic
 
 import weberror
 
+from ckan.common import config
+
 _t = toolkit._
 
 log1 = logging.getLogger(__name__)
+
+
+# Conditionally import the the workflow extension helpers if workflow extension enabled in .ini
+if "workflow" in config.get('ckan.plugins', False):
+    from ckanext.workflow import helpers as workflow_helpers
+
 
 class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
@@ -31,6 +40,11 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ## helper methods ## 
 
     YES_NO_OPTIONS = ['yes', 'no',]
+
+    WORKFLOW_STATUS_OPTIONS = ['draft', 'needs_review', 'published', 'archived',]
+
+    # NOTE: the of the Z in organization for consistency with usage throughout CKAN
+    ORGANIZATION_VISIBILITY_OPTIONS = ['current', 'parent', 'child', 'family', 'all',]
 
     RESOURCE_EXTRA_FIELDS = [
         ('location', { 'label': 'Location'}),
@@ -52,62 +66,77 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     # Format (tuple): ( 'field_id', { 'field_attribute': 'value' } )
     DATASET_EXTRA_FIELDS = [
-        ( 'licensing_other',  { 'label': 'Licensing - other' } ),
+        ('licensing_other',  {'label': 'Licensing - other'}),
+        ('workflow_status', {'label': 'Workflow Status'}),
+        # NOTE: the use of the Z in organization for consistency with usage throughout CKAN
+        ('organization_visibility', {'label': 'Organisation Visibility'}),
         ('extract', {'label': 'Extract'}),
-        ( 'reason_inactivity', { 'label': 'Reason for Inactivity' } ),
-        ( 'date_inactive', { 'label': 'Date Inactive' } ),
-        ( 'personal_information',  { 'label': 'Personal Information', 'description': 'Does the asset contain personal or sensitive personal information?', 'field_type': 'yes_no' } ),
-        ( 'personal_information_if_yes',  { 'label': "If 'yes'" } ),
-        ( 'business_classification',  { 'label': 'Business Classification' } ),
-        ( 'type_category',  { 'label': 'Type / Category' } ),
-        ( 'record_disposal_category',  { 'label': 'Record Disposal Category' } ),
-        ( 'disposal_category',  { 'label': 'Disposal Category' } ),
-        ( 'disposal_category_other',  { 'label': 'Disposal Category - other' } ),
-        ( 'disposal_class',  { 'label': 'Disposal Class' } ),
-        ( 'disposal_class_other',  { 'label': 'Disposal Class - other' } ),
-        ( 'retention_timeframe',  { 'label': 'Retention Timeframe' } ),
-        ( 'retention_timeframe_other',  { 'label': 'Retension Timeframe - other' } ),
-        ( 'owning_agency',  { 'label': 'Owning Agency' } ),
-        ( 'originator',  { 'label': 'Originator' } ),
-        ( 'custodian_contact_details',  { 'label': 'Custodian - contact details' } ),
-        ( 'nsi',  { 'label': 'National Interest or National Security Information (NSI)?', 'field_type': 'yes_no' } ),
-        ( 'nsi_yes',  { 'label': "If 'yes'" } ),
-        ( 'protective_marking',  { 'label': 'Protective Marking' } ),
-        ( 'protective_marking_other',  { 'label': 'Protective Marking - other' } ),
-        ( 'bil_confidentiality',  { 'label': 'Business Impact Level (BIL) - Confidentiality' } ),
-        ( 'bil_other',  { 'label': 'BIL - other' } ),
-        ( 'authorised_unlimited_public_release',  { 'label': 'Is the Information Asset authorised for unlimited public release?', 'field_type': 'yes_no' } ),
-        ( 'authorised_unlimited_public_release_no',  { 'label': 'If No' } ),
-        ( 'approver_authorisor',  { 'label': 'Approver / Authorisor (for unlimited public release of the information)' } ),
-        ( 'bil_integrity',  { 'label': 'Business Impact Level (BIL) - Integrity' } ),
-        ( 'bil_availability',  { 'label': 'Business Impact Level (BIL) - Availability' } ),
-        ( 'copyright_statement',  { 'label': 'Copyright Statement' } ),
-        ( 'disclaimer',  { 'label': 'Disclaimer' } ),
-        ( 'attribution_statement',  { 'label': 'Attribution Statement' } ),
-        ( 'program_url',  { 'label': 'Program URL' } ),
-        ( 'iar_entry_review_date',  { 'label': 'IAR entry review date' } ),
-        ( 'primary_purpose_of_collection',  { 'label': 'Purpose (primary purpose of collection)' } ),
-        ( 'related_information_asset',  { 'label': 'Related Information Asset', 'field_type': 'yes_no' } ),
-        ( 'type_of_relationship',  { 'label': 'Type of relationship' } ),
-        ( 'value',  { 'label': 'Value' } ),
-        ( 'use_constraints',  { 'label': 'Use constraints' } ),
-        ( 'disposal_requirements',  { 'label': 'Disposal requirements' } ),
-        ( 'user_administrator',  { 'label': 'User/ Administrator' } ),
-        ( 'access',  { 'label': 'Access' } ),
-        ( 'meet_mandatory_legal_obligations',  { 'label': 'Collected to meet mandatory legal or regulatory obligations?', 'field_type': 'yes_no' } ),
-        ( 'collection_method',  { 'label': 'Collection method' } ),
-        ( 'collection_validation',  { 'label': 'Collection validation' } ),
-        ( 'internal_scope_of_use',  { 'label': 'Internal scope of use' } ),
-        ( 'external_scope_of_use',  { 'label': 'External scope of use' } ),
-        ( 'offline_access',  { 'label': 'Off-line Access' } ),
-        ( 'supports_business_process',  { 'label': 'Supports Business Process' } ),
-        ( 'source_ict_system',  { 'label': 'Source ICT System' } ),
+        ('reason_inactivity', {'label': 'Reason for Inactivity'}),
+        ('date_inactive', {'label': 'Date Inactive'}),
+        ('personal_information', {'label': 'Personal Information', 'description': 'Does the asset contain personal or sensitive personal information?', 'field_type': 'yes_no'}),
+        ('personal_information_if_yes', {'label': "If 'yes'"}),
+        ('business_classification', {'label': 'Business Classification'}),
+        ('type_category', {'label': 'Type / Category'}),
+        ('record_disposal_category', {'label': 'Record Disposal Category'}),
+        ('disposal_category', {'label': 'Disposal Category'}),
+        ('disposal_category_other', {'label': 'Disposal Category - other'}),
+        ('disposal_class', {'label': 'Disposal Class'}),
+        ('disposal_class_other', {'label': 'Disposal Class - other'}),
+        ('retention_timeframe', {'label': 'Retention Timeframe'}),
+        ('retention_timeframe_other', {'label': 'Retension Timeframe - other'}),
+        ('owning_agency', {'label': 'Owning Agency'}),
+        ('originator', {'label': 'Originator'}),
+        ('custodian_contact_details', {'label': 'Custodian - contact details'}),
+        ('nsi', {'label': 'National Interest or National Security Information (NSI)?', 'field_type': 'yes_no'}),
+        ('nsi_yes', {'label': "If 'yes'"}),
+        ('protective_marking', {'label': 'Protective Marking'}),
+        ('protective_marking_other', {'label': 'Protective Marking - other'}),
+        ('bil_confidentiality', {'label': 'Business Impact Level (BIL) - Confidentiality'}),
+        ('bil_other', {'label': 'BIL - other'}),
+        ('authorised_unlimited_public_release', {'label': 'Is the Information Asset authorised for unlimited public release?', 'field_type': 'yes_no'}),
+        ('authorised_unlimited_public_release_no', {'label': 'If No'}),
+        ('approver_authorisor', {'label': 'Approver / Authorisor (for unlimited public release of the information)'}),
+        ('bil_integrity', {'label': 'Business Impact Level (BIL) - Integrity'}),
+        ('bil_availability', {'label': 'Business Impact Level (BIL) - Availability'}),
+        ('copyright_statement', {'label': 'Copyright Statement'}),
+        ('disclaimer', {'label': 'Disclaimer'}),
+        ('attribution_statement', {'label': 'Attribution Statement'}),
+        ('program_url', {'label': 'Program URL'}),
+        ('iar_entry_review_date', {'label': 'IAR entry review date'}),
+        ('primary_purpose_of_collection', {'label': 'Purpose (primary purpose of collection)'}),
+        ('related_information_asset', {'label': 'Related Information Asset', 'field_type': 'yes_no'}),
+        ('type_of_relationship', {'label': 'Type of relationship'}),
+        ('value', {'label': 'Value'}),
+        ('use_constraints', {'label': 'Use constraints'}),
+        ('disposal_requirements', {'label': 'Disposal requirements'}),
+        ('user_administrator', {'label': 'User/ Administrator'}),
+        ('access', {'label': 'Access'}),
+        ('meet_mandatory_legal_obligations', {'label': 'Collected to meet mandatory legal or regulatory obligations?', 'field_type': 'yes_no'}),
+        ('collection_method', {'label': 'Collection method'}),
+        ('collection_validation', {'label': 'Collection validation'}),
+        ('internal_scope_of_use', {'label': 'Internal scope of use'}),
+        ('external_scope_of_use', {'label': 'External scope of use'}),
+        ('offline_access', {'label': 'Off-line Access'}),
+        ('supports_business_process', {'label': 'Supports Business Process'}),
+        ('source_ict_system', {'label': 'Source ICT System'}),
     ]
 
     @classmethod
     def yes_no_options(cls):
         ''' This generator method is only usefull for creating select boxes. '''
         for option in cls.YES_NO_OPTIONS:
+            yield { 'value': option, 'text': option.capitalize() }
+
+    @classmethod
+    def workflow_status_options(cls, current_workflow_status, owner_org):
+        user = toolkit.c.user
+        #log1.debug("\n\n\n*** workflow_status_options | current_workflow_status: %s | owner_org: %s | user: %s ***\n\n\n", current_workflow_status, owner_org, user)
+        for option in workflow_helpers.get_available_workflow_statuses(current_workflow_status, owner_org, user):
+            yield {'value': option, 'text': option.replace('_', ' ').capitalize()}
+
+    @classmethod
+    def organization_visibility_options(cls):
+        for option in cls.ORGANIZATION_VISIBILITY_OPTIONS:
             yield { 'value': option, 'text': option.capitalize() }
 
     @classmethod
@@ -149,6 +178,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'dataset_extra_fields': self.DATASET_EXTRA_FIELDS,
             'resource_extra_fields': self.RESOURCE_EXTRA_FIELDS,
             'yes_no_options': self.yes_no_options,
+            'workflow_status_options': self.workflow_status_options,
+            'organization_visibility_options': self.organization_visibility_options,
         }
 
     ## IConfigurer interface ##
@@ -222,10 +253,9 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             # Note Add dynamic field (not registered under modify schema) "foo.x1" to the fields
             # we take into account. If we omitted this step, the ('__extras',) item would have 
             # been lost (along with the POSTed value). 
-            if context.get('package'):
-                # DataVic: Add extra fields..
-                for field in self.DATASET_EXTRA_FIELDS:
-                    data[(field[0],)] = data[('__extras',)].get(field[0])
+            # DataVic: Add extra fields..
+            for field in self.DATASET_EXTRA_FIELDS:
+                data[(field[0],)] = data[('__extras',)].get(field[0])
             pass
 
         # Add our custom_resource_text metadata field to the schema
