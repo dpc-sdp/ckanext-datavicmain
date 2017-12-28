@@ -41,7 +41,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     YES_NO_OPTIONS = ['yes', 'no',]
 
-    WORKFLOW_STATUS_OPTIONS = ['draft', 'needs_review', 'published', 'archived',]
+    WORKFLOW_STATUS_OPTIONS = ['draft', 'ready_for_approval', 'published', 'archived',]
 
     # NOTE: the of the Z in organization for consistency with usage throughout CKAN
     ORGANIZATION_VISIBILITY_OPTIONS = ['current', 'parent', 'child', 'family', 'all',]
