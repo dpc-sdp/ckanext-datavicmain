@@ -39,6 +39,22 @@ your custom field won't work!!
             selected = data.get(field_id, None), 
             attrs = { 'data-module': 'no-autocomplete' }) 
       }}
+    {% elif field_id == 'workflow_status_notes'  %}
+        {% if h.is_admin(data.get('owner_org', None)) %}
+            {{ form.textarea(field_id,
+                label = _(field_attributes['label']),
+                value=data.get(field_id),
+                error=errors.get(field_id),
+                classes=['control-medium'])
+            }}
+        {% endif %}
+    {% elif field_attributes['field_type'] and field_attributes['field_type'] == 'textarea' %}
+      {{ form.textarea(field_id,
+            label = _(field_attributes['label']),
+            value=data.get(field_id),
+            error=errors.get(field_id),
+            classes=['control-medium'])
+      }}
     {% elif field_id == 'workflow_status'  %}
       {{ form.select(field_id,
             label = _(field_attributes['label']),

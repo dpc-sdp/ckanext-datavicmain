@@ -66,8 +66,10 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     # Format (tuple): ( 'field_id', { 'field_attribute': 'value' } )
     DATASET_EXTRA_FIELDS = [
+        ('last_modified_user_id',  {'label': 'Last Modified By'}),
         ('licensing_other',  {'label': 'Licensing - other'}),
         ('workflow_status', {'label': 'Workflow Status'}),
+        ('workflow_status_notes',  {'label': 'Workflow Status Notes', 'field_type': 'textarea'}),
         # NOTE: the use of the Z in organization for consistency with usage throughout CKAN
         ('organization_visibility', {'label': 'Organisation Visibility'}),
         ('extract', {'label': 'Extract'}),
@@ -166,6 +168,18 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             results[org['name']] = org
         return results
 
+    @classmethod
+    def is_admin(cls, owner_org):
+        if "workflow" in config.get('ckan.plugins', False):
+            user = toolkit.c.userobj
+
+            if authz.is_sysadmin(user.name):
+                return True
+            else:
+                role = workflow_helpers.role_in_org(owner_org, user.name)
+                if role == 'admin':
+                    return True
+
     ## ITemplateHelpers interface ##
 
     def get_helpers(self):
@@ -180,6 +194,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'yes_no_options': self.yes_no_options,
             'workflow_status_options': self.workflow_status_options,
             'organization_visibility_options': self.organization_visibility_options,
+            'is_admin': self.is_admin,
         }
 
     ## IConfigurer interface ##
