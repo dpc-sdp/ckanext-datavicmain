@@ -20,10 +20,12 @@ _t = toolkit._
 
 log1 = logging.getLogger(__name__)
 
+workflow_enabled = False
 
 # Conditionally import the the workflow extension helpers if workflow extension enabled in .ini
 if "workflow" in config.get('ckan.plugins', False):
     from ckanext.workflow import helpers as workflow_helpers
+    workflow_enabled = True
 
 
 class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
@@ -66,7 +68,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     # Format (tuple): ( 'field_id', { 'field_attribute': 'value' } )
     DATASET_EXTRA_FIELDS = [
-        ('last_modified_user_id',  {'label': 'Last Modified By'}),
+        # ('last_modified_user_id',  {'label': 'Last Modified By'}),
         ('licensing_other',  {'label': 'Licensing - other'}),
         ('workflow_status', {'label': 'Workflow Status'}),
         ('workflow_status_notes',  {'label': 'Workflow Status Notes', 'field_type': 'textarea'}),
@@ -170,15 +172,17 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     @classmethod
     def is_admin(cls, owner_org):
-        if "workflow" in config.get('ckan.plugins', False):
+        if workflow_enabled:
             user = toolkit.c.userobj
-
             if authz.is_sysadmin(user.name):
                 return True
             else:
                 role = workflow_helpers.role_in_org(owner_org, user.name)
                 if role == 'admin':
                     return True
+
+    def workflow_status_pretty(self, workflow_status):
+        return workflow_status.replace('_', ' ').capitalize()
 
     ## ITemplateHelpers interface ##
 
@@ -195,6 +199,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'workflow_status_options': self.workflow_status_options,
             'organization_visibility_options': self.organization_visibility_options,
             'is_admin': self.is_admin,
+            'workflow_status_pretty': self.workflow_status_pretty
         }
 
     ## IConfigurer interface ##
@@ -261,6 +266,28 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             # DataVic: Append extra fields as dynamic (not registered under modify schema) field
             for field in self.DATASET_EXTRA_FIELDS:
                 append_field(extras_list, data, field[0])
+
+            # DATAVIC-56
+            if workflow_enabled:
+                # Get the current workflow_status value for comparison..
+                pkg = model.Package.get(data.get(('id',)))
+
+                if pkg and 'workflow_status' in pkg.extras:
+                    user = toolkit.c.userobj
+
+                    adjusted_workflow_status = workflow_helpers.get_workflow_status_for_role(
+                        pkg.extras['workflow_status'],
+                        data.get(('workflow_status',), None),
+                        user.name,
+                        data.get(('owner_org',), None)
+                    )
+
+                    items = filter(lambda t: t['key'] == 'workflow_status', extras_list)
+                    if items:
+                        items[0]['value'] = adjusted_workflow_status
+                    else:
+                        extras_list.append({'key': 'workflow_status', 'value': adjusted_workflow_status})
+
 
         def before_validation_processor(key, data, errors, context):
             assert key[0] == '__before', 'This validator can only be invoked in the __before stage'
