@@ -1,0 +1,35 @@
+{% extends "package/read.html" %}
+
+{% set pkg = c.pkg_dict %}
+
+
+
+{% block page_header %}
+<header class="module-content page-header">
+    <h1>
+        {% block page_heading %}
+        {{ pkg.title or pkg.name }}
+        {% if pkg.state.startswith('draft') %}
+        [{{ _('Draft') }}]
+        {% endif %}
+        {% endblock %}
+    </h1>
+    {% if self.content_action() | trim %}
+    <div class="content_action">
+        {% block content_action %}{{ super() }}{% endblock %}
+    </div>
+    {% endif %}
+    <ul class="add-nav">
+        {% block content_primary_nav %}{{ super() }}{% endblock %}
+    </ul>
+</header>
+{% endblock %}
+
+
+{% block primary_content_inner %}
+  {% block package_resources %}
+
+        {% snippet "package/snippets/resources_list.html", pkg=pkg, resources=pkg.resources, historical=true %}
+
+  {% endblock %}
+{% endblock %}
