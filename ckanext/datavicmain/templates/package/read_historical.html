@@ -1,30 +1,19 @@
-{% extends "package/read.html" %}
+{% extends "package/read_base.html" %}
 
-{% set pkg = c.pkg_dict %}
+{# Note: The parent template has aliased c.pkg_dict as pkg #}
 
+{% block package_description %}
+  {{ super() }}
 
-
-{% block page_header %}
-<header class="module-content page-header">
-    <h1>
-        {% block page_heading %}
-        {{ pkg.title or pkg.name }}
-        {% if pkg.state.startswith('draft') %}
-        [{{ _('Draft') }}]
-        {% endif %}
-        {% endblock %}
-    </h1>
-    {% if self.content_action() | trim %}
-    <div class="content_action">
-        {% block content_action %}{{ super() }}{% endblock %}
-    </div>
+  {% for field_id, field_attributes in h.dataset_extra_fields %}
+    {% if pkg.get(field_id) %}
+      <section id="dataset-{{ field_id }}" class="resources module-content">
+        <p><strong>{{ _( field_attributes['label'] ) }}</strong>: {{ pkg.get(field_id) }}</p>
+      </section>
     {% endif %}
-    <ul class="add-nav">
-        {% block content_primary_nav %}{{ super() }}{% endblock %}
-    </ul>
-</header>
-{% endblock %}
+  {% endfor %}
 
+{% endblock %}
 
 {% block primary_content_inner %}
   {% block package_resources %}

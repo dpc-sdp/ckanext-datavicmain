@@ -11,7 +11,7 @@
   <p>
     <small>
         {% if res.release_date and res.release_date != '' %}
-        Release Date: {{res.release_date|truncate(10,end='')}} &nbsp; 
+        Release Date: {{res.release_date|truncate(10,end='')}} &nbsp;
         {% endif %}
         {% if res.period_start and res.period_start != '' %}
         Period: {{res.period_start|truncate(10,end='')}} &raquo; {{res.period_end|truncate(10,end='')}}
