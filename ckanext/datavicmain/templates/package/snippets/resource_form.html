@@ -3,6 +3,15 @@
 {% block metadata_fields %}
 
   {% for field_id, field_attributes in h.resource_extra_fields %}
+    {% if field_id == 'period_start' or field_id == 'period_end' %}
+      {{ form.input(field_id,
+            label=_(field_attributes['label']), id='field-' + field_id,
+            placeholder=_('YYYY-MM-DD'),
+            value=data.get(field_id),
+            error=errors.get(field_id),
+            classes=['control-medium'])
+      }}
+    {% else %}
       {{ form.input(field_id, 
             label=_(field_attributes['label']), id='field-' + field_id, 
             placeholder=_(field_attributes['label']), 
@@ -10,6 +19,7 @@
             error=errors.get(field_id), 
             classes=['control-medium']) 
       }}
+    {% endif %}
   {% endfor %}
 
 {{ super() }}
