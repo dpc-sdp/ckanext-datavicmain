@@ -1,0 +1,8 @@
+{% ckan_extends %}
+
+{% block content_primary_nav %}
+  {{ super() }}
+  {% if h.historical_resources_list(pkg.resources)[1] and  h.historical_resources_list(pkg.resources)[1]['period_start'] != 'None' and  h.historical_resources_list(pkg.resources)[1]['period_start'] != ""%}
+    {{ h.build_nav_icon('dataset_historical', _('Historical'), id=pkg.name, icon=None) }}
+  {% endif %}
+{% endblock %}
