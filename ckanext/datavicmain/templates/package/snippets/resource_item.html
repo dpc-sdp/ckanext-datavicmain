@@ -10,8 +10,8 @@
   {% if h.is_historical() or url_is_edit %}
   <p>
     <small>
-        {% if res.release_date and res.release_date != '' %}
-        Release Date: {{res.release_date|truncate(10,end='')}} &nbsp;
+        {% if res.public_release_date and res.public_release_date != '' %}
+        Release Date: {{res.public_release_date|truncate(10,end='')}} &nbsp;
         {% endif %}
         {% if res.period_start and res.period_start != '' %}
         Period: {{res.period_start|truncate(10,end='')}} &raquo; {{res.period_end|truncate(10,end='')}}

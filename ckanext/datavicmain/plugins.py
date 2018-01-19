@@ -79,11 +79,9 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         ('asgs', {'label': 'ASGS (Australian Statistical Geography Standard)'}),
         ('bounding_box', {'label': 'Bounding Box'}),
         ('vertical_coverage', {'label': 'Vertical Coverage'}),
-        ('temporal_range_coverage', {'label': 'Temporal Range/Coverage'}),
         ('data_quality_trust_statement', {'label': 'Data Quality / Trust Statement'}),
         ('period_start', {'label': 'Temporal Coverage Start'}),
         ('period_end', {'label': 'Temporal Coverage End'}),
-        ('release_date', {'label': 'Release Date'}),
     ]
 
     # Format (tuple): ( 'field_id', { 'field_attribute': 'value' } )
@@ -443,8 +441,6 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'period_start': [toolkit.get_converter('convert_from_extras'),
                              toolkit.get_validator('ignore_missing')],
             'period_end': [toolkit.get_converter('convert_from_extras'),
-                           toolkit.get_validator('ignore_missing')],
-            'release_date': [toolkit.get_converter('convert_from_extras'),
                            toolkit.get_validator('ignore_missing')],
         })
 
