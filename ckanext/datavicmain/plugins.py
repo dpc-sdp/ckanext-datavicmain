@@ -15,7 +15,7 @@ import ckan.logic           as logic
 
 import weberror
 
-from ckan.common import config
+from ckan.common import config, request
 
 _t = toolkit._
 
@@ -199,6 +199,11 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
                 if role == 'admin':
                     return True
 
+    def is_sysadmin(self):
+        user = toolkit.c.user
+        if authz.is_sysadmin(user):
+            return True
+
     def workflow_status_pretty(self, workflow_status):
         return workflow_status.replace('_', ' ').capitalize()
 
@@ -252,6 +257,27 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         if toolkit.c.action == 'historical':
             return True
 
+    def get_formats(self, limit=100):
+        try:
+            # Get any additional formats added in the admin settings
+            additional_formats = [x.strip() for x in config.get('ckan.datavic.authorised_resource_formats', []).split(',')]
+            q = request.GET.get('q', '')
+            list_of_formats = [x.encode('utf-8') for x in
+                               logic.get_action('format_autocomplete')({}, {'q': q, 'limit': limit}) if x] + additional_formats
+            list_of_formats = sorted(list(set(list_of_formats)))
+            dict_of_formats = []
+            for item in list_of_formats:
+                if item == ' ' or item == '':
+                    continue
+                else:
+                    dict_of_formats.append({'value': item.lower(), 'text': item.upper()})
+            dict_of_formats.insert(0, {'value': '', 'text': 'Please select'})
+
+        except Exception, e:
+            return []
+        else:
+            return dict_of_formats
+
     ## ITemplateHelpers interface ##
 
     def get_helpers(self):
@@ -270,10 +296,21 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'workflow_status_pretty': self.workflow_status_pretty,
             'historical_resources_list': self.historical_resources_list,
             'historical_resources_range': self.historical_resources_range,
-            'is_historical': self.is_historical
+            'is_historical': self.is_historical,
+            'get_formats': self.get_formats,
+            'is_sysadmin': self.is_sysadmin,
         }
 
     ## IConfigurer interface ##
+    def update_config_schema(self, schema):
+        schema.update({
+            'ckan.datavic.authorised_resource_formats': [
+                toolkit.get_validator('ignore_missing'),
+                unicode
+            ],
+        })
+
+        return schema
 
     def update_config(self, config):
         ''' Setup the (fanstatic) resource library, public and template directory '''

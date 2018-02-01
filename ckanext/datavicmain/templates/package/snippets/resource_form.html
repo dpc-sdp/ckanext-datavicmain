@@ -1,5 +1,24 @@
 {% ckan_extends %}
 
+  {% block basic_fields_format %}
+    {% if h.is_sysadmin() %}
+      {% set format_attrs = {'data-module': 'autocomplete', 'data-module-source': '/api/2/util/resource/format_autocomplete?incomplete=?'} %}
+      {% call form.input('format', id='field-format', label=_('Format'), placeholder=_('eg. CSV, XML or JSON'), value=data.format, error=errors.format, classes=['control-medium'], attrs=format_attrs) %}
+        <span class="info-block info-block-small">
+          <i class="icon-info-sign"></i>
+          {{ _('This will be guessed automatically. Leave blank if you wish') }}
+        </span>
+      {% endcall %}
+    {% else %}
+      {% call form.select('format', id='field-format', label=_('Format'), options=h.get_formats(100), selected=data.format|lower, error=errors.format, classes=['inp-holder']) %}
+        <span class="info-block info-block-small">
+          <i class="icon-info-sign"></i>
+          {{ _("Please enter 'api/tool' as the format for APIs or data tools.") }}
+        </span>
+      {% endcall %}
+    {% endif %}
+  {% endblock %}
+
 {% block metadata_fields %}
 
   {% for field_id, field_attributes in h.resource_extra_fields %}
