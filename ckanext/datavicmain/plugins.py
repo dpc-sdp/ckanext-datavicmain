@@ -13,9 +13,11 @@ import ckan.plugins         as p
 import ckan.plugins.toolkit as toolkit
 import ckan.logic           as logic
 
+from ckanext.datavicmain import actions
+
 import weberror
 
-from ckan.common import config, request
+from ckan.common import config, request, c
 
 _t = toolkit._
 
@@ -47,6 +49,16 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(p.IPackageController, inherit=True)
     # p.implements(p.IResourceController, inherit=True)
     p.implements(p.IRoutes, inherit=True)
+    p.implements(p.IActions)
+
+
+    # IActions
+    def get_actions(self):
+        return {
+            # DATAVICIAR-42: Override CKAN's core `user_create` method
+            'user_create': actions.datavic_user_create,
+        }
+
 
     # IRoutes
     def before_map(self, map):
@@ -278,6 +290,12 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         else:
             return dict_of_formats
 
+    def repopulate_user_role(self):
+        if 'submit' in request.params:
+            return request.params['role']
+        else:
+            return c.user_role
+
     ## ITemplateHelpers interface ##
 
     def get_helpers(self):
@@ -299,6 +317,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'is_historical': self.is_historical,
             'get_formats': self.get_formats,
             'is_sysadmin': self.is_sysadmin,
+            'repopulate_user_role': self.repopulate_user_role,
         }
 
     ## IConfigurer interface ##
