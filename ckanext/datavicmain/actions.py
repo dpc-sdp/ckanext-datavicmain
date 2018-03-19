@@ -3,6 +3,7 @@ import ckan.logic as logic
 import ckan.lib.dictization.model_dictize as model_dictize
 import ckan.lib.dictization.model_save as model_save
 import logging
+from ckan import lib
 from ckan.common import c, request
 
 _validate = ckan.lib.navl.dictization_functions.validate
@@ -12,13 +13,17 @@ ValidationError = logic.ValidationError
 log1 = logging.getLogger(__name__)
 
 
-def user_email_unique(user_email, context):
+def email_in_use(user_email, context):
     model = context['model']
     session = context['session']
-    result = session.query(model.User).filter_by(email=user_email).first()
+    return session.query(model.User).filter_by(email=user_email).first()
+
+
+def user_email_unique(user_email, context):
+    result = email_in_use(user_email, context)
     if result:
-        # TODO: Consider when it's an edit - need to check user.id against current user.id in context
-        raise ckan.lib.navl.dictization_functions.Invalid('Email address ' + user_email + ' already in use for user: ' + result.name)
+        raise lib.navl.dictization_functions.Invalid('Email address ' + user_email + ' already in use for user: ' + result.name)
+
     return user_email
 
 
