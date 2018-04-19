@@ -55,8 +55,12 @@ def validator_email_not_in_use(user_email, context):
 #   Need this decorator to force auth function to be checked for sysadmins aswell
 #   (ref.: ckan/default/src/ckan/ckan/logic/__init__.py)
 @toolkit.auth_sysadmins_check
+@toolkit.auth_allow_anonymous_access
 def datavic_user_update(context, data_dict=None):
-    if 'save' in context and context['save']:
+    if toolkit.c.controller == 'user' and toolkit.c.action == 'perform_reset':
+        # Allow anonymous access to the user/reset path, i.e. password resets.
+        return {'success': True}
+    elif 'save' in context and context['save']:
         if 'email' in request.params:
             schema = context.get('schema')
             if not validator_email_not_in_use in schema['email']:
