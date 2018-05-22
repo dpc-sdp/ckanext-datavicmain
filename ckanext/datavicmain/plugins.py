@@ -24,6 +24,8 @@ _t = toolkit._
 log1 = logging.getLogger(__name__)
 
 from ckan import lib
+from ckan.lib import base
+
 
 workflow_enabled = False
 
@@ -69,6 +71,50 @@ def datavic_user_update(context, data_dict=None):
     return {'success': True}
 
 
+def is_iar():
+    return toolkit.asbool(config.get('ckan.iar', False))
+
+
+#   The code in this class was copied (& adjusted) from the CKAN 2.2 repository
+class AuthMiddleware(object):
+    def __init__(self, app, app_conf):
+        self.app = app
+    def __call__(self, environ, start_response):
+        # if logged in via browser cookies or API key, all pages accessible
+        if 'repoze.who.identity' in environ or self._get_user_for_apikey(environ) or not is_iar():
+            return self.app(environ,start_response)
+        else:
+            # otherwise only login/reset and front pages are accessible
+            if (environ['PATH_INFO'] == '/' or environ['PATH_INFO'] == '/user/login' or environ['PATH_INFO'] == '/user/_logout'
+                                or '/user/reset' in environ['PATH_INFO'] or environ['PATH_INFO'] == '/user/logged_out'
+                                or environ['PATH_INFO'] == '/user/logged_in' or environ['PATH_INFO'] == '/user/logged_out_redirect'):
+                return self.app(environ,start_response)
+            else:
+                # http://rufuspollock.org/2006/09/28/wsgi-middleware/
+                environ['wsgiorg.routing_args'] = '',{'action': 'login', 'controller': 'user'}
+                return self.app(environ,start_response)
+
+    def _get_user_for_apikey(self, environ):
+        # Adapted from https://github.com/ckan/ckan/blob/625b51cdb0f1697add59c7e3faf723a48c8e04fd/ckan/lib/base.py#L396
+        apikey_header_name = config.get(base.APIKEY_HEADER_NAME_KEY,
+                                        base.APIKEY_HEADER_NAME_DEFAULT)
+        apikey = environ.get(apikey_header_name, '')
+        if not apikey:
+            # For misunderstanding old documentation (now fixed).
+            apikey = environ.get('HTTP_AUTHORIZATION', '')
+        if not apikey:
+            apikey = environ.get('Authorization', '')
+            # Forget HTTP Auth credentials (they have spaces).
+            if ' ' in apikey:
+                apikey = ''
+        if not apikey:
+            return None
+        apikey = unicode(apikey)
+        # check if API key is valid by comparing against keys of registered users
+        query = model.Session.query(model.User)
+        user = query.filter_by(apikey=apikey).first()
+        return user
+
 class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
     overrides the default dataset form
@@ -82,7 +128,10 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(p.IRoutes, inherit=True)
     p.implements(p.IActions)
     p.implements(p.IAuthFunctions)
+    p.implements(p.IMiddleware, inherit=True)
 
+    def make_middleware(self, app, config):
+        return AuthMiddleware(app, config)
 
     # IAuthFunctions
     def get_auth_functions(self):
