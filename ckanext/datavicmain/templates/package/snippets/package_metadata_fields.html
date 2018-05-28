@@ -32,54 +32,56 @@ your custom field won't work!!
   #}
 
   {% for field_id, field_attributes in h.dataset_extra_fields %}
-    {% if field_attributes['field_type'] and field_attributes['field_type'] == 'yes_no' %}
-      {{ form.select(field_id, 
-            label = _(field_attributes['label']), 
-            options = h.yes_no_options(), 
-            selected = data.get(field_id, None), 
-            attrs = { 'data-module': 'no-autocomplete' }) 
-      }}
-    {% elif field_id == 'workflow_status_notes'  %}
-        {% if h.is_admin(data.get('owner_org', None)) %}
-            {{ form.textarea(field_id,
+    {% if field_attributes['hidden'] != True %}
+        {% if field_attributes['field_type'] and field_attributes['field_type'] == 'yes_no' %}
+          {{ form.select(field_id,
+                label = _(field_attributes['label']),
+                options = h.yes_no_options(),
+                selected = data.get(field_id, None),
+                attrs = { 'data-module': 'no-autocomplete' })
+          }}
+        {% elif field_id == 'workflow_status_notes'  %}
+            {% if h.is_admin(data.get('owner_org', None)) %}
+                {{ form.textarea(field_id,
+                    label = _(field_attributes['label']),
+                    value=data.get(field_id),
+                    error=errors.get(field_id),
+                    classes=['control-medium'])
+                }}
+            {% endif %}
+        {% elif field_attributes['field_type'] and field_attributes['field_type'] == 'textarea' %}
+          {{ form.textarea(field_id,
                 label = _(field_attributes['label']),
                 value=data.get(field_id),
                 error=errors.get(field_id),
                 classes=['control-medium'])
-            }}
+          }}
+        {% elif field_id == 'workflow_status'  %}
+          {{ form.select(field_id,
+                label = _(field_attributes['label']),
+                options = h.workflow_status_options(data.get(field_id, None), data.get('owner_org', None)),
+                selected = data.get(field_id, None),
+                attrs = { 'data-module': 'no-autocomplete' })
+          }}
+        {% elif field_id == 'organization_visibility'  %}
+          {{ form.select(field_id,
+                label = _(field_attributes['label']),
+                options = h.organization_visibility_options(),
+                selected = data.get(field_id, None),
+                attrs = { 'data-module': 'no-autocomplete' })
+          }}
+        {% elif field_id != 'licensing_other'  %}
+          {{ form.input(field_id,
+                label=_(field_attributes['label']), id='field-' + field_id,
+                placeholder=_(field_attributes['label']),
+                value=data.get(field_id),
+                error=errors.get(field_id),
+                classes=['control-medium'])
+          }}
         {% endif %}
-    {% elif field_attributes['field_type'] and field_attributes['field_type'] == 'textarea' %}
-      {{ form.textarea(field_id,
-            label = _(field_attributes['label']),
-            value=data.get(field_id),
-            error=errors.get(field_id),
-            classes=['control-medium'])
-      }}
-    {% elif field_id == 'workflow_status'  %}
-      {{ form.select(field_id,
-            label = _(field_attributes['label']),
-            options = h.workflow_status_options(data.get(field_id, None), data.get('owner_org', None)),
-            selected = data.get(field_id, None),
-            attrs = { 'data-module': 'no-autocomplete' })
-      }}
-    {% elif field_id == 'organization_visibility'  %}
-      {{ form.select(field_id,
-            label = _(field_attributes['label']),
-            options = h.organization_visibility_options(),
-            selected = data.get(field_id, None),
-            attrs = { 'data-module': 'no-autocomplete' })
-      }}
-    {% elif field_id != 'licensing_other'  %}
-      {{ form.input(field_id,
-            label=_(field_attributes['label']), id='field-' + field_id,
-            placeholder=_(field_attributes['label']),
-            value=data.get(field_id),
-            error=errors.get(field_id),
-            classes=['control-medium'])
-      }}
-    {% endif %}
-    {% if field_attributes['description'] %}
-    <small>{{ field_attributes['description'] }}</small>
+        {% if field_attributes['description'] %}
+        <small>{{ field_attributes['description'] }}</small>
+        {% endif %}
     {% endif %}
   {% endfor %}
 
@@ -123,6 +125,9 @@ your custom field won't work!!
       }}
     {% endif %}
   {% endfor % #}
+
+  {% block package_metadata_fields_maintainer %}
+  {% endblock %}
 
   {{ super() }}
 
