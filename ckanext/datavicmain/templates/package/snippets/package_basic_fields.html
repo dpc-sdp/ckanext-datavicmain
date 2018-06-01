@@ -21,18 +21,21 @@ Add widgets for our basic custom (extension-specific) fields
 {% endblock %}
 
 {% block package_metadata_fields_visibility %}
+  <div class="control-group">
+    <label for="field-private" class="control-label">{{ _('Visibility') }}</label>
+    <div class="controls">
+      <select id="field-private" name="private" {% if data.get('workflow_status') != 'published' %}disabled="true"{% endif %}>
+        {% for option in [('True', _('Private')), ('False', _('Public'))] %}
+          <option value="{{ option[0] }}" {% if option[0] == data.private|trim %}selected="selected"{% endif %}>{{ option[1] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  {% resource 'ckanext-datavicmain/workflow-internal-public.js' %}
 {% endblock %}
 
 {% block package_basic_fields_custom %}
 
   {{ super() }}
-
-  {#{ form.input('music_title', 
-        label=_('Music Title'), id='field-music_title', 
-        placeholder=_('a wonderfull piece of music'), 
-        value=data.get('music_title'), 
-        error=errors.get('music_title'), 
-        classes=['control-medium']) 
-  }#}
 
 {% endblock %}

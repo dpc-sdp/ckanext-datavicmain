@@ -424,6 +424,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         p.toolkit.add_public_directory(config, 'public')
         p.toolkit.add_template_directory(config, 'templates')
         p.toolkit.add_resource('public', 'ckanext-datavicmain')
+        p.toolkit.add_resource('fantastic', 'ckanext-datavicmain')
 
     ## IConfigurable interface ##
 
