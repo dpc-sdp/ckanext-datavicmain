@@ -241,6 +241,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         ('offline_access', {'label': 'Off-line Access', 'hidden': True}),
         ('supports_business_process', {'label': 'Supports Business Process', 'hidden': True}),
         ('source_ict_system', {'label': 'Source ICT System'}),
+        ('anzlic_id', {'label': 'ANZLIC ID'}),
+        ('package_scope', {'label': 'Package Scope', 'field_type': 'select', 'options': [{'value': '', 'text': 'Select an option'}, {'value': 'Product', 'text': 'Product'}, {'value': 'Dataset', 'text': 'Dataset'}, {'value': 'Feature', 'text': 'Feature'}]}),
     ]
 
     @classmethod

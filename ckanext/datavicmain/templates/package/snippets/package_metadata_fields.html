@@ -13,30 +13,19 @@ your custom field won't work!!
 
 {% block package_metadata_fields %}
   
-  {#% set music_genres = data.get('music_genre', [None]) %}
-  {{ form.select('music_genre', 
-        label = _('Music Genre'), 
-        options = h.music_genres_options(), 
-        selected = music_genres.0, 
-        attrs = { 'data-module': 'no-autocomplete' }) 
-  }#}
- 
-  {#
-  {{# form.input('foo.x1', 
-        label=_('Foo/x1'), id='field-foo.x1', 
-        placeholder=_('a wonderfull foo/x1'), 
-        value=data.get('foo.x1'), 
-        error=errors.get('foo.x1'), 
-        classes=['control-medium']) 
-  }}
-  #}
-
   {% for field_id, field_attributes in h.dataset_extra_fields %}
     {% if field_attributes['hidden'] != True %}
         {% if field_attributes['field_type'] and field_attributes['field_type'] == 'yes_no' %}
           {{ form.select(field_id,
                 label = _(field_attributes['label']),
                 options = h.yes_no_options(),
+                selected = data.get(field_id, None),
+                attrs = { 'data-module': 'no-autocomplete' })
+          }}
+        {% elif field_attributes['field_type'] and field_attributes['field_type'] == 'select' %}
+          {{ form.select(field_id,
+                label = _(field_attributes['label']),
+                options = field_attributes['options'],
                 selected = data.get(field_id, None),
                 attrs = { 'data-module': 'no-autocomplete' })
           }}
@@ -84,47 +73,6 @@ your custom field won't work!!
         {% endif %}
     {% endif %}
   {% endfor %}
-
-  {# % for field in h.dict_extra_fields %}
-    {% if field['field_type'] and field['field_type'] == 'yes_no' %}
-      {{ form.select(field['key'], 
-            label = _(field['label']), 
-            options = h.yes_no_options(), 
-            selected = data.get(field['key'], None), 
-            attrs = { 'data-module': 'no-autocomplete' }) 
-      }}
-    {% else %}
-      {{ form.input(field['key'], 
-            label=_(field['label']), id='field-' + field['key'], 
-            placeholder=_(field['label']), 
-            value=data.get(field['key']), 
-            error=errors.get(field['key']), 
-            classes=['control-medium']) 
-      }}
-    {% endif %}
-    {% if field['description'] %}
-    <small>{{ field['description'] }}</small>
-    {% endif %}
-  {% endfor % #}
-
-  {# % for field in h.extra_fields %}
-    {% if field[2] == 'yes_no' %}
-      {{ form.select(field[0], 
-            label = _(field[1]), 
-            options = h.yes_no_options(), 
-            selected = data.get(field[0], None), 
-            attrs = { 'data-module': 'no-autocomplete' }) 
-      }}
-    {% else %}
-      {{ form.input(field[0], 
-            label=_(field[1]), id='field-' + field[0], 
-            placeholder=_(field[1]), 
-            value=data.get(field[0]), 
-            error=errors.get(field[0]), 
-            classes=['control-medium']) 
-      }}
-    {% endif %}
-  {% endfor % #}
 
   {% block package_metadata_fields_maintainer %}
   {% endblock %}
