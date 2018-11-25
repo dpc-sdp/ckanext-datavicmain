@@ -14,13 +14,11 @@ DATASET_EXTRA_FIELDS = [
     # ('last_modified_user_id',  {'label': 'Last Modified By'}),
     ('extract', {'label': 'Abstract', 'field_type': 'textarea', 'required': True}),
     ('primary_purpose_of_collection', {'label': 'Purpose', 'field_type': 'textarea'}),
-    # ORGANIZATION GOES IN HERE
     ('workflow_status', {'label': 'Workflow Status'}),
     ('workflow_status_notes', {'label': 'Workflow Status Notes', 'field_type': 'textarea'}),
     # NOTE: the use of the Z in organization for consistency with usage throughout CKAN
     ('organization_visibility', {'label': 'Organisation Visibility'}),
-    ('authorised_unlimited_public_release', {'label': 'Public Release', 'field_type': 'yes_no'}),
-    # GROUP/CATEGORY GOES IN HERE
+    # Public Release is managed using the core CKAN Private field (true/false - private/public)
     ('category', {'label': 'Category', 'required': True}),
     ('agency_program_domain', {'label': 'Agency Program/Domain'}),
 
@@ -68,7 +66,6 @@ DATASET_EXTRA_FIELDS = [
     ('protective_marking', {'label': 'Protective Marking', 'field_type': 'select',
                             'options': [
                                 {'value': '', 'text': 'Please select'},
-                                {'value': '', 'text': 'Select an option'},
                                 {'value': 'Protected', 'text': 'Protected'},
                                 {'value': 'Unclassified : Sensitive : Vic Cabinet',
                                  'text': 'Unclassified : Sensitive : Vic Cabinet'},
@@ -81,7 +78,9 @@ DATASET_EXTRA_FIELDS = [
                                  'text': 'Unclassified : For Office Use Only'},
                                 {'value': 'Unclassified', 'text': 'Unclassified'},
                                 {'value': 'Public Domain', 'text': 'Public Domain'},
-                            ]}),
+                            ],
+                            'required': True
+                            }),
 
     # Business Impact Level - Confidentiality Breach
     ('bil_confidentiality', {'label': 'Business Impact Level - Confidentiality Breach',
