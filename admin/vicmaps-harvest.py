@@ -91,8 +91,11 @@ def test_vicgislite_urls(url):
     return re.search('http://www.data.vic.gov.au/vicgislite/', url)
 
 
-def convert_vicgislite_urls(url):
-    return url.replace('http://www.data.vic.gov.au/', 'https://sdm.iar.data.vic.gov.au/')
+def convert_vicgislite_urls(url, dataset_name):
+    return url.replace(
+        'http://www.data.vic.gov.au/vicgislite/sdmAccess.jsp',
+        'https://discover.data.vic.gov.au/dataset/' + dataset_name + '/order'
+    )
 
 
 '''## http://services.land.vic.gov.au/catalogue/cxfservices/CatalogWebServiceV3?wsdl
@@ -136,7 +139,7 @@ for catalogue in catalogues:
     for layerTag in catalogue.find('{http://model.catalogue.dialog.com}layerList'):
 
         # @Todo: remove this limit
-        # if limit > 10:
+        # if limit >= 10:
         #     print 'Limit reached - exiting loop'
         #     break
         # else:
@@ -330,9 +333,9 @@ for catalogue in catalogues:
 
         # Change URLs from 'http://www.data.vic.gov.au' to 'https://sdm.iar.vic.gov.au'
         if 'public_order_url' in pkg_dict['resources'][0] and test_vicgislite_urls(pkg_dict['resources'][0]['public_order_url']):
-            pkg_dict['resources'][0]['public_order_url'] = convert_vicgislite_urls(pkg_dict['resources'][0]['public_order_url'])
+            pkg_dict['resources'][0]['public_order_url'] = convert_vicgislite_urls(pkg_dict['resources'][0]['public_order_url'], pkg_dict['name'])
         if 'url' in pkg_dict['resources'][0] and test_vicgislite_urls(pkg_dict['resources'][0]['url']):
-            pkg_dict['resources'][0]['url'] = convert_vicgislite_urls(pkg_dict['resources'][0]['url'])
+            pkg_dict['resources'][0]['url'] = convert_vicgislite_urls(pkg_dict['resources'][0]['url'], pkg_dict['name'])
 
         if update:
             try:
