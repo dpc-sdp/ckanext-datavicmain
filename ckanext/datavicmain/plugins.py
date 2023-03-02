@@ -186,7 +186,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             return None
 
     def is_historical(self):
-        if toolkit.g.action == 'historical':
+        if toolkit.get_endpoint()[1] == 'historical':
             return True
 
     def get_formats(self, limit=100):

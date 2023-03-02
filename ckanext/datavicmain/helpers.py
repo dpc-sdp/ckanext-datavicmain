@@ -112,9 +112,7 @@ def set_private_activity(pkg_dict, context, activity_type):
 
 
 def user_is_registering():
-    #    return toolkit.c.controller in ['user'] and toolkit.c.action in ['register']
-    (controller, action) = toolkit.get_endpoint()
-    return controller in ['datavicuser'] and action in ['register']
+    return toolkit.get_endpoint() == ("datavicuser", "register")
 
 
 def _register_blueprints():

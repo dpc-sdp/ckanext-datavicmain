@@ -118,7 +118,7 @@ def datavic_user_create(context, data_dict):
             'new_account_requested',
             {
                 "user_name": user.name,
-                "user_url": toolkit.url_for(controller='user', action='read', id=user.name, qualified=True),
+                "user_url": toolkit.url_for('user.read', id=user.name, qualified=True),
                 "site_title": config.get('ckan.site_title'),
                 "site_url": config.get('ckan.site_url')
             }
