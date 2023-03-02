@@ -5,6 +5,6 @@
   {{ h.build_nav_icon('dataset.groups', _('Categories'), id=pkg.name, icon=None) }}
   {{ h.build_nav_icon('dataset.activity', _('Activity Stream'), id=pkg.name, icon=None) }}
   {% if h.historical_resources_list(pkg.resources)[1] and h.historical_resources_list(pkg.resources)[1]['period_start'] and h.historical_resources_list(pkg.resources)[1]['period_start'] != 'None' and  h.historical_resources_list(pkg.resources)[1]['period_start'] != ""%}
-    {{ h.build_nav_icon('datavicmain.historical', _('Historical Data and Resources'), id=pkg.name, icon=None) }}
+    {{ h.build_nav_icon('datavicmain.historical', _('Historical Data'), id=pkg.name, icon=None) }}
   {% endif %}
 {% endblock %}
