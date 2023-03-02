@@ -57,17 +57,13 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(p.ITemplateHelpers)
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IPackageController, inherit=True)
-    p.implements(p.IRoutes, inherit=True)
     p.implements(p.IActions)
     p.implements(p.IAuthFunctions)
-    p.implements(p.IMiddleware, inherit=True)
     p.implements(p.IBlueprint)
     p.implements(p.IValidators)
     p.implements(p.IClick)
     p.implements(ISyndicate, inherit=True)
 
-    def make_middleware(self, app, config):
-        return auth_middleware.AuthMiddleware(app, config)
 
     # IBlueprint
     def get_blueprint(self):
