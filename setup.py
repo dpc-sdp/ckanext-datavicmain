@@ -20,9 +20,10 @@ setup(
 	include_package_data=True,
 	zip_safe=False,
 	install_requires=[
-		# -*- Extra requirements: -*-
-        "jsonpickle",
-        "cryptography!=39.0.0", # this version doesn't work with urllib3 required by CKAN core
+	    # -*- Extra requirements: -*-
+            "jsonpickle",
+            "cryptography!=39.0.0", # this version doesn't work with urllib3 required by CKAN core
+            "ckanapi",
 	],
 	entry_points=\
 	"""

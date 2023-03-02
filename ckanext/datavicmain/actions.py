@@ -2,11 +2,13 @@ import ckan.plugins.toolkit as toolkit
 import ckanext.datavic_iar_theme.helpers as theme_helpers
 import logging
 
+import ckanapi
+
 from ckan.model import State
 from ckan.lib.dictization import model_dictize, model_save, table_dictize
 from ckan.lib.navl.validators import not_empty
 from ckan.logic import schema as ckan_schema
-from ckanext.datavicmain import helpers
+from ckanext.datavicmain import helpers, jobs
 
 _check_access = toolkit.check_access
 config = toolkit.config
@@ -16,6 +18,9 @@ ValidationError = toolkit.ValidationError
 get_action = toolkit.get_action
 _validate = toolkit.navl_validate
 _get_or_bust = toolkit.get_or_bust
+
+CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS = "ckanext.datavicmain.synchronized_organization_fields"
+DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS = ["name", "title", "description"]
 
 
 def datavic_user_create(context, data_dict):
@@ -134,3 +139,36 @@ def datavic_nominate_resource_view(context, data_dict):
 
     return pkg_dict
 
+
+@toolkit.chained_action
+def organization_update(next_, context, data_dict):
+    from ckanext.syndicate import utils
+
+    model = context["model"]
+
+    old = model.Group.get(data_dict.get("id"))
+    old_name = old.name if old else None
+
+    result = next_(context, data_dict)
+    toolkit.enqueue_job(jobs.reindex_organization, [result["id"]])
+
+    if old_name == result["name"]:
+        return result
+
+    for profile in utils.get_profiles():
+        ckan = utils.get_target(profile.ckan_url, profile.api_key)
+        try:
+            remote = ckan.action.organization_show(id=old_name)
+        except ckanapi.NotFound:
+            continue
+
+        patch = {
+            f: result[f] for f in
+            toolkit.aslist(toolkit.config.get(
+                CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
+                DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS
+            ))
+        }
+        ckan.action.organization_patch(id=remote["id"], **patch)
+
+    return result
