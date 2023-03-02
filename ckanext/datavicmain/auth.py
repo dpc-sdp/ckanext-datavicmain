@@ -11,7 +11,8 @@ _t = toolkit._
 @toolkit.auth_sysadmins_check
 @toolkit.auth_allow_anonymous_access
 def datavic_user_update(context, data_dict=None):
-    if toolkit.g and toolkit.g.controller == 'user' and toolkit.g.action == 'perform_reset':
+
+    if toolkit.request and toolkit.get_endpoint() == ('user', 'perform_reset'):
         # Allow anonymous access to the user/reset path, i.e. password resets.
         return {'success': True}
     elif 'save' in context and context['save']:
@@ -33,7 +34,7 @@ def datavic_user_reset(context, data_dict):
 
 @toolkit.chained_auth_function
 def datavic_package_update(next_auth, context, data_dict):
-    if toolkit.g and toolkit.g.controller in ['dataset', 'package'] and toolkit.g.action in ['read', 'edit', 'resource_read', 'resource_edit']:
+    if toolkit.request and toolkit.get_endpoint()[0] in ['dataset', 'package'] and toolkit.get_endpoint()[1] in ['read', 'edit', 'resource_read', 'resource_edit']:
         # Harvested dataset are not allowed to be updated, apart from sysadmins
         package_id = data_dict.get('id') if data_dict else toolkit.g.pkg_dict.get('id') if 'pkg_dict' in toolkit.g else None
         if package_id and helpers.is_dataset_harvested(package_id):
