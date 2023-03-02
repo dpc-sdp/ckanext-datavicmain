@@ -3,8 +3,8 @@ import time
 import calendar
 import logging
 from six import text_type
-import ckan.authz as authz
 
+import ckan.authz as authz
 import ckan.model as model
 import ckan.plugins as p
 import ckan.plugins.toolkit as toolkit
@@ -13,7 +13,7 @@ from ckanext.syndicate.interfaces import ISyndicate, Profile
 
 from ckanext.datavicmain import actions, helpers, validators, auth, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
-import ckanext.datavicmain.utils as utils
+from ckanext.datavicmain.syndication.organization import sync_organization
 
 
 config = toolkit.config
@@ -393,3 +393,23 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             return True
 
         return False
+
+    # IOrganizationController
+    def edit(self, entity: model.Group):
+        """Called after organization had been updated inside
+        organization_update.
+
+        We are using it to syndicate organization on update.
+        """
+
+        if not isinstance(entity, model.Group) or not entity.is_organization:
+            return
+
+        if not entity.packages():
+            return
+
+        toolkit.enqueue_job(
+            sync_organization,
+            [entity],
+            title="DataVic organization sync",
+        )
