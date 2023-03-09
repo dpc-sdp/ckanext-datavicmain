@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import datetime
 import logging
+import csv
+from os import path
 from typing import Any
 
 import click
@@ -37,7 +39,9 @@ def ckan_iar_resource_date_cleanup():
 
         for package in package_list:
             fix_available = False
-            click.secho(f"Processing resources in {package['name']}", fg="green")
+            click.secho(
+                f"Processing resources in {package['name']}", fg="green"
+            )
 
             for resource in package.get("resources"):
                 if _fix_improper_date_values(resource):
@@ -51,11 +55,13 @@ def ckan_iar_resource_date_cleanup():
                     {"id": package["id"], "resources": package["resources"]},
                 )
                 click.secho(
-                    f"Fixed date issues for resources in {package['name']}", fg="green"
+                    f"Fixed date issues for resources in {package['name']}",
+                    fg="green",
                 )
             except tk.ValidationError as e:
                 click.secho(
-                    f"Failed to fix  resources {package['name']}: {e}", fg="red"
+                    f"Failed to fix  resources {package['name']}: {e}",
+                    fg="red",
                 )
 
 
@@ -79,7 +85,10 @@ def _fix_improper_date_values(resource: dict[str, Any]) -> bool:
             continue
         if not _valid_date(resource[field]):
             click.secho(
-                f"Found invalid date for {field} in {resource['name']}: {resource[field]}",
+                (
+                    f"Found invalid date for {field} in {resource['name']}:"
+                    f" {resource[field]}"
+                ),
                 fg="red",
             )
             resource[field] = None
@@ -105,3 +114,25 @@ def _valid_date(date: str) -> bool:
         return False
 
     return True
+
+
+@maintain.command()
+def drop_wms_records():
+    """Purge old WMS records. One-time script"""
+
+    file = open(path.join(path.dirname(__file__), "data/old_wms_records.csv"))
+    csv_reader = csv.DictReader(file)
+
+    for row in csv_reader:
+        dataset_name: str = row["url"].split("/")[-1]
+
+        try:
+            tk.get_action("dataset_purge")(
+                {"ignore_auth": True}, {"id": dataset_name}
+            )
+        except tk.ObjectNotFound as e:
+            click.secho(f"Error purging <{dataset_name}> dataset: {e}", fg="red")
+        else:
+            click.secho(f"Dataset <{dataset_name}> has been purged", fg="green")
+
+    file.close()
