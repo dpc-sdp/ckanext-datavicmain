@@ -200,9 +200,9 @@ def dtv_config(encoded: str, embedded: bool):
         "catalog": catalog,
         "workbench": [item["id"] for item in catalog],
         "elements": {
-            "map-navigation": {
-                "disabled": embedded
-            },
+            # "map-navigation": {
+            #     "disabled": embedded
+            # },
             "menu-bar": {
                 "disabled": embedded
             },
