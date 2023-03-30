@@ -13,12 +13,19 @@ dataset_fields:
   display_group: General
   validators: not_empty unicode_safe
   required: true
+  form_attrs:
+    data-module: "slug-preview-target"
+    aria-required: "true"
+    required: "true"
 
 - field_name: name
   label: URL
   preset: dataset_slug
   form_placeholder: URL
   display_group: General
+  form_attrs:
+    aria-required: "true"
+    required: "true"
 
 - field_name: notes
   label: Description
@@ -26,6 +33,9 @@ dataset_fields:
   form_placeholder: Description
   required: true
   display_group: General
+  form_attrs:
+    aria-required: "true"
+    required: "true"
 
 - field_name: extract
   label: Abstract
@@ -33,6 +43,9 @@ dataset_fields:
   form_snippet: textarea.html
   display_group: General
   required: true
+  form_attrs:
+    aria-required: "true"
+    required: "true"
 
 - field_name: tag_string
   label: Keywords
@@ -68,6 +81,9 @@ dataset_fields:
   choices_helper: group_list
   required: true
   form_include_blank_choice: true
+  form_attrs:
+    aria-required: "true"
+    required: "true"
 
 - field_name: license_id
   label: License
@@ -77,6 +93,9 @@ dataset_fields:
   validators: not_empty
   required: true
   default: cc-by
+  form_attrs:
+    aria-required: "true"
+    required: "true"
 
 - field_name: custom_licence_text
   label: License - other
@@ -96,6 +115,9 @@ dataset_fields:
   display_group: General
   preset: date
   required: true
+  form_attrs:
+    aria-required: "true"
+    required: "true"
 
 - field_name: date_modified_data_asset
   label: Last Modified (Data Asset
@@ -108,6 +130,9 @@ dataset_fields:
   preset: select
   display_group: General
   required: true
+  form_attrs:
+    aria-required: "true"
+    required: "true"
   form_include_blank_choice: true
   choices:
     - value: continual
@@ -153,6 +178,9 @@ dataset_fields:
       label: "Yes"
   validators: boolean_validator
   output_validators: boolean_validator
+  form_attrs:
+    aria-required: "true"
+    required: "true"
 
   # Security fields
 
@@ -162,6 +190,9 @@ dataset_fields:
   preset: select
   display_group: Security
   required: true
+  form_attrs:
+    aria-required: "true"
+    required: "true"
   form_include_blank_choice: true
   choices:
     - value: not_yet
@@ -179,6 +210,9 @@ dataset_fields:
   preset: select
   display_group: Security
   required: true
+  form_attrs:
+    aria-required: "true"
+    required: "true"
   form_include_blank_choice: true
   choices:
     - value: secret
@@ -200,6 +234,9 @@ dataset_fields:
   preset: select
   display_group: Security
   required: true
+  form_attrs:
+    aria-required: "true"
+    required: "true"
   form_include_blank_choice: true
   choices:
     - value: 'yes'
@@ -322,6 +359,9 @@ dataset_fields:
   preset: select
   display_group: Workflow
   required: true
+  form_attrs:
+    aria-required: "true"
+    required: "true"
   choices:
     - value: current
       label: Current

@@ -12,7 +12,7 @@ this.ckan.module('datavicmain-confirm-action', function (jQuery) {
          *    </a>
          */
         content: '',
-  
+
         /* By default confirm-action creates a new form and submit it
          * But you can use closest to el form by setting data-module-with-data=true
          *
@@ -23,7 +23,7 @@ this.ckan.module('datavicmain-confirm-action', function (jQuery) {
          *     </a>
          */
         withData: '',
-  
+
         /* This is part of the old i18n system and is kept for backwards-
          * compatibility for templates which set the content via the
          * `i18n.content` attribute instead of via the `content` attribute
@@ -32,14 +32,14 @@ this.ckan.module('datavicmain-confirm-action', function (jQuery) {
         i18n: {
           content: '',
         },
-  
+
         template: [
           '<div class="modal fade">',
           '<div class="modal-dialog">',
           '<div class="modal-content">',
           '<div class="modal-header">',
-          '<button type="button" class="close" data-dismiss="modal">×</button>',
           '<h3 class="modal-title"></h3>',
+          '<button type="button" class="btn-close" data-bs-dismiss="modal">×</button>',
           '</div>',
           '<div class="modal-body"></div>',
           '<div class="modal-footer">',
@@ -51,7 +51,7 @@ this.ckan.module('datavicmain-confirm-action', function (jQuery) {
           '</div>'
         ].join('\n')
       },
-  
+
       /* Sets up the event listeners for the object. Called internally by
        * module.createInstance().
        *
@@ -61,7 +61,7 @@ this.ckan.module('datavicmain-confirm-action', function (jQuery) {
         jQuery.proxyAll(this, /_on/);
         this.el.on('click', this._onClick);
       },
-  
+
       /* Presents the user with a confirm dialogue to ensure that they wish to
        * continue with the current action.
        *
@@ -76,14 +76,14 @@ this.ckan.module('datavicmain-confirm-action', function (jQuery) {
       confirm: function () {
         this.sandbox.body.append(this.createModal());
         this.modal.modal('show');
-  
+
         // Center the modal in the middle of the screen.
         this.modal.css({
           'margin-top': this.modal.height() * -0.5,
           'top': '50%'
         });
       },
-  
+
       /* Performs the action for the current item.
        *
        * Returns nothing.
@@ -94,15 +94,15 @@ this.ckan.module('datavicmain-confirm-action', function (jQuery) {
           action: this.el.attr('href'),
           method: 'POST'
         });
-  
+
         // use parent to el form if data-module-with-data == true
         if (this.options.withData) {
           var form = this.el.closest('form');
         }
-  
+
         form.appendTo('body').submit();
       },
-  
+
       /* Creates the modal dialog, attaches event listeners and localised
        * strings.
        *
@@ -114,7 +114,7 @@ this.ckan.module('datavicmain-confirm-action', function (jQuery) {
           element.on('click', '.btn-primary', this._onConfirmSuccess);
           element.on('click', '.btn-cancel', this._onConfirmCancel);
           element.modal({show: false});
-  
+
           element.find('.modal-title').text(this._('Please Confirm Action'));
           var content = this.options.content ||
                         this.options.i18n.content || /* Backwards-compatibility */
@@ -125,18 +125,18 @@ this.ckan.module('datavicmain-confirm-action', function (jQuery) {
         }
         return this.modal;
       },
-  
+
       /* Event handler that displays the confirm dialog */
       _onClick: function (event) {
         event.preventDefault();
         this.confirm();
       },
-  
+
       /* Event handler for the success event */
       _onConfirmSuccess: function (event) {
         this.performAction();
       },
-  
+
       /* Event handler for the cancel event */
       _onConfirmCancel: function (event) {
         this.modal.modal('hide');
