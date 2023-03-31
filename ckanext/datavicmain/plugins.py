@@ -59,67 +59,15 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(p.ITemplateHelpers)
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IPackageController, inherit=True)
-    p.implements(p.IRoutes, inherit=True)
     p.implements(p.IActions)
     p.implements(p.IAuthFunctions)
     p.implements(p.IBlueprint)
     p.implements(p.IValidators)
     p.implements(p.IClick)
-    p.implements(p.IAuthenticator, inherit=True)
     p.implements(ISyndicate, inherit=True)
+    p.implements(p.IAuthenticator, inherit=True)
+    p.implements(p.IOrganizationController, inherit=True)
 
-    # IAuthenticator
-    def identify(self):
-        from ckan.views import _identify_user_default as identify
-
-        if not toolkit.asbool(config.get('ckan.iar', False)):
-            return
-
-        identify()
-        if getattr(toolkit.g, "user", None):
-            return
-
-        path = toolkit.request.path
-        allowed_paths = {
-            '/',
-            '/user/login',
-            '/user/_logout',
-            '/user/logged_out',
-            '/user/logged_in',
-            '/user/logged_out_redirect',
-            '/user/register',
-            '/favicon.ico',
-        }
-        allowed_paths.update(toolkit.aslist(config.get(CONFIG_EXTRA_ALLOWED)))
-
-        allowed_prefixes = (
-            '/api',
-            '/base',
-            '/webassets',
-            '/images',
-            '/css',
-            '/js',
-            '/_debug',
-            '/uploads',
-            '/fonts',
-            '/assets',
-        )
-
-        if (path in allowed_paths
-            or '/user/reset' in path
-            or path.startswith(allowed_prefixes)
-            or path.endswith('svg')):
-            return
-
-        log.debug("Unauthorized page accessed: %s", path)
-
-        resp = toolkit.h.redirect_to("user.login")
-        resp.headers.update({
-            "cache-control": "no-cache, no-store, must-revalidate",
-            "pragma": "no-cache",
-            "expires": "0",
-        })
-        return resp
 
     # IBlueprint
     def get_blueprint(self):
@@ -144,9 +92,10 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         return {
             # DATAVICIAR-42: Override CKAN's core `user_create` method
             'user_create': actions.datavic_user_create,
-            'organization_update': actions.organization_update,
+
             # SXDEDPCXZIC-85: Nominate a resource view  as data preview
-            'datavic_nominate_resource_view':actions.datavic_nominate_resource_view
+            'datavic_nominate_resource_view':actions.datavic_nominate_resource_view,
+            'organization_update': actions.organization_update,
         }
 
     ## helper methods ##
@@ -241,7 +190,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             return None
 
     def is_historical(self):
-        if toolkit.g.action == 'historical':
+        if toolkit.get_endpoint()[1] == 'historical':
             return True
 
     def get_formats(self, limit=100):
@@ -300,6 +249,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'field_choices': helpers.field_choices,
             'user_org_can_upload': helpers.user_org_can_upload,
             'is_ready_for_publish': helpers.is_ready_for_publish,
+            'get_digital_twin_resources': helpers.get_digital_twin_resources,
+            'url_for_dtv_config': helpers.url_for_dtv_config,
         }
 
     ## IConfigurer interface ##

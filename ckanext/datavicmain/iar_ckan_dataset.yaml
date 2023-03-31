@@ -9,26 +9,27 @@ dataset_fields:
 - field_name: title
   label: Title
   preset: title
-  form_placeholder: eg. A descriptive title
+  form_placeholder: Title
   display_group: General
-  validators: not_empty unicode
+  validators: not_empty unicode_safe
   required: true
 
 - field_name: name
   label: URL
   preset: dataset_slug
-  form_placeholder: eg. my-dataset
+  form_placeholder: URL
   display_group: General
 
 - field_name: notes
   label: Description
   form_snippet: markdown.html
-  form_placeholder: eg. Some useful notes about the data
+  form_placeholder: Description
   required: true
   display_group: General
 
 - field_name: extract
   label: Abstract
+  form_placeholder: Abstract
   form_snippet: textarea.html
   display_group: General
   required: true
@@ -36,7 +37,7 @@ dataset_fields:
 - field_name: tag_string
   label: Keywords
   preset: tag_string_autocomplete
-  form_placeholder: eg. economy, mental health, government
+  form_placeholder: Keywords
   display_group: General
   form_snippet: tags.html
   validators: datavic_tag_string tag_string_convert
@@ -61,6 +62,7 @@ dataset_fields:
 
 - field_name: category
   label: Category
+  form_placeholder: Category
   preset: select
   display_group: General
   choices_helper: group_list
@@ -90,6 +92,7 @@ dataset_fields:
 
 - field_name: date_created_data_asset
   label: Created (Data Asset)
+  form_placeholder: Created (Data Asset)
   display_group: General
   preset: date
   required: true
@@ -101,6 +104,7 @@ dataset_fields:
 
 - field_name: update_frequency
   label: Update Frequency
+  form_placeholder: Update Frequency
   preset: select
   display_group: General
   required: true
@@ -137,10 +141,24 @@ dataset_fields:
   display_group: General
   form_snippet: text.html
 
+- field_name: enable_dtv
+  label: Enable Digital Twin Preview
+  display_snippet: null
+  required: true
+  preset: select
+  choices:
+    - value: false
+      label: "No"
+    - value: true
+      label: "Yes"
+  validators: boolean_validator
+  output_validators: boolean_validator
+
   # Security fields
 
 - field_name: personal_information
   label: Personal Data (Privacy)
+  form_placeholder: Personal Data (Privacy)
   preset: select
   display_group: Security
   required: true
@@ -157,6 +175,7 @@ dataset_fields:
 
 - field_name: protective_marking
   label: Protective Marking
+  form_placeholder: Protective Marking
   preset: select
   display_group: Security
   required: true
@@ -177,6 +196,7 @@ dataset_fields:
 
 - field_name: access
   label: Access
+  form_placeholder: Access
   preset: select
   display_group: Security
   required: true
@@ -191,11 +211,13 @@ dataset_fields:
 
 - field_name: access_description
   label: Access - description
+  form_placeholder: Access - description
   form_snippet: textarea.html
   display_group: Security
 
 - field_name: bil_confidentiality
   label: Business Impact Level - Confidentiality Breach
+  form_placeholder: Business Impact Level - Confidentiality Breach
   preset: datavic_select
   display_group: Security
   choices:
@@ -214,11 +236,13 @@ dataset_fields:
 
 - field_name: bil_confidentiality_description
   label: Business Impact Level - Confidentiality Breach description
+  form_placeholder: Business Impact Level - Confidentiality Breach description
   form_snippet: textarea.html
   display_group: Security
 
 - field_name: bil_availability
   label: Business Impact Level - Availability
+  form_placeholder: Business Impact Level - Availability
   preset: datavic_select
   display_group: Security
   choices:
@@ -237,11 +261,13 @@ dataset_fields:
 
 - field_name: bil_availability_description
   label: Business Impact Level - Availability description
+  form_placeholder: Business Impact Level - Availability description
   form_snippet: textarea.html
   display_group: Security
 
 - field_name: bil_integrity
   label: Business Impact Level - Integrity
+  form_placeholder: Business Impact Level - Integrity
   preset: datavic_select
   display_group: Security
   choices:
@@ -260,6 +286,7 @@ dataset_fields:
 
 - field_name: bil_integrity_description
   label: Business Impact Level - Integrity description
+  form_placeholder: Business Impact Level - Integrity description
   form_snippet: textarea.html
   display_group: Security
 
@@ -288,7 +315,7 @@ dataset_fields:
   display_group: Security
   form_snippet: text.html
 
-# Workflow 
+# Workflow
 
 - field_name: organization_visibility
   label: Organisation Visibility
@@ -324,22 +351,23 @@ dataset_fields:
 
 - field_name: workflow_status_notes
   label: Workflow Status Notes
+  form_placeholder: Workflow Status Notes
   form_snippet: textarea.html
   display_group: Workflow
 
 - field_name: data_owner
   label: Data Custodian
-  form_placeholder: Joe Bloggs
+  form_placeholder: Data Custodian
   display_group: Custodian
 
 - field_name: role
   label: Role
-  form_placeholder: Joe Bloggs
+  form_placeholder: Role
   display_group: Custodian
 
 - field_name: maintainer_email
   label: Email
-  form_placeholder: data.vic@salsadigital.com.au
+  form_placeholder: Email
   display_group: Custodian
 
 - field_name: syndicate
@@ -368,16 +396,17 @@ resource_fields:
 
 - field_name: name
   label: Name
-  form_placeholder: eg. January 2011 Gold Prices
+  form_placeholder: Name
 
 - field_name: format
   label: Format
   preset: resource_format_autocomplete
   form_snippet: tags.html
-  validators: if_empty_guess_format not_empty clean_format unicode
+  validators: if_empty_guess_format not_empty clean_format unicode_safe
 
 - field_name: filesize
   label: Filesize
+  form_placeholder: Filesize
 
 - field_name: release_date
   label: Release Date
@@ -393,8 +422,10 @@ resource_fields:
 
 - field_name: data_quality
   label: Data Quality Statement
+  form_placeholder: Data Quality Statement
   form_snippet: textarea.html
 
 - field_name: attribution
   label: Attribution Statement
+  form_placeholder: Attribution Statement
   form_snippet: textarea.html
