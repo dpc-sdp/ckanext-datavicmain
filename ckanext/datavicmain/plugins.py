@@ -10,6 +10,7 @@ import ckan.plugins as p
 import ckan.plugins.toolkit as toolkit
 
 from ckanext.syndicate.interfaces import ISyndicate, Profile
+from ckanext.oidc_pkce.interfaces import IOidcPkce
 
 from ckanext.datavicmain import actions, helpers, validators, auth, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
@@ -67,6 +68,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(ISyndicate, inherit=True)
     p.implements(p.IAuthenticator, inherit=True)
     p.implements(p.IOrganizationController, inherit=True)
+    p.implements(IOidcPkce, inherit=True)
 
 
     # IBlueprint
@@ -99,6 +101,16 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         }
 
     ## helper methods ##
+
+    # IOidcPkce
+
+    def oidc_login_response(self, user: model.User):
+
+        if not toolkit.h.is_user_account_pending_review(user.id):
+            return None
+
+        toolkit.h.flash_success(toolkit._('Your requested account has been submitted for review'))
+        return toolkit.h.redirect_to('home.index')
 
     @classmethod
     def organization_list_objects(cls, org_names=[]):

@@ -29,6 +29,8 @@ DEFAULT_DTV_FQ = [
     "wms", "shapefile", "zip (shp)", "shp", "kmz",
     "geojson", "csv-geo-au", "aus-geo-csv"
 ]
+CONFIG_REGISTRATION_ENDPOINTS = "ckanext.datavicmain.registration_endpoints"
+DEFAULT_REGISTRATION_ENDPOINTS = ["user.register", "datavicuser.register"]
 
 # Conditionally import the the workflow extension helpers if workflow extension enabled in .ini
 if "workflow" in config.get('ckan.plugins', False):
@@ -112,7 +114,11 @@ def set_private_activity(pkg_dict, context, activity_type):
 
 
 def user_is_registering():
-    return toolkit.get_endpoint() == ("datavicuser", "register")
+    endpoint = ".".join(toolkit.get_endpoint())
+    registration_endpoints = toolkit.aslist(
+        toolkit.config.get(CONFIG_REGISTRATION_ENDPOINTS, DEFAULT_REGISTRATION_ENDPOINTS)
+    )
+    return endpoint in registration_endpoints
 
 
 def _register_blueprints():
