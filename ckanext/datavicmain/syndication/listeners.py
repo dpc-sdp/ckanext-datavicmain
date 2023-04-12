@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import os
 import logging
+from typing import Any
 from werkzeug.datastructures import FileStorage as FlaskFileStorage
 import requests
 
@@ -37,7 +40,7 @@ def after_syndication_listener(package_id, **kwargs):
 
     for res in resources:
         log.debug("Checking resource %s", res["id"])
-
+        _synchronize_views(res, ckan)
         if not any(host in res["url"] for host in hosts):
             log.debug("External resource with a url %s. Skip", res["url"])
             continue
@@ -79,3 +82,53 @@ def after_syndication_listener(package_id, **kwargs):
                 org_res[0].id,
                 res["id"]
             )
+
+
+_view_fields = [
+    "description",
+    "filter_fields",
+    "filter_values",
+    "resource_id",
+    "title",
+    "view_type",
+]
+
+
+def _synchronize_views(res: dict[str, Any], ckan: ckanapi.RemoteCKAN):
+    """Recreate public views if they are not the same as internal."""
+    remote = ckan.action.resource_view_list(id=res["id"])
+    local = tk.get_action("resource_view_list")(
+        {"ignore_auth": True},
+        {"id": res["id"]}
+    )
+
+    if len(remote) == len(local) and all(
+            _view_data(left) == _view_data(right)
+            for left, right in zip(local, remote)
+    ):
+        log.debug("Skip view synchronization because views are identical")
+        return
+
+    for view in remote:
+        ckan.action.resource_view_delete(id=view["id"])
+
+
+    for view in local:
+        data = _view_data(view)
+        try:
+            ckan.action.resource_view_create(**data)
+        except ckanapi.ValidationError as e:
+            log.error(
+                "Cannot synchronize view %s: %s",
+                view["id"], e
+            )
+
+
+def _view_data(view: dict[str, Any]) -> dict[str, Any]:
+    """Extract fields allowed by view_create schema.
+    """
+    return {
+        f: view[f]
+        for f in _view_fields
+        if f in view
+    }
