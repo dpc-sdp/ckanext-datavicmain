@@ -1,14 +1,22 @@
+from __future__ import annotations
+
 import os
 import pkgutil
 import inspect
 import logging
+import json
+import base64
+from typing import Any
+
+from urllib.parse import urlsplit, urljoin
+
+from flask import Blueprint
+
 import ckan.model as model
 import ckan.authz as authz
 import ckan.plugins.toolkit as toolkit
 import ckan.lib.mailer as mailer
 
-from flask import Blueprint
-from urllib.parse import urlsplit
 from ckanext.harvest.model import HarvestObject
 
 config = toolkit.config
@@ -16,6 +24,11 @@ request = toolkit.request
 log = logging.getLogger(__name__)
 WORKFLOW_STATUS_OPTIONS = ['draft', 'ready_for_approval', 'published', 'archived']
 
+CONFIG_DTV_FQ = "ckanext.datavicmain.dtv.supported_formats"
+DEFAULT_DTV_FQ = [
+    "wms", "shapefile", "zip (shp)", "shp", "kmz",
+    "geojson", "csv-geo-au", "aus-geo-csv"
+]
 CONFIG_REGISTRATION_ENDPOINTS = "ckanext.datavicmain.registration_endpoints"
 DEFAULT_REGISTRATION_ENDPOINTS = ["user.register", "datavicuser.register"]
 
@@ -222,3 +235,75 @@ def is_ready_for_publish(pkg):
     if not is_private and workflow_publish == 'published':
         return True
     return False
+
+
+def get_digital_twin_resources(pkg_id: str) -> list[dict[str, Any]]:
+    """Select resource suitable for DTV(Digital Twin Visualization).
+
+    Additional info:
+    https://gist.github.com/steve9164/b9781b517c99486624c02fdc7af0f186
+    """
+    supported_formats = {
+        fmt.lower() for fmt in
+        toolkit.aslist(toolkit.config.get(CONFIG_DTV_FQ, DEFAULT_DTV_FQ))
+    }
+
+    try:
+        pkg = toolkit.get_action("package_show")({}, {"id": pkg_id})
+    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
+        return []
+
+    if not pkg.get("enable_dtv", False):
+        return []
+
+    # Additional info #2
+    if pkg["state"] != "active":
+        return []
+
+    acceptable_resources = {}
+    for res in pkg["resources"]:
+        if not res["format"]:
+            continue
+
+        fmt = res["format"].lower()
+        # Additional info #1
+        if fmt not in supported_formats:
+            continue
+
+        # Additional info #3
+        if fmt in {"kml", "kmz", "shp", "shapefile", "zip (shp)"} and len(
+                pkg["resources"]
+        ) > 1:
+            continue
+
+        # Additional info #3
+        if fmt == "wms" and ~res["url"].find("data.gov.au/geoserver"):
+            continue
+
+        # Additional info #4
+        if res["name"] in acceptable_resources:
+            if acceptable_resources[res["name"]]["created"] > res["created"]:
+                continue
+
+        acceptable_resources[res["name"]] = res
+
+    return list(acceptable_resources.values())
+
+
+def url_for_dtv_config(ids: list[str], embedded: bool = True) -> str:
+    """Build URL where DigitalTwin can get map configuration for the preview.
+
+    It uses ODP base URL because DigitalTwin doesn't have access to IAR. As
+    result, non-syndicated datasets cannot be visualized.
+
+    """
+    base_url: str = (
+        toolkit.config.get("ckanext.datavicmain.odp.public_url")
+        or toolkit.config["ckan.site_url"]
+    )
+
+    encoded = base64.urlsafe_b64encode(bytes(json.dumps(ids), "utf8"))
+    return urljoin(
+        base_url,
+        toolkit.url_for("datavicmain.dtv_config", encoded=encoded, embedded=embedded)
+    )

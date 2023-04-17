@@ -173,7 +173,7 @@ class DataVicPerformResetView(user.PerformResetView):
             if h.check_access('package_create'):
                 h.redirect_to('user.read', id=user['name'])
             else:
-                h.redirect_to('user.activity', id=user['name'])
+                h.redirect_to('activity.user_activity', id=user['name'])
         except NotAuthorized:
             h.flash_error(_('Unauthorized to edit user %s') % id)
         except NotFound as e:
@@ -303,8 +303,7 @@ def logged_in():
     if g.user:
         return me()
     else:
-        err = _(u'Login failed. Bad username or password.')
-        h.flash_error(err)
+        log.info('Login failed. Bad username or password.')
         return user.login()
 
 
@@ -387,7 +386,7 @@ def deny(id):
 class RegisterView(MethodView):
     '''
     This is copied from ckan_core views/user
-    There is only 1 small change at the end which is to not login in registering users 
+    There is only 1 small change at the end which is to not login in registering users
     and redirect the user to the home page
     '''
 
@@ -449,7 +448,7 @@ class RegisterView(MethodView):
             if authz.is_sysadmin(g.user):
                 # the sysadmin created a new user. We redirect him to the
                 # activity page for the newly created user
-                return h.redirect_to(u'user.activity', id=data_dict[u'name'])
+                return h.redirect_to(u'activity.user_activity', id=data_dict[u'name'])
             else:
                 return toolkit.render(u'user/logout_first.html')
 
@@ -457,7 +456,7 @@ class RegisterView(MethodView):
         if helpers.user_is_registering():
             # If user is registering, do not login them and redirect them to the home page
             h.flash_success(toolkit._('Your requested account has been submitted for review'))
-            resp = h.redirect_to(controller='home', action='index')
+            resp = h.redirect_to('home.index')
         else:
             # log the user in programmatically
             resp = h.redirect_to(u'user.me')

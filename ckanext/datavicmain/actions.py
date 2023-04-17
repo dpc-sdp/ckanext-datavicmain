@@ -118,7 +118,7 @@ def datavic_user_create(context, data_dict):
             'new_account_requested',
             {
                 "user_name": user.name,
-                "user_url": toolkit.url_for(controller='user', action='read', id=user.name, qualified=True),
+                "user_url": toolkit.url_for('user.read', id=user.name, qualified=True),
                 "site_title": config.get('ckan.site_title'),
                 "site_url": config.get('ckan.site_url')
             }
@@ -126,6 +126,19 @@ def datavic_user_create(context, data_dict):
 
     log.debug('Created user {name}'.format(name=user.name))
     return user_dict
+
+
+def datavic_nominate_resource_view(context, data_dict):
+    package_id = _get_or_bust(data_dict, 'package_id')
+    view_id = _get_or_bust(data_dict, 'view_id')
+    resource_id = _get_or_bust(data_dict,'resource_id')
+    pkg_dict = get_action('package_show')(context, {'id': package_id})
+
+    pkg_dict['nominated_view_id'] = view_id
+    pkg_dict['nominated_view_resource'] = resource_id
+    get_action('package_update')(context, pkg_dict)
+
+    return pkg_dict
 
 
 @toolkit.chained_action
@@ -160,16 +173,3 @@ def organization_update(next_, context, data_dict):
         ckan.action.organization_patch(id=remote["id"], **patch)
 
     return result
-
-
-def datavic_nominate_resource_view(context, data_dict):
-    package_id = _get_or_bust(data_dict, 'package_id')
-    view_id = _get_or_bust(data_dict, 'view_id')
-    resource_id = _get_or_bust(data_dict,'resource_id')
-    pkg_dict = get_action('package_show')(context, {'id': package_id})
-
-    pkg_dict['nominated_view_id'] = view_id
-    pkg_dict['nominated_view_resource'] = resource_id
-    get_action('package_update')(context, pkg_dict)
-
-    return pkg_dict
