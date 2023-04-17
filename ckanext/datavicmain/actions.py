@@ -34,11 +34,11 @@ def datavic_user_create(context, data_dict):
 
     _check_access('user_create', context, data_dict)
 
+    data, errors = _validate(data_dict, schema, context)
+
     if user_is_registering():
         # DATAVIC-221: If the user registers set the state to PENDING where a sysadmin can activate them
-        data_dict['state'] = State.PENDING
-
-    data, errors = _validate(data_dict, schema, context)
+        data['state'] = State.PENDING
 
     create_org_member = False
 

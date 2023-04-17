@@ -16,6 +16,9 @@ request = toolkit.request
 log = logging.getLogger(__name__)
 WORKFLOW_STATUS_OPTIONS = ['draft', 'ready_for_approval', 'published', 'archived']
 
+CONFIG_REGISTRATION_ENDPOINTS = "ckanext.datavicmain.registration_endpoints"
+DEFAULT_REGISTRATION_ENDPOINTS = ["user.register", "datavicuser.register"]
+
 # Conditionally import the the workflow extension helpers if workflow extension enabled in .ini
 if "workflow" in config.get('ckan.plugins', False):
     from ckanext.workflow import helpers as workflow_helpers
@@ -98,9 +101,11 @@ def set_private_activity(pkg_dict, context, activity_type):
 
 
 def user_is_registering():
-    #    return toolkit.c.controller in ['user'] and toolkit.c.action in ['register']
-    (controller, action) = toolkit.get_endpoint()
-    return controller in ['datavicuser'] and action in ['register']
+    endpoint = ".".join(toolkit.get_endpoint())
+    registration_endpoints = toolkit.aslist(
+        toolkit.config.get(CONFIG_REGISTRATION_ENDPOINTS, DEFAULT_REGISTRATION_ENDPOINTS)
+    )
+    return endpoint in registration_endpoints
 
 
 def _register_blueprints():
