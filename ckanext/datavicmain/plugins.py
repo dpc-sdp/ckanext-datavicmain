@@ -312,6 +312,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'field_choices': helpers.field_choices,
             'user_org_can_upload': helpers.user_org_can_upload,
             'is_ready_for_publish': helpers.is_ready_for_publish,
+            'get_digital_twin_resources': helpers.get_digital_twin_resources,
+            'url_for_dtv_config': helpers.url_for_dtv_config,
         }
 
     ## IConfigurer interface ##

@@ -1,0 +1,11 @@
+[tool.black]
+line-length = 79
+preview = true
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::sqlalchemy.exc.SADeprecationWarning",
+    "ignore::sqlalchemy.exc.SAWarning",
+    "ignore::DeprecationWarning"
+]
+addopts = "--ckan-ini test.ini"
