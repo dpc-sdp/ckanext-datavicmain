@@ -1,5 +1,7 @@
 import logging
 import csv
+import json
+import base64
 from io import StringIO
 
 import ckan.views.dataset as dataset
@@ -7,7 +9,7 @@ import ckan.model as model
 import ckan.plugins.toolkit as toolkit
 import ckan.lib.helpers as h
 
-from flask import Blueprint, make_response
+from flask import Blueprint, make_response, jsonify
 
 NotFound = toolkit.ObjectNotFound
 NotAuthorized = toolkit.NotAuthorized
@@ -19,6 +21,9 @@ render = toolkit.render
 abort = toolkit.abort
 log = logging.getLogger(__name__)
 datavicmain = Blueprint('datavicmain', __name__)
+
+CONFIG_BASE_MAP = "ckanext.datavicmain.dtv.base_map_id"
+DEFAULT_BASE_MAP = "vic-cartographic"
 
 
 def historical(id):
@@ -83,7 +88,7 @@ def admin_report():
             401, toolkit._(
                 "Need to be system administrator to generate reports")
         )
-    
+
     report_type = toolkit.request.args.get("report_type")
     if report_type and report_type == 'user-email-data':
         users = model.Session.query(
@@ -98,7 +103,7 @@ def admin_report():
             model.Package.name)\
             .filter(model.Package.maintainer_email != '')\
             .filter(model.Package.state != 'deleted')
-        
+
         report = StringIO()
         fd = csv.writer(report)
         fd.writerow(
@@ -116,7 +121,7 @@ def admin_report():
                     h.url_for('user.read', id=user[2], qualified=True)
                 ]
             )
-            
+
         for package in packages.all():
             fd.writerow(
                 [
@@ -125,7 +130,7 @@ def admin_report():
                     h.url_for('dataset.read', id=package[2], qualified=True)
                 ]
             )
-            
+
         response = make_response(report.getvalue())
         response.headers["Content-type"] = "text/csv"
         response.headers[
@@ -148,16 +153,76 @@ def denominate_view(package_id,view_id):
     toolkit.h.flash_success('Successfully denominated view: %s' % view_id)
     return toolkit.h.redirect_to(f'/dataset/{package_id}')
 
+def dtv_config(encoded: str, embedded: bool):
+    try:
+        ids: list[str] = json.loads(base64.urlsafe_b64decode(encoded))
+    except ValueError:
+        return toolkit.abort(409)
+
+    base_url: str = (
+        toolkit.config.get("ckanext.datavicmain.odp.public_url")
+        or toolkit.config["ckan.site_url"]
+    )
+
+    catalog = []
+    pkg_cache = {}
+
+    for id_ in ids:
+
+        try:
+            resource = get_action("resource_show")({}, {"id": id_})
+            if resource["package_id"] not in pkg_cache:
+                pkg_cache[resource["package_id"]] = get_action("package_show")(
+                    {}, {"id": resource["package_id"]}
+                )
+
+        except (toolkit.NotAuthorized, toolkit.ObjectNotFound):
+            continue
+
+        pkg = pkg_cache[resource["package_id"]]
+        catalog.append({
+            "id": f"data-vic-embed-{id_}",
+            "name": "{}: {}".format(
+                pkg["title"],
+                resource["name"] or "Unnamed"
+            ),
+            "type": "ckan-item",
+            "url": base_url,
+            "resourceId": id_
+        })
+
+    return jsonify({
+        "baseMaps": {
+            "defaultBaseMapId": toolkit.config.get(
+                CONFIG_BASE_MAP, DEFAULT_BASE_MAP
+            )
+        },
+        "catalog": catalog,
+        "workbench": [item["id"] for item in catalog],
+        "elements": {
+            "map-navigation": {
+                "disabled": embedded
+            },
+            "menu-bar": {
+                "disabled": embedded
+            },
+            "bottom-dock": {
+                "disabled": embedded
+            },
+            "map-data-count": {
+                "disabled": embedded
+            },
+            "show-workbench": {
+                "disabled": embedded
+            }
+        }
+    })
+
+
 def register_datavicmain_plugin_rules(blueprint):
     blueprint.add_url_rule('/dataset/<id>/historical', view_func=historical)
     blueprint.add_url_rule('/dataset/purge/<id>', view_func=purge)
     blueprint.add_url_rule('/ckan-admin/admin-report', view_func=admin_report)
-    blueprint.add_url_rule(
-        '/dataset/<package_id>/nominate_view/<view_id>', 
-        view_func=nominate_view, methods=['POST'])
-    blueprint.add_url_rule(
-        '/dataset/<package_id>/denominate_view/<view_id>', 
-        view_func=denominate_view, methods=['POST'])
-
-
+    blueprint.add_url_rule('/dtv_config/<encoded>/config.json', view_func=dtv_config, defaults={"embedded": False})
+    blueprint.add_url_rule('/dtv_config/<encoded>/embedded/config.json', view_func=dtv_config, defaults={"embedded": True})
 register_datavicmain_plugin_rules(datavicmain)

@@ -1,81 +1,40 @@
-from builtins import str
-from builtins import range
-import time
-import six
-
-from collections import OrderedDict
-from six.moves.urllib.parse import urlparse, parse_qs, urlencode, urlunparse
-
-import ckan.logic as logic
-from ckan.plugins.toolkit import url_for, NotAuthorized, ObjectNotFound
-
-import ckan.tests.factories as factories
-import ckan.tests.helpers as helpers
-
 import pytest
 
-from ckan import plugins as p
+from ckan.plugins.toolkit import url_for
 
 
-@pytest.mark.ckan_config('ckan.plugins','datavicmain_dataset')
-@pytest.mark.usefixtures('clean_db', 'with_plugins', 'with_request_context')
-class TestDatavicUserEndpoints(object):
+@pytest.mark.usefixtures('clean_db', 'with_plugins', "with_request_context")
+class TestDatavicUserEndpoints:
 
-    def test_user_approve(self, app):
-
-        admin_pass = "RandomPassword123"
-        sysadmin = factories.Sysadmin(password=admin_pass)
-
-        user = factories.User()
-        #
+    def test_user_approve(self, app, user, sysadmin):
         url = url_for('datavicuser.approve', id= user['id'])
-        env = {"REMOTE_USER": six.ensure_str(sysadmin["name"])}
+        env = {"Authorization": sysadmin["apikey"]}
 
-        response = app.get(url=url, extra_environ=env)
+        response = app.get(url=url, extra_environ=env, status=200)
 
-        assert 200 == response.status_code
-        assert b'User approved' in response.data
+        assert 'User approved' in response
 
-    def test_user_approve_not_authorized(self, app):
-
-        admin_pass = "RandomPassword123"
-
-        user = factories.User()
-        #
+    def test_user_approve_not_authorized(self, app, user):
         url = url_for('datavicuser.approve', id= user['id'])
-        env = {"REMOTE_USER": six.ensure_str(user["name"])}
+        env = {"Authorization": user["apikey"]}
 
         response = app.get(url=url, extra_environ=env, status=403)
 
-        assert 403 == response.status_code
-        assert b'Unauthorized to activate user' in response.data
+        assert 'Unauthorized to activate user' in response
 
-    def test_user_deny(self, app):
-
-        admin_pass = "RandomPassword123"
-        sysadmin = factories.Sysadmin(password=admin_pass)
-
-        user = factories.User()
-        #
+    def test_user_deny(self, app, sysadmin, user):
         url = url_for('datavicuser.deny', id= user['id'])
-        env = {"REMOTE_USER": six.ensure_str(sysadmin["name"])}
+        env = {"Authorization": sysadmin["apikey"]}
 
-        response = app.get(url=url, extra_environ=env)
+        response = app.get(url=url, extra_environ=env, status=200)
 
-        assert 200 == response.status_code
-        assert b'User Denied' in response.data
+        assert 'User Denied' in response
 
 
-    def test_user_deny_not_authorized(self, app):
-
-        admin_pass = "RandomPassword123"
-
-        user = factories.User()
-        #
+    def test_user_deny_not_authorized(self, app, user):
         url = url_for('datavicuser.deny', id= user['id'])
-        env = {"REMOTE_USER": six.ensure_str(user["name"])}
+        env = {"Authorization": user["apikey"]}
 
         response = app.get(url=url, extra_environ=env, status=403)
 
-        assert 403 == response.status_code
-        assert b'Unauthorized to reject user' in response.data
+        assert 'Unauthorized to reject user' in response
