@@ -301,7 +301,7 @@ dataset_fields:
   display_group: Security
   form_snippet: text.html
 
-# Workflow
+# Workflow 
 
 - field_name: organization_visibility
   label: Organisation Visibility
@@ -411,3 +411,5 @@ resource_fields:
 - field_name: attribution
   label: Attribution Statement
   form_snippet: textarea.html
+
+
