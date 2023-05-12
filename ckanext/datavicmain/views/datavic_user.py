@@ -189,7 +189,7 @@ class DataVicPerformResetView(user.PerformResetView):
 class DataVicUserEditView(user.EditView):
 
     def _prepare(self, id):
-        return super(DataVicUserEditView, self)._prepare(id)
+        return super()._prepare(id)
 
     # def get(self,  id=None, data=None, errors=None, error_summary=None):
     #     return super(DataVicUserEditView, self).get(id, data, errors, error_summary)
@@ -303,8 +303,7 @@ def logged_in():
     if g.user:
         return me()
     else:
-        err = _(u'Login failed. Bad username or password.')
-        h.flash_error(err)
+        log.info('Login failed. Bad username or password.')
         return user.login()
 
 

@@ -67,6 +67,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(p.IClick)
     p.implements(ISyndicate, inherit=True)
     p.implements(IOidcPkce, inherit=True)
+    p.implements(p.IAuthenticator, inherit=True)
+    p.implements(p.IOrganizationController, inherit=True)
 
 
     # IBlueprint
@@ -357,3 +359,23 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             return True
 
         return False
+
+    # IOrganizationController
+    def edit(self, entity: model.Group):
+        """Called after organization had been updated inside
+        organization_update.
+
+        We are using it to syndicate organization on update.
+        """
+
+        if not isinstance(entity, model.Group) or not entity.is_organization:
+            return
+
+        if not entity.packages():
+            return
+
+        toolkit.enqueue_job(
+            sync_organization,
+            [entity],
+            title="DataVic organization sync",
+        )

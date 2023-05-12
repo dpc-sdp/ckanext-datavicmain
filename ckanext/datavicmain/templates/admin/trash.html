@@ -17,6 +17,8 @@
 
   </ul>
   <form method="POST" id="form-purge-packages">
+      {{ h.csrf_input() }}
+
     <button
       type="submit"
       name="purge-packages"

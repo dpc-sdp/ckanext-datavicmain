@@ -2,10 +2,11 @@
 
 {% block form %}
   <form class="dataset-form form-horizontal add-member-form" method='post'>
+      {{ h.csrf_input() }}
     <div class="row">
       <div class="form-group control-medium">
         {% if not user %}
-          <label class="control-label" for="username">
+          <label class="form-label" for="username">
             {{ _('Existing User') }}
           </label>
           <span>
@@ -29,7 +30,7 @@
           {{ _('or') }}
         </div>
         <div class="form-group control-medium">
-          <label class="control-label" for="email">
+          <label class="form-label" for="email">
             {{ _('New User') }}
           </label>
           <span>
