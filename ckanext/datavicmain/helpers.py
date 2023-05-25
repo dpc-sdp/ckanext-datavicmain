@@ -24,6 +24,9 @@ request = toolkit.request
 log = logging.getLogger(__name__)
 WORKFLOW_STATUS_OPTIONS = ['draft', 'ready_for_approval', 'published', 'archived']
 
+CONFIG_REGISTRATION_ENDPOINTS = "ckanext.datavicmain.registration_endpoints"
+DEFAULT_REGISTRATION_ENDPOINTS = ["user.register", "datavicuser.register"]
+
 CONFIG_DTV_FQ = "ckanext.datavicmain.dtv.supported_formats"
 DEFAULT_DTV_FQ = [
     "wms", "shapefile", "zip (shp)", "shp", "kmz",
