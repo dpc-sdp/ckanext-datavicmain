@@ -60,6 +60,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(p.ITemplateHelpers)
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IPackageController, inherit=True)
+    p.implements(p.IOrganizationController, inherit=True)
     p.implements(p.IRoutes, inherit=True)
     p.implements(p.IActions)
     p.implements(p.IAuthFunctions)
