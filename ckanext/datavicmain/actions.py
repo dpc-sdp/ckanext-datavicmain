@@ -138,7 +138,6 @@ def organization_update(next_, context, data_dict):
     old_name = old.name if old else None
 
     result = next_(context, data_dict)
-    toolkit.enqueue_job(jobs.reindex_organization, [result["id"]])
 
     if old_name == result["name"]:
         return result
