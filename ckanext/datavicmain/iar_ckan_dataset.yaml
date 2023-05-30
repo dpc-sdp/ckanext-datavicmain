@@ -365,14 +365,6 @@ dataset_fields:
   form_snippet: vic_hidden.html
   validators: ignore_missing
 
-- field_name: nominated_view_id
-  display_snippet: null
-  form_snippet: vic_hidden.html
-
-- field_name: nominated_view_resource
-  display_snippet: null
-  form_snippet: vic_hidden.html
-
 resource_fields:
 
 - field_name: url
