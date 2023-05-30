@@ -223,6 +223,12 @@ def register_datavicmain_plugin_rules(blueprint):
     blueprint.add_url_rule('/dataset/<id>/historical', view_func=historical)
     blueprint.add_url_rule('/dataset/purge/<id>', view_func=purge)
     blueprint.add_url_rule('/ckan-admin/admin-report', view_func=admin_report)
+    blueprint.add_url_rule(
+        '/dataset/<package_id>/nominate_view/<view_id>',
+        view_func=nominate_view, methods=['POST'])
+    blueprint.add_url_rule(
+        '/dataset/<package_id>/denominate_view/<view_id>',
+        view_func=denominate_view, methods=['POST'])
     blueprint.add_url_rule('/dtv_config/<encoded>/config.json', view_func=dtv_config, defaults={"embedded": False})
     blueprint.add_url_rule('/dtv_config/<encoded>/embedded/config.json', view_func=dtv_config, defaults={"embedded": True})
     blueprint.add_url_rule(
