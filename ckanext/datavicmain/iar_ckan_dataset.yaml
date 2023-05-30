@@ -11,7 +11,7 @@ dataset_fields:
   preset: title
   form_placeholder: eg. A descriptive title
   display_group: General
-  validators: not_empty unicode
+  validators: not_empty unicode_safe
   required: true
 
 - field_name: name
@@ -365,14 +365,6 @@ dataset_fields:
   form_snippet: vic_hidden.html
   validators: ignore_missing
 
-- field_name: nominated_view_id
-  display_snippet: null
-  form_snippet: vic_hidden.html
-
-- field_name: nominated_view_resource
-  display_snippet: null
-  form_snippet: vic_hidden.html
-
 resource_fields:
 
 - field_name: url
@@ -387,7 +379,7 @@ resource_fields:
   label: Format
   preset: resource_format_autocomplete
   form_snippet: tags.html
-  validators: if_empty_guess_format not_empty clean_format unicode
+  validators: if_empty_guess_format not_empty clean_format unicode_safe
 
 - field_name: filesize
   label: Filesize
