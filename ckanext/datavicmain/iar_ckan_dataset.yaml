@@ -371,6 +371,7 @@ dataset_fields:
 
 - field_name: nominated_view_resource
   display_snippet: null
+  form_snippet: vic_hidden.html
 
 - field_name: harvester_data_hash
   validators: ignore_empty
