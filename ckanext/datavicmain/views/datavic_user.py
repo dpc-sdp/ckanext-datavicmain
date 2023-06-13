@@ -228,9 +228,9 @@ class DataVicUserEditView(user.EditView):
                 u'login': g.user,
                 u'password': data_dict[u'old_password']
             }
-            auth = authenticator.UsernamePasswordAuthenticator()
-
-            if auth.authenticate(request.environ, identity) != g.user:
+            auth_user = authenticator.ckan_authenticator(identity)
+            auth_username = auth_user.name if auth_user else ''
+            if auth_username != toolkit.current_user.name:
                 errors = {
                     u'oldpassword': [_(u'Password entered was incorrect')]
                 }
