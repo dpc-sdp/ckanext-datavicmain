@@ -313,6 +313,7 @@ def me():
 
 
 def approve(id):
+    username = id
     try:
         data_dict = {'id': id}
 
@@ -320,8 +321,10 @@ def approve(id):
         check_access('sysadmin', {})
 
         old_data = get_action('user_show')({}, data_dict)
+        username = old_data["name"]
+
         old_data['state'] = model.State.ACTIVE
-        user = get_action('user_update')({}, old_data)
+        user = get_action('user_update')({"ignore_auth": True}, old_data)
 
         # Send new account approved email to user
         helpers.send_email(
@@ -345,8 +348,10 @@ def approve(id):
     except DataError:
         abort(400, _(u'Integrity Error'))
     except ValidationError as e:
-        h.flash_error(u'%r' % e.error_dict)
+        for field, summary in e.error_summary.items():
+            h.flash_error(f'{field}: {summary}')
 
+    return h.redirect_to('user.read', id=username)
 
 def deny(id):
     try:
