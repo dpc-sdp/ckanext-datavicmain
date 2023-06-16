@@ -23,7 +23,7 @@ CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS = "ckanext.datavicmain.synchronized_orga
 DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS = ["name", "title", "description"]
 
 
-def datavic_user_create(context, data_dict):
+def user_create(context, data_dict):
     model = context['model']
     schema = context.get('schema') or ckan_schema.default_user_schema()
     # DATAVICIAR-42: Add unique email validation

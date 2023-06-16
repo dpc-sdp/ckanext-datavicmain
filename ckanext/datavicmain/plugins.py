@@ -13,7 +13,7 @@ from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.oidc_pkce.interfaces import IOidcPkce
 from ckanext.transmute.interfaces import ITransmute
 
-from ckanext.datavicmain import actions, helpers, validators, auth, cli
+from ckanext.datavicmain import helpers, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.syndication.organization import sync_organization
 from ckanext.datavicmain.transmutators import get_transmutators
@@ -55,6 +55,9 @@ def release_date(pkg_dict):
     return dates[0].split("T")[0]
 
 
+@toolkit.blanket.auth_functions
+@toolkit.blanket.actions
+@toolkit.blanket.validators
 class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
     overrides the default dataset form
@@ -62,10 +65,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(p.ITemplateHelpers)
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IPackageController, inherit=True)
-    p.implements(p.IActions)
-    p.implements(p.IAuthFunctions)
     p.implements(p.IBlueprint)
-    p.implements(p.IValidators)
     p.implements(p.IClick)
     p.implements(ISyndicate, inherit=True)
     p.implements(IOidcPkce, inherit=True)
@@ -78,28 +78,6 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     # IBlueprint
     def get_blueprint(self):
         return helpers._register_blueprints()
-
-    # IValidators
-    def get_validators(self):
-        return {
-            'datavic_tag_string': validators.datavic_tag_string
-        }
-
-    # IAuthFunctions
-    def get_auth_functions(self):
-        return {
-            'user_update': auth.datavic_user_update,
-            'package_update': auth.datavic_package_update,
-            'user_reset': auth.datavic_user_reset,
-        }
-
-    # IActions
-    def get_actions(self):
-        return {
-            # DATAVICIAR-42: Override CKAN's core `user_create` method
-            'user_create': actions.datavic_user_create,
-            'organization_update': actions.organization_update,
-        }
 
     ## helper methods ##
 
@@ -264,6 +242,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'is_ready_for_publish': helpers.is_ready_for_publish,
             'get_digital_twin_resources': helpers.get_digital_twin_resources,
             'url_for_dtv_config': helpers.url_for_dtv_config,
+            "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
         }
 
     ## IConfigurer interface ##
