@@ -250,11 +250,12 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         schema.update({
             'ckan.datavic.authorised_resource_formats': [
                 toolkit.get_validator('ignore_missing'),
-                text_type
+                toolkit.get_validator('unicode_safe'),
+
             ],
             'ckan.datavic.request_access_review_emails': [
                 toolkit.get_validator('ignore_missing'),
-                text_type
+                toolkit.get_validator('unicode_safe'),
             ]
         })
 
