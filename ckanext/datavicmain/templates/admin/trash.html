@@ -7,7 +7,7 @@
     {% for pkg in c.deleted_packages %}
       {% set title = pkg.title or pkg.name %}
       <li>
-        {{ h.link_to(h.truncate(title, truncate_title), h.url_for(controller='package', action='read', id=pkg.name)) }}
+        {{ h.link_to(title|truncate(truncate_title), h.url_for('dataset.read', id=pkg.name)) }}
         <br />
         <small><strong>Owner org ID:</strong> {{ pkg.owner_org }}</small>
         <a class="btn btn-danger" href="/dataset/purge/{{ pkg.id }}">Purge dataset</a>
@@ -17,6 +17,8 @@
 
   </ul>
   <form method="POST" id="form-purge-packages">
+      {{ h.csrf_input() }}
+
     <button
       type="submit"
       name="purge-packages"
@@ -41,4 +43,3 @@
     </div>
   </div>
 {% endblock %}
-

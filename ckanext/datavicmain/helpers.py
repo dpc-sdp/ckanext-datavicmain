@@ -115,11 +115,7 @@ def set_private_activity(pkg_dict, context, activity_type):
 
 
 def user_is_registering():
-    endpoint = ".".join(toolkit.get_endpoint())
-    registration_endpoints = toolkit.aslist(
-        toolkit.config.get(CONFIG_REGISTRATION_ENDPOINTS, DEFAULT_REGISTRATION_ENDPOINTS)
-    )
-    return endpoint in registration_endpoints
+    return toolkit.get_endpoint() == ("datavicuser", "register")
 
 
 def _register_blueprints():

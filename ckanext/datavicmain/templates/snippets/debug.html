@@ -3,8 +3,8 @@
   <div id="debug" class="well" style="font-size:10px; font-family:monospace; display:none; color:#222; background-color: #E1EFF4; margin-top:10px; white-space:pre;">
 <h2>Debug info:</h2>
 
-<b>Controller</b>: {{ c.controller }}
-<b>Action</b>: {{ c.action }}
+<b>Blueprint</b>: {{ g.blueprint }}
+<b>View</b>: {{ g.view }}
 <b>Templates Rendered</b>: {{ request.environ['CKAN_DEBUG_INFO']|length }}
 
 {% set info_list = request.environ['CKAN_DEBUG_INFO'] %}
@@ -22,7 +22,7 @@
   <script>
     (function () {
       function nextElementSibling(element) {
-        do { element = element.nextSibling; } 
+        do { element = element.nextSibling; }
         while (element && element.nodeType !== 1 /* Node.ELEMENT_NODE */);
         return element || null;
       }
