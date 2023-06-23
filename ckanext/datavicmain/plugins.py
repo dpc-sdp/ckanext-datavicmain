@@ -322,6 +322,10 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     def skip_syndication(
         self, package: model.Package, profile: Profile
     ) -> bool:
+        if package.type == "harvest":
+            log.debug("Do not syndicate %s because it is a harvest source", package.id)
+            return True
+
         if self._requires_public_removal(package, profile):
             log.debug("Syndicate %s because it requires removal", package.id)
             return False
