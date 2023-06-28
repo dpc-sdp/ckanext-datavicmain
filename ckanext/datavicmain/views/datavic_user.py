@@ -173,7 +173,7 @@ class DataVicPerformResetView(user.PerformResetView):
             if h.check_access('package_create'):
                 h.redirect_to('user.read', id=user['name'])
             else:
-                h.redirect_to('user.activity', id=user['name'])
+                h.redirect_to('activity.user_activity', id=user['name'])
         except NotAuthorized:
             h.flash_error(_('Unauthorized to edit user %s') % id)
         except NotFound as e:
@@ -189,7 +189,7 @@ class DataVicPerformResetView(user.PerformResetView):
 class DataVicUserEditView(user.EditView):
 
     def _prepare(self, id):
-        return super(DataVicUserEditView, self)._prepare(id)
+        return super()._prepare(id)
 
     # def get(self,  id=None, data=None, errors=None, error_summary=None):
     #     return super(DataVicUserEditView, self).get(id, data, errors, error_summary)
@@ -228,9 +228,9 @@ class DataVicUserEditView(user.EditView):
                 u'login': g.user,
                 u'password': data_dict[u'old_password']
             }
-            auth = authenticator.UsernamePasswordAuthenticator()
-
-            if auth.authenticate(request.environ, identity) != g.user:
+            auth_user = authenticator.ckan_authenticator(identity)
+            auth_username = auth_user.name if auth_user else ''
+            if auth_username != toolkit.current_user.name:
                 errors = {
                     u'oldpassword': [_(u'Password entered was incorrect')]
                 }
@@ -303,8 +303,7 @@ def logged_in():
     if g.user:
         return me()
     else:
-        err = _(u'Login failed. Bad username or password.')
-        h.flash_error(err)
+        log.info('Login failed. Bad username or password.')
         return user.login()
 
 
@@ -314,6 +313,7 @@ def me():
 
 
 def approve(id):
+    username = id
     try:
         data_dict = {'id': id}
 
@@ -321,8 +321,10 @@ def approve(id):
         check_access('sysadmin', {})
 
         old_data = get_action('user_show')({}, data_dict)
+        username = old_data["name"]
+
         old_data['state'] = model.State.ACTIVE
-        user = get_action('user_update')({}, old_data)
+        user = get_action('user_update')({"ignore_auth": True}, old_data)
 
         # Send new account approved email to user
         helpers.send_email(
@@ -346,8 +348,10 @@ def approve(id):
     except DataError:
         abort(400, _(u'Integrity Error'))
     except ValidationError as e:
-        h.flash_error(u'%r' % e.error_dict)
+        for field, summary in e.error_summary.items():
+            h.flash_error(f'{field}: {summary}')
 
+    return h.redirect_to('user.read', id=username)
 
 def deny(id):
     try:
@@ -387,7 +391,7 @@ def deny(id):
 class RegisterView(MethodView):
     '''
     This is copied from ckan_core views/user
-    There is only 1 small change at the end which is to not login in registering users 
+    There is only 1 small change at the end which is to not login in registering users
     and redirect the user to the home page
     '''
 
@@ -449,7 +453,7 @@ class RegisterView(MethodView):
             if authz.is_sysadmin(g.user):
                 # the sysadmin created a new user. We redirect him to the
                 # activity page for the newly created user
-                return h.redirect_to(u'user.activity', id=data_dict[u'name'])
+                return h.redirect_to(u'activity.user_activity', id=data_dict[u'name'])
             else:
                 return toolkit.render(u'user/logout_first.html')
 
@@ -457,7 +461,7 @@ class RegisterView(MethodView):
         if helpers.user_is_registering():
             # If user is registering, do not login them and redirect them to the home page
             h.flash_success(toolkit._('Your requested account has been submitted for review'))
-            resp = h.redirect_to(controller='home', action='index')
+            resp = h.redirect_to('home.index')
         else:
             # log the user in programmatically
             resp = h.redirect_to(u'user.me')

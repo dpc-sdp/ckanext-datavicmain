@@ -231,4 +231,14 @@ def register_datavicmain_plugin_rules(blueprint):
         view_func=denominate_view, methods=['POST'])
     blueprint.add_url_rule('/dtv_config/<encoded>/config.json', view_func=dtv_config, defaults={"embedded": False})
     blueprint.add_url_rule('/dtv_config/<encoded>/embedded/config.json', view_func=dtv_config, defaults={"embedded": True})
+    blueprint.add_url_rule(
+        '/dataset/<package_id>/nominate_view/<view_id>',
+        view_func=nominate_view, methods=['POST'])
+    blueprint.add_url_rule(
+        '/dataset/<package_id>/denominate_view/<view_id>',
+        view_func=denominate_view, methods=['POST'])
+    blueprint.add_url_rule('/dtv_config/<encoded>/config.json', view_func=dtv_config, defaults={"embedded": False})
+    blueprint.add_url_rule('/dtv_config/<encoded>/embedded/config.json', view_func=dtv_config, defaults={"embedded": True})
+
+
 register_datavicmain_plugin_rules(datavicmain)
