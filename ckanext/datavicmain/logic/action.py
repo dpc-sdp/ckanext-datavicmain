@@ -128,19 +128,6 @@ def user_create(context, data_dict):
     return user_dict
 
 
-def datavic_nominate_resource_view(context, data_dict):
-    package_id = _get_or_bust(data_dict, 'package_id')
-    view_id = _get_or_bust(data_dict, 'view_id')
-    resource_id = _get_or_bust(data_dict,'resource_id')
-    pkg_dict = get_action('package_show')(context, {'id': package_id})
-
-    pkg_dict['nominated_view_id'] = view_id
-    pkg_dict['nominated_view_resource'] = resource_id
-    get_action('package_update')(context, pkg_dict)
-
-    return pkg_dict
-
-
 @toolkit.chained_action
 def organization_update(next_, context, data_dict):
     from ckanext.syndicate import utils
