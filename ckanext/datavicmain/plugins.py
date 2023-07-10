@@ -79,8 +79,6 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     def get_blueprint(self):
         return helpers._register_blueprints()
 
-    ## helper methods ##
-
     # IOidcPkce
 
     def oidc_login_response(self, user: model.User):
