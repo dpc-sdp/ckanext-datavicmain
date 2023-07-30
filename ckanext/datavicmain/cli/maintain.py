@@ -5,13 +5,19 @@ import logging
 import csv
 from os import path
 from typing import Any
+from itertools import groupby
 
 import click
 import tqdm
 
+import ckan.logic as logic
 import ckan.model as model
+from ckan.types import Context
 import ckan.plugins.toolkit as tk
 from ckan.model import Resource, ResourceView
+from ckan.lib.munge import munge_title_to_name
+
+from ckanext.harvest.model import HarvestObject, HarvestSource
 
 
 log = logging.getLogger(__name__)
@@ -242,3 +248,109 @@ def _delete_recline_views(res_views: list[ResourceView]):
             continue
         view.delete()
     model.repo.commit()
+
+
+@maintain.command(u"clean-delwp-datasets",
+                  short_help=u"Purge deleted DELWP datasets")
+def clean_delwp_datasets():
+    """
+    Purge datasets added from the DELWP harvest and deleted after
+    their updating in order to remove their duplicates from DB entirely and
+    make their correct names available
+    """
+
+    click.secho(u"Searching for deleted DELWP datasets...")
+
+    datasets_deleted = model.Session.query(model.Package.id, model.Package.name) \
+        .join(HarvestObject, model.Package.id == HarvestObject.package_id) \
+        .join(HarvestSource, HarvestObject.harvest_source_id == HarvestSource.id) \
+        .filter(HarvestSource.type == 'delwp') \
+        .filter(model.Package.state == model.State.DELETED) \
+        .with_entities(model.Package.id).distinct().all()
+
+    click.secho(
+        f"{len(datasets_deleted)} deleted DELWP datasets have been found.",
+        fg="green",
+    )
+    click.secho(u"Purging datasets...", fg="green")
+
+    counter = 0
+    for dataset in datasets_deleted:
+        dataset_id = dataset[0]
+        try:
+            site_user = logic.get_action(u'get_site_user')({u'ignore_auth': True}, {})
+            context: Context = {u'user': site_user[u'name'], u'ignore_auth': True}
+            logic.get_action(u'dataset_purge')(context, {u'id': dataset_id})
+        except tk.ObjectNotFound as e:
+            click.secho(f"Error purging <{dataset_id}> dataset: {e}", fg="red")
+        else:
+            click.secho(f"Dataset <{dataset_id}> has been purged", fg="green")
+            counter += 1
+
+    model.Session.commit()
+
+    click.secho(f"Done. {counter} DELWP datasets have been purged.", fg="green")
+
+
+@maintain.command(u"rename-delwp-datasets",
+                  short_help=u"Rename active DELWP datasets")
+def rename_delwp_datasets():
+    """
+    Rename active DELWP datasets in order to match their titles
+    """
+
+    used_names = [name[0] for name in model.Session.query(model.Package.name).all()]
+
+    datasets_active = model.Session.query(model.Package.id, model.Package.title) \
+        .join(HarvestObject, model.Package.id == HarvestObject.package_id) \
+        .join(HarvestSource, HarvestObject.harvest_source_id == HarvestSource.id) \
+        .filter(HarvestSource.type == 'delwp') \
+        .filter(model.Package.state == model.State.ACTIVE) \
+        .with_entities(model.Package.id, model.Package.title) \
+        .distinct().order_by(model.Package.title).all()
+
+    click.secho(
+        f"{len(datasets_active)} active DELWP datasets have been found.",
+        fg="green",
+    )
+    click.secho("Renaming datasets...", fg="green")
+
+    field_name_length = 100
+    counter = 0
+    for k, grp in groupby(datasets_active, lambda x: x[1]):
+        datasets = [dataset[0] for dataset in grp]
+        dataset_id = datasets[0]
+        pkg = model.Session.query(model.Package).get(dataset_id)
+        cur_name = pkg.name
+        new_name = munge_title_to_name(pkg.title)
+
+        # Exclude active DELWP datasets with the same title
+        if len(datasets) > 1:
+            click.secho(
+                f"Pay attention to these active duplicates with title <{pkg.title}>: "
+                f"{datasets}",
+                fg="yellow"
+            )
+            continue
+
+        if pkg.name == new_name:
+            continue
+        if new_name in used_names or len(pkg.title) >= field_name_length:
+            click.secho(
+                f"Pay attention to this active dataset <{pkg.title}>"
+                f"It may have a naming problem which could be resolved manually",
+                fg="yellow"
+            )
+            continue
+
+        pkg.name = new_name
+        click.secho(
+            f"The name of the DELWP dataset <{pkg.title}> has been changed "
+            f"from {cur_name} to {new_name}",
+            fg="green"
+        )
+        counter += 1
+
+    model.Session.commit()
+
+    click.secho(f"Done. {counter} DELWP datasets have been renamed.", fg="green")
