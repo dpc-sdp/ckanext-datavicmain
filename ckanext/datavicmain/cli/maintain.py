@@ -5,6 +5,7 @@ import logging
 import csv
 from os import path
 from typing import Any
+from sqlalchemy.orm import Query
 from itertools import groupby
 
 import click
@@ -272,11 +273,8 @@ def purge_delwp_duplicates():
 
     taken_names = [name[0] for name in model.Session.query(model.Package.name).all()]
 
-    datasets = model.Session.query(model.Package) \
-        .join(HarvestObject, model.Package.id == HarvestObject.package_id) \
-        .join(HarvestSource, HarvestObject.harvest_source_id == HarvestSource.id) \
-        .filter(HarvestSource.type == "delwp") \
-        .with_entities(
+    query = _get_query_delwp_datasets()
+    datasets = query.with_entities(
             model.Package.id,
             model.Package.name,
             model.Package.title,
@@ -346,3 +344,55 @@ def purge_delwp_duplicates():
     click.secho(f"{counter_renamed} DELWP datasets - renamed.", fg="green")
     click.secho(f"{len(unchanged_pkgs)} DELWP datasets - unchanged: ", fg="yellow")
     click.secho(f"{unchanged_pkgs}", fg="yellow")
+
+
+@maintain.command(u"list-delwp-wrong-names",
+                  short_help=u"List DELWP datasets with wrong names")
+def list_delwp_wrong_names():
+    """
+    Display a list of DELWP datasets with active state and wrong names
+    which do not correspond their titles
+    """
+
+    click.secho(u"Searching for DELWP datasets...")
+
+    query = _get_query_delwp_datasets()
+    datasets = query.filter(model.Package.state == model.State.ACTIVE) \
+        .with_entities(
+            model.Package.id,
+            model.Package.name,
+            model.Package.title
+        ).distinct().order_by(model.Package.title).all()
+
+    click.secho(
+        f"{len(datasets)} DELWP datasets have been found.",
+        fg="green",
+    )
+
+    counter = 0
+    for dataset in datasets:
+        pkg = model.Session.query(model.Package).get(dataset[IDX_ID])
+        cur_name = pkg.name
+        new_name = munge_title_to_name(pkg.title)
+        if cur_name != new_name:
+            counter += 1
+            click.secho(f"{dataset[IDX_TITLE]} - {dataset[IDX_NAME]}", fg="yellow")
+
+    click.secho(
+        f"{counter} active DELWP datasets with wrong names.",
+        fg="green"
+    )
+
+
+def _get_query_delwp_datasets () -> Query[model.Package]:
+    """Get all DELWP datsets
+
+    Returns:
+        Query[model.Package]: Package model query object
+    """
+    return (
+        model.Session.query(model.Package)
+        .join(HarvestObject, model.Package.id == HarvestObject.package_id)
+        .join(HarvestSource, HarvestObject.harvest_source_id == HarvestSource.id)
+        .filter(HarvestSource.type == "delwp")
+    )
