@@ -298,7 +298,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
                 helpers.set_private_activity(pkg_dict, context, str('changed'))
 
     def before_dataset_index(self, pkg_dict: dict[str, Any]) -> dict[str, Any]:
-        if pkg_dict['res_format']:
+        if pkg_dict.get('res_format'):
             pkg_dict['res_format'] = [
                 format.upper().split('.')[-1] for format in pkg_dict['res_format']
             ]
