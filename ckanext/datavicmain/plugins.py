@@ -1,7 +1,9 @@
 # Plugins for ckanext-datavicmain
+from __future__ import annotations
 import time
 import calendar
 import logging
+from typing import Any
 from six import text_type
 
 import ckan.authz as authz
@@ -275,8 +277,10 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     # IPackageController
 
     def after_create(self, context, pkg_dict):
-        # Only add packages to groups when being created via the CKAN UI (i.e. not during harvesting)
-        if repr(toolkit.request) != '<LocalProxy unbound>' and toolkit.get_endpoint()[0] in ['dataset', 'package', "datavic_dataset"]:
+        # Only add packages to groups when being created via the CKAN UI
+        # (i.e. not during harvesting)
+        if repr(toolkit.request) != '<LocalProxy unbound>' \
+            and toolkit.get_endpoint()[0] in ['dataset', 'package', "datavic_dataset"]:
             # Add the package to the group ("category")
             pkg_group = pkg_dict.get('category', None)
             pkg_name = pkg_dict.get('name', None)
@@ -289,12 +293,21 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         pass
 
     def after_update(self, context, pkg_dict):
-        # Only add packages to groups when being updated via the CKAN UI (i.e. not during harvesting)
-        if repr(toolkit.request) != '<LocalProxy unbound>' and toolkit.get_endpoint()[0] in ['dataset', 'package', "datavic_dataset"]:
+        # Only add packages to groups when being updated via the CKAN UI
+        # (i.e. not during harvesting)
+        if repr(toolkit.request) != '<LocalProxy unbound>' \
+            and toolkit.get_endpoint()[0] in ['dataset', 'package', "datavic_dataset"]:
             if 'type' in pkg_dict and pkg_dict['type'] in ['dataset', 'package']:
                 helpers.add_package_to_group(pkg_dict, context)
                 # DATAVIC-251 - Create activity for private datasets
                 helpers.set_private_activity(pkg_dict, context, str('changed'))
+
+    def before_dataset_index(self, pkg_dict: dict[str, Any]) -> dict[str, Any]:
+        if pkg_dict['res_format']:
+            pkg_dict['res_format'] = [
+                format.upper().split('.')[-1] for format in pkg_dict['res_format']
+            ]
+        return pkg_dict
 
     # IClick
     def get_commands(self):
