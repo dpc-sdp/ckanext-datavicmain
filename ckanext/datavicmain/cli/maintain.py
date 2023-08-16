@@ -9,7 +9,7 @@ from typing import Any
 import click
 
 import ckan.plugins.toolkit as tk
-
+import ckan.model as model
 
 log = logging.getLogger(__name__)
 
@@ -136,3 +136,41 @@ def drop_wms_records():
             click.secho(f"Dataset <{dataset_name}> has been purged", fg="green")
 
     file.close()
+
+
+@maintain.command("get-broken-recline")
+def identify_resources_with_broken_recline():
+    """Return a list of resources with a broken recline_view"""
+
+    query = (
+        model.Session.query(model.Resource)
+        .join(
+            model.ResourceView,
+            model.ResourceView.resource_id == model.Resource.id,
+        )
+        .filter(
+            model.ResourceView.view_type.in_(
+                ["datatables_view", "recline_view"]
+            )
+        )
+    )
+
+    resources = [resource for resource in query.all()]
+
+    if not resources:
+        return click.secho("No resources with inactive datastore")
+
+    for resource in resources:
+        if resource.extras.get("datastore_active"):
+            continue
+
+        res_url = tk.url_for(
+            "resource.read",
+            id=resource.package_id,
+            resource_id=resource.id,
+            _external=True,
+        )
+        click.secho(
+            f"Resource {res_url} has a table view but datastore is inactive",
+            fg="green",
+        )
