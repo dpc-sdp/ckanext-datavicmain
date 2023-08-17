@@ -18,6 +18,7 @@ import ckan.plugins.toolkit as toolkit
 import ckan.lib.mailer as mailer
 
 from ckanext.harvest.model import HarvestObject
+from . import utils
 
 config = toolkit.config
 request = toolkit.request
@@ -217,6 +218,13 @@ def user_org_can_upload(pkg_id):
     if pkg_id is not None:
         dataset = toolkit.get_action('package_show')(context, {'name_or_id': pkg_id})
         org_name = dataset.get('organization').get('name')
+
+
+    if toolkit.h.datavic_org_uploads_allowed(org_name) and (
+            authz.users_role_for_group_or_org(org_name, user) in ["editor", "admin"]
+    ):
+        return True
+
     allowed_organisations = get_organisations_allowed_to_upload_resources()
     user_orgs = get_user_organizations(user)
     for org in user_orgs:
@@ -304,3 +312,19 @@ def url_for_dtv_config(ids: list[str], embedded: bool = True) -> str:
         base_url,
         toolkit.url_for("datavicmain.dtv_config", encoded=encoded, embedded=embedded)
     )
+
+
+def datavic_org_uploads_allowed(org_id: str) -> bool:
+    org = model.Group.get(org_id)
+    if not org:
+        return False
+
+    try:
+        flake = toolkit.get_action("flakes_flake_lookup")({"ignore_auth": True}, {
+            "author_id": None,
+            "name": utils.org_uploads_flake_name(),
+        })
+    except toolkit.ObjectNotFound:
+        return False
+
+    return flake["data"].get(org.id, False)

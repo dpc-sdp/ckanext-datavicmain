@@ -23,7 +23,7 @@ CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS = "ckanext.datavicmain.synchronized_orga
 DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS = ["name", "title", "description"]
 
 
-def datavic_user_create(context, data_dict):
+def user_create(context, data_dict):
     model = context['model']
     schema = context.get('schema') or ckan_schema.default_user_schema()
     # DATAVICIAR-42: Add unique email validation
@@ -126,19 +126,6 @@ def datavic_user_create(context, data_dict):
 
     log.debug('Created user {name}'.format(name=user.name))
     return user_dict
-
-
-def datavic_nominate_resource_view(context, data_dict):
-    package_id = _get_or_bust(data_dict, 'package_id')
-    view_id = _get_or_bust(data_dict, 'view_id')
-    resource_id = _get_or_bust(data_dict,'resource_id')
-    pkg_dict = get_action('package_show')(context, {'id': package_id})
-
-    pkg_dict['nominated_view_id'] = view_id
-    pkg_dict['nominated_view_resource'] = resource_id
-    get_action('package_update')(context, pkg_dict)
-
-    return pkg_dict
 
 
 @toolkit.chained_action
