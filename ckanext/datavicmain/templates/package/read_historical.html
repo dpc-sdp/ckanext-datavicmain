@@ -1,23 +1,13 @@
 {% extends "package/read_base.html" %}
 
-
-{% block package_description %}
-  {{ super() }}
-
-  {%- for field in h.dataset_extra_fields(pkg.get('type')) -%}
-    {% if pkg.get(field.get('name')) %}
-      <section id="dataset-{{ field_id }}" class="resources module-content">
-        <p><strong>{{ _( field.get('label') ) }}</strong>: {{ pkg.get(field.get('name')) }}</p>
-      </section>
-    {% endif %}
-  {% endfor %}
-
-{% endblock %}
-
 {% block primary_content_inner %}
   {% block package_resources %}
+    {% set grouped_resources = h.group_resources_by_temporal_range(pkg_dict.resources) %}
 
-        {% snippet "package/snippets/resources_list.html", pkg=pkg, resources=pkg.resources, historical=true %}
-
+    {% if grouped_resources | length > 1 %}
+        {% snippet "package/snippets/resources_list.html", pkg=pkg_dict, resources=h.ungroup_temporal_resources(grouped_resources[1:]), historical=true %}
+    {% else %}
+        {% snippet "package/snippets/resources_list.html", pkg=pkg_dict, resources=pkg_dict.resources %}
+    {% endif %}
   {% endblock %}
 {% endblock %}
