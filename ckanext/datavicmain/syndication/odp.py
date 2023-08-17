@@ -1,7 +1,9 @@
 import ckan.plugins.toolkit as tk
 
+from ckanext.alias.utils import parse_alias_field
+from ckanext.alias.config import get_alias_fieldname
 
-def prepare_package_for_odp(package_id,data_dict):
+def prepare_package_for_odp(package_id, data_dict):
     _extract_extras(data_dict)
     pkg_dict = tk.get_action("package_show")(
         {"ignore_auth": True},
@@ -32,8 +34,12 @@ def prepare_package_for_odp(package_id,data_dict):
 
     return data_dict
 
+
 def _extract_extras(data_dict):
     extras = data_dict.pop("extras")
 
     for extra in extras:
-        data_dict[extra["key"]] = extra["value"]
+        if extra["key"] == get_alias_fieldname():
+            data_dict[extra["key"]] = parse_alias_field(extra["value"])
+        else:
+            data_dict[extra["key"]] = extra["value"]
