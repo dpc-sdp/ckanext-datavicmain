@@ -1,4 +1,3 @@
-import logging
 import csv
 import json
 import base64
@@ -9,60 +8,33 @@ import ckan.views.dataset as dataset
 import ckan.model as model
 import ckan.plugins.toolkit as toolkit
 import ckan.lib.helpers as h
+from ckan import types
 
 from flask import Blueprint, make_response, jsonify
 from ckanext.datavicmain import utils
 
-
-NotFound = toolkit.ObjectNotFound
-NotAuthorized = toolkit.NotAuthorized
-check_access = toolkit.check_access
-get_action = toolkit.get_action
-_ = toolkit._
-g = toolkit.g
-render = toolkit.render
-abort = toolkit.abort
-log = logging.getLogger(__name__)
 datavicmain = Blueprint('datavicmain', __name__)
 
 CONFIG_BASE_MAP = "ckanext.datavicmain.dtv.base_map_id"
 DEFAULT_BASE_MAP = "vic-cartographic"
 
 
-def historical(id):
-    package_type = dataset._get_package_type(id.split('@')[0])  # check for new function if necessary
+def historical(package_type: str, package_id: str):
+    context: types.Context = toolkit.fresh_context({})
 
-    context = {'model': model, 'session': model.Session,
-               'user': g.user or g.author, 'for_view': True,
-               'auth_user_obj': g.userobj}
-
-    data_dict = {'id': id}
-    # check if package exists
-    try:
-        pkg_dict = get_action('package_show')(context, data_dict)
-        pkg = context['package']
-    except NotFound:
-        abort(404, _('Dataset not found'))
-    except NotAuthorized:
-        abort(401, _('Unauthorized to read package %s') % id)
-
-    # used by disqus plugin
-    g.current_package_id = pkg.id
-    dataset._setup_template_variables(context, data_dict,
-                                      package_type=package_type)
-
-    extra_vars = {'pkg_dict': pkg_dict, 'pkg': pkg}
+    data_dict = {"id": package_id}
 
     try:
-        return render('package/read_historical.html', extra_vars)
-    # TemplateNotFound is not added to toolkit
-    except NotFound as e:
-        msg = _("Viewing {package_type} datasets in {format} format is "
-                "not supported (template file {file} not found).".format(
-                    package_type=package_type, format=format, file='package/read_historical.html'))
-        abort(404, msg)
+        pkg_dict = toolkit.get_action("package_show")(context, data_dict)
 
-    assert False, "We should never get here"
+    except toolkit.ObjectNotFound:
+        return toolkit.abort(404, toolkit._("Dataset not found"))
+    except toolkit.NotAuthorized:
+        return toolkit.abort(
+            401, toolkit._(f"Unauthorized to read package {package_id}")
+        )
+
+    return toolkit.render("package/read_historical.html", {"pkg_dict": pkg_dict})
 
 
 def purge(id):
@@ -140,14 +112,14 @@ def admin_report():
             "Content-disposition"
         ] = 'attachement; filename="email_report.csv"'
         return response
-    return render('admin/admin_report.html', extra_vars={})
+    return toolkit.render('admin/admin_report.html', extra_vars={})
 
 
 def toggle_organization_uploads(id: str) -> Response:
     try:
         toolkit.check_access("datavic_toggle_organization_uploads", {}, {"id": "id"})
     except toolkit.NotAuthorized:
-        return toolkit.abort(403, _("Not authorized to change uploads for organization"))
+        return toolkit.abort(403, toolkit._("Not authorized to change uploads for organization"))
 
     if org := model.Group.get(id):
         try:
@@ -186,9 +158,9 @@ def dtv_config(encoded: str, embedded: bool):
     for id_ in ids:
 
         try:
-            resource = get_action("resource_show")({}, {"id": id_})
+            resource = toolkit.get_action("resource_show")({}, {"id": id_})
             if resource["package_id"] not in pkg_cache:
-                pkg_cache[resource["package_id"]] = get_action("package_show")(
+                pkg_cache[resource["package_id"]] = toolkit.get_action("package_show")(
                     {}, {"id": resource["package_id"]}
                 )
 
@@ -239,7 +211,7 @@ def dtv_config(encoded: str, embedded: bool):
 
 
 def register_datavicmain_plugin_rules(blueprint):
-    blueprint.add_url_rule('/dataset/<id>/historical', view_func=historical)
+    blueprint.add_url_rule('/<package_type>/<package_id>/historical', view_func=historical)
     blueprint.add_url_rule('/dataset/purge/<id>', view_func=purge)
     blueprint.add_url_rule('/ckan-admin/admin-report', view_func=admin_report)
     blueprint.add_url_rule('/dtv_config/<encoded>/config.json', view_func=dtv_config, defaults={"embedded": False})
