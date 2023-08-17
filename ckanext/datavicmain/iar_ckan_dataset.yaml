@@ -16,9 +16,12 @@ dataset_fields:
 
 - field_name: name
   label: URL
-  preset: dataset_slug
+  preset: dataset_alias_slug
   form_placeholder: eg. my-dataset
   display_group: General
+
+- field_name: alias
+  preset: dataset_alias
 
 - field_name: notes
   label: Description
