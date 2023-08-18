@@ -147,22 +147,21 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             )
 
         grouped_resources: dict[
-            tuple[datetime, datetime], list[dict[str, Any]]
+            tuple[datetime], list[dict[str, Any]]
         ] = {}
 
         for resource in resource_list:
-            start_date = parse_date(resource.get("period_start"))
             end_date = parse_date(resource.get("period_end"))
 
-            grouped_resources.setdefault((start_date, end_date), [])
-            grouped_resources[(start_date, end_date)].append(resource)
+            grouped_resources.setdefault((end_date,), [])
+            grouped_resources[(end_date,)].append(resource)
 
 
         sorted_grouped_resources = dict(
             sorted(
                 grouped_resources.items(),
                 reverse=True,
-                key=lambda x: x[0][1],
+                key=lambda x: x[0],
             )
         )
 
