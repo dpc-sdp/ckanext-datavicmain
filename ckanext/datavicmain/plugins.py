@@ -12,7 +12,7 @@ import ckan.plugins.toolkit as toolkit
 from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.oidc_pkce.interfaces import IOidcPkce
 
-from ckanext.datavicmain import actions, helpers, validators, auth, cli
+from ckanext.datavicmain import helpers, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.syndication.organization import sync_organization
 
@@ -53,6 +53,9 @@ def release_date(pkg_dict):
     return dates[0].split("T")[0]
 
 
+@toolkit.blanket.auth_functions
+@toolkit.blanket.actions
+@toolkit.blanket.validators
 class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
     overrides the default dataset form
@@ -60,10 +63,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(p.ITemplateHelpers)
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IPackageController, inherit=True)
-    p.implements(p.IActions)
-    p.implements(p.IAuthFunctions)
     p.implements(p.IBlueprint)
-    p.implements(p.IValidators)
     p.implements(p.IClick)
     p.implements(ISyndicate, inherit=True)
     p.implements(IOidcPkce, inherit=True)
@@ -74,33 +74,6 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     # IBlueprint
     def get_blueprint(self):
         return helpers._register_blueprints()
-
-    # IValidators
-    def get_validators(self):
-        return {
-            'datavic_tag_string': validators.datavic_tag_string
-        }
-
-    # IAuthFunctions
-    def get_auth_functions(self):
-        return {
-            'user_update': auth.datavic_user_update,
-            'package_update': auth.datavic_package_update,
-            'user_reset': auth.datavic_user_reset,
-        }
-
-    # IActions
-    def get_actions(self):
-        return {
-            # DATAVICIAR-42: Override CKAN's core `user_create` method
-            'user_create': actions.datavic_user_create,
-
-            # SXDEDPCXZIC-85: Nominate a resource view  as data preview
-            'datavic_nominate_resource_view':actions.datavic_nominate_resource_view,
-            'organization_update': actions.organization_update,
-        }
-
-    ## helper methods ##
 
     # IOidcPkce
 
@@ -227,8 +200,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             return dict_of_formats
 
     def repopulate_user_role(self):
-        if 'submit' in request.params:
-            return request.params['role']
+        if 'submit' in request.args:
+            return request.args['role']
         else:
             return 'member'
 
@@ -263,6 +236,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'is_ready_for_publish': helpers.is_ready_for_publish,
             'get_digital_twin_resources': helpers.get_digital_twin_resources,
             'url_for_dtv_config': helpers.url_for_dtv_config,
+            "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
         }
 
     ## IConfigurer interface ##
@@ -298,7 +272,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     def after_create(self, context, pkg_dict):
         # Only add packages to groups when being created via the CKAN UI (i.e. not during harvesting)
-        if repr(toolkit.request) != '<LocalProxy unbound>' and toolkit.get_endpoint()[0] in ['dataset', 'package']:
+        if repr(toolkit.request) != '<LocalProxy unbound>' and toolkit.get_endpoint()[0] in ['dataset', 'package', "datavic_dataset"]:
             # Add the package to the group ("category")
             pkg_group = pkg_dict.get('category', None)
             pkg_name = pkg_dict.get('name', None)
@@ -312,7 +286,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     def after_update(self, context, pkg_dict):
         # Only add packages to groups when being updated via the CKAN UI (i.e. not during harvesting)
-        if repr(toolkit.request) != '<LocalProxy unbound>' and toolkit.get_endpoint()[0] in ['dataset', 'package']:
+        if repr(toolkit.request) != '<LocalProxy unbound>' and toolkit.get_endpoint()[0] in ['dataset', 'package', "datavic_dataset"]:
             if 'type' in pkg_dict and pkg_dict['type'] in ['dataset', 'package']:
                 helpers.add_package_to_group(pkg_dict, context)
                 # DATAVIC-251 - Create activity for private datasets
@@ -347,6 +321,10 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     def skip_syndication(
         self, package: model.Package, profile: Profile
     ) -> bool:
+        if package.type == "harvest":
+            log.debug("Do not syndicate %s because it is a harvest source", package.id)
+            return True
+
         if self._requires_public_removal(package, profile):
             log.debug("Syndicate %s because it requires removal", package.id)
             return False

@@ -142,7 +142,7 @@ class DataVicPerformResetView(user.PerformResetView):
         except NotFound as e:
             abort(404, _('User not found'))
 
-        g.reset_key = request.params.get('key')
+        g.reset_key = request.args.get('key')
         if not mailer.verify_reset_link(user_obj, g.reset_key):
             h.flash_error(_('Invalid reset key. Please try again.'))
             abort(403)
@@ -296,7 +296,7 @@ class DataVicUserEditView(user.EditView):
 
 def logged_in():
     # redirect if needed
-    came_from = request.params.get(u'came_from', u'')
+    came_from = request.args.get(u'came_from', u'')
     if h.url_is_local(came_from):
         return h.redirect_to(str(came_from))
 
