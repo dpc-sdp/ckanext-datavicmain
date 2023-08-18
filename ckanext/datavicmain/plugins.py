@@ -157,7 +157,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             sorted(
                 grouped_resources.items(),
                 reverse=True,
-                key=lambda x: x[0],
+                key=lambda x: x[0][1],
             )
         )
 
@@ -169,26 +169,6 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         return [
             resource for res_group in resource_groups for resource in res_group
         ]
-
-    def historical_resources_list(self, resource_list):
-        sorted_resource_list = {}
-        i = 0
-        for resource in resource_list:
-            i += 1
-            if resource.get('period_start') is not None and resource.get('period_start') != 'None' and resource.get(
-                    'period_start') != '':
-                key = parse_date(resource.get('period_start')[:10]) or '9999999999' + str(i)
-            else:
-                key = '9999999999' + str(i)
-            resource['key'] = key
-            # print parser.parse(resource.get('period_start')).strftime("%Y-%M-%d") + " " + resource.get('period_start')
-            sorted_resource_list[key] = resource
-
-        list = sorted(sorted_resource_list.values(), key=lambda item: int(item.get('key')), reverse=True)
-        # for item in list:
-        #    print item.get('period_start') + " " + str(item.get('key'))
-        return list
-
 
     def is_historical(self):
         if toolkit.get_endpoint()[1] == 'historical':
