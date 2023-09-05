@@ -39,7 +39,4 @@ def _extract_extras(data_dict):
     extras = data_dict.pop("extras")
 
     for extra in extras:
-        if extra["key"] == get_alias_fieldname():
-            data_dict[extra["key"]] = parse_alias_field(extra["value"])
-        else:
-            data_dict[extra["key"]] = extra["value"]
+        data_dict[extra["key"]] = extra["value"]
