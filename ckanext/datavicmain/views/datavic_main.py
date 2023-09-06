@@ -3,6 +3,7 @@ import csv
 import json
 import base64
 from io import StringIO
+from ckan.types import Response
 
 import ckan.views.dataset as dataset
 import ckan.model as model
@@ -10,6 +11,8 @@ import ckan.plugins.toolkit as toolkit
 import ckan.lib.helpers as h
 
 from flask import Blueprint, make_response, jsonify
+from ckanext.datavicmain import utils
+
 
 NotFound = toolkit.ObjectNotFound
 NotAuthorized = toolkit.NotAuthorized
@@ -139,19 +142,32 @@ def admin_report():
         return response
     return render('admin/admin_report.html', extra_vars={})
 
-def nominate_view(package_id,view_id):
-    resource_view = toolkit.get_action('resource_view_show')({}, {'id': view_id})
-    toolkit.get_action('datavic_nominate_resource_view')(
-        {}, {'package_id': package_id, 'view_id':view_id, 'resource_id':resource_view['resource_id']})
-    toolkit.h.flash_success('Successfully nominated view: %s' % view_id)
 
-    return toolkit.h.redirect_to(f'/dataset/{package_id}')
+def toggle_organization_uploads(id: str) -> Response:
+    try:
+        toolkit.check_access("datavic_toggle_organization_uploads", {}, {"id": "id"})
+    except toolkit.NotAuthorized:
+        return toolkit.abort(403, _("Not authorized to change uploads for organization"))
 
-def denominate_view(package_id,view_id):
-    toolkit.get_action('datavic_nominate_resource_view')(
-        {}, {'package_id': package_id, 'view_id':'', "resource_id":''})
-    toolkit.h.flash_success('Successfully denominated view: %s' % view_id)
-    return toolkit.h.redirect_to(f'/dataset/{package_id}')
+    if org := model.Group.get(id):
+        try:
+            flake = toolkit.get_action("flakes_flake_lookup")({"ignore_auth": True}, {
+                "author_id": None,
+                "name": utils.org_uploads_flake_name(),
+            })
+        except toolkit.ObjectNotFound:
+            toolkit.get_action("flakes_flake_create")({"ignore_auth": True}, {
+                "author_id": None,
+                "name": utils.org_uploads_flake_name(),
+                "data": {org.id: True},
+                "extras": {"datavicmain": {"type": "organization_uploads_list"}}
+            })
+        else:
+            flake["data"].update({org.id: not flake["data"].get(org.id, False)})
+            toolkit.get_action("flakes_flake_update")({"ignore_auth": True}, flake)
+
+    return toolkit.redirect_to("organization.edit", id=id)
+
 
 def dtv_config(encoded: str, embedded: bool):
     try:
@@ -199,6 +215,9 @@ def dtv_config(encoded: str, embedded: bool):
         },
         "catalog": catalog,
         "workbench": [item["id"] for item in catalog],
+        "initialCamera": {
+            "focusWorkbenchItems": True
+        },
         "elements": {
             "map-navigation": {
                 "disabled": embedded
@@ -223,22 +242,8 @@ def register_datavicmain_plugin_rules(blueprint):
     blueprint.add_url_rule('/dataset/<id>/historical', view_func=historical)
     blueprint.add_url_rule('/dataset/purge/<id>', view_func=purge)
     blueprint.add_url_rule('/ckan-admin/admin-report', view_func=admin_report)
-    blueprint.add_url_rule(
-        '/dataset/<package_id>/nominate_view/<view_id>',
-        view_func=nominate_view, methods=['POST'])
-    blueprint.add_url_rule(
-        '/dataset/<package_id>/denominate_view/<view_id>',
-        view_func=denominate_view, methods=['POST'])
     blueprint.add_url_rule('/dtv_config/<encoded>/config.json', view_func=dtv_config, defaults={"embedded": False})
     blueprint.add_url_rule('/dtv_config/<encoded>/embedded/config.json', view_func=dtv_config, defaults={"embedded": True})
-    blueprint.add_url_rule(
-        '/dataset/<package_id>/nominate_view/<view_id>',
-        view_func=nominate_view, methods=['POST'])
-    blueprint.add_url_rule(
-        '/dataset/<package_id>/denominate_view/<view_id>',
-        view_func=denominate_view, methods=['POST'])
-    blueprint.add_url_rule('/dtv_config/<encoded>/config.json', view_func=dtv_config, defaults={"embedded": False})
-    blueprint.add_url_rule('/dtv_config/<encoded>/embedded/config.json', view_func=dtv_config, defaults={"embedded": True})
-
+    blueprint.add_url_rule("/organization/edit/<id>/toggle-uploads", view_func=toggle_organization_uploads, methods=["POST"])
 
 register_datavicmain_plugin_rules(datavicmain)
