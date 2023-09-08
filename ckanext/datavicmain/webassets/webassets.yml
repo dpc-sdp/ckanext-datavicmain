@@ -37,3 +37,8 @@ datavicmain-confirm-action:
   output: ckanext-datavicmain/%(version)s_datavicmain-confirm-action.js
   contents:
     - datavicmain-confirm-action.js
+
+datavicmain-custodian-autofill:
+  output: ckanext-datavicmain/%(version)s_datavicmain-custodian-autofill.js
+  contents:
+    - datavicmain-custodian-autofill.js
