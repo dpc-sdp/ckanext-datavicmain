@@ -334,9 +334,8 @@ dataset_fields:
   label: Data Custodian
   form_placeholder: Joe Bloggs
   display_group: Custodian
-  form_attrs:
-    data-module: datavicmain-custodian-autofill
-    data-module-property: display_name
+  form_snippet: vic_custodian_autofill.html
+  default_value: display_name
 
 - field_name: role
   label: Role
@@ -347,9 +346,8 @@ dataset_fields:
   label: Email
   form_placeholder: email
   display_group: Custodian
-  form_attrs:
-    data-module: datavicmain-custodian-autofill
-    data-module-property: email
+  form_snippet: vic_custodian_autofill.html
+  default_value: email
 
 - field_name: syndicate
   display_snippet: null
