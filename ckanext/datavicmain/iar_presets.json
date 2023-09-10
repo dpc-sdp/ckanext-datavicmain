@@ -3,12 +3,24 @@
     "about": "these are the custom scheming field presets for IAR scheme",
     "about_url": "http://github.com/ckan/ckanext-scheming#preset",
     "presets": [
-       {
-          "preset_name": "datavic_select",
-          "values": {
-             "validators" : "ignore_empty scheming_required scheming_choices",
-             "form_snippet": "select.html",
-             "display_snippet": "select.html"
-          }
-       }]
+        {
+            "preset_name": "datavic_select",
+            "values": {
+                "validators": "ignore_empty scheming_required scheming_choices",
+                "form_snippet": "select.html",
+                "display_snippet": "select.html"
+            }
+        },
+        {
+            "preset_name": "vic_resource_url_upload",
+            "values": {
+                "validators": "not_empty unicode_safe remove_whitespace",
+                "form_snippet": "upload.html",
+                "form_placeholder": "http://example.com/my-data.csv",
+                "upload_field": "upload",
+                "upload_clear": "clear_upload",
+                "upload_label": "File"
+            }
+        }
+    ]
 }

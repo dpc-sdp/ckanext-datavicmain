@@ -12,13 +12,14 @@ import click
 import tqdm
 
 import ckan.model as model
-from ckan.types import Context
 import ckan.plugins.toolkit as tk
+from ckan.types import Context
 from ckan.model import Resource, ResourceView
 from ckan.lib.munge import munge_title_to_name
 
 from ckanext.harvest.model import HarvestObject, HarvestSource
 
+import ckan.model as model
 
 log = logging.getLogger(__name__)
 
@@ -100,10 +101,8 @@ def _fix_improper_date_values(resource: dict[str, Any]) -> bool:
             continue
         if not _valid_date(resource[field]):
             click.secho(
-                (
-                    f"Found invalid date for {field} in {resource['name']}:"
-                    f" {resource[field]}"
-                ),
+                f"Found invalid date for {field} in {resource['name']}:"
+                f" {resource[field]}",
                 fg="red",
             )
             resource[field] = None
@@ -146,9 +145,13 @@ def drop_wms_records():
                 {"ignore_auth": True}, {"id": dataset_name}
             )
         except tk.ObjectNotFound as e:
-            click.secho(f"Error purging <{dataset_name}> dataset: {e}", fg="red")
+            click.secho(
+                f"Error purging <{dataset_name}> dataset: {e}", fg="red"
+            )
         else:
-            click.secho(f"Dataset <{dataset_name}> has been purged", fg="green")
+            click.secho(
+                f"Dataset <{dataset_name}> has been purged", fg="green"
+            )
 
     file.close()
 
@@ -166,13 +169,11 @@ def replace_recline_with_datatables(delete: bool):
         if res.extras.get("datastore_active")
     ]
     if not resources:
-        click.secho(
-            "No resources have been found",
-            fg="green"
-        )
+        click.secho("No resources have been found", fg="green")
         return click.secho(
-            "NOTE: `datatables_view` works only with resources uploaded to datastore",
-            fg="green"
+            "NOTE: `datatables_view` works only with resources uploaded to"
+            " datastore",
+            fg="green",
         )
     click.secho(
         f"{len(resources)} resources have been found. Updating views...",
@@ -237,14 +238,19 @@ def _get_resource_fields(resource_id: str) -> list[str]:
     Returns:
         list[str]: list of resource fields
     """
-    search = tk.get_action("datastore_search")
     ctx = {"ignore_auth": True}
     data_dict = {
         "resource_id": resource_id,
         "limit": 0,
         "include_total": False,
     }
-    fields = [field for field in search(ctx, data_dict)["fields"]]
+    try:
+        search = tk.get_action("datastore_search")(ctx, data_dict)
+    except tk.ObjectNotFound:
+        click.echo(f"Resource {resource_id} orphaned")
+        return []
+
+    fields = [field for field in search["fields"]]
     return [f["id"] for f in fields]
 
 
@@ -256,31 +262,39 @@ def _delete_recline_views(res_views: list[ResourceView]):
     model.repo.commit()
 
 
-@maintain.command(u"purge-delwp-duplicates",
-                  short_help=u"Purge duplicates of DELWP datasets")
+@maintain.command(
+    "purge-delwp-duplicates", short_help="Purge duplicates of DELWP datasets"
+)
 def purge_delwp_duplicates():
     """
     Purge all duplicates of DELWP datasets and rename them in order to match
     their names with titles
     """
 
-    click.secho(u"Searching for duplicated DELWP datasets...")
+    click.secho("Searching for duplicated DELWP datasets...")
 
-    taken_names = [name[0] for name in model.Session.query(model.Package.name).all()]
+    taken_names = [
+        name[0] for name in model.Session.query(model.Package.name).all()
+    ]
 
     query = _get_query_delwp_datasets()
-    datasets = query.with_entities(
+    datasets = (
+        query.with_entities(
             model.Package.id,
             model.Package.name,
             model.Package.title,
-            model.Package.state
-        ).distinct().order_by(model.Package.title).all()
+            model.Package.state,
+        )
+        .distinct()
+        .order_by(model.Package.title)
+        .all()
+    )
 
     click.secho(
         f"{len(datasets)} DELWP datasets have been found.",
         fg="green",
     )
-    click.secho(u"Purging duplicates and renaming datasets...", fg="green")
+    click.secho("Purging duplicates and renaming datasets...", fg="green")
 
     counter_purged = 0
     counter_renamed = 0
@@ -294,41 +308,53 @@ def purge_delwp_duplicates():
             continue
 
         for idx, pkg in enumerate(pkgs_sorted):
-            if (idx==pkgs_len-1) and (pkg[IDX_STATE] == "active"):
+            if (idx == pkgs_len - 1) and (pkg[IDX_STATE] == "active"):
                 # Renaming datasets (names match with titles)
                 pkg_obj = model.Session.query(model.Package).get(pkg[IDX_ID])
                 cur_name = pkg_obj.name
                 new_name = munge_title_to_name(pkg_obj.title)
-                if new_name in taken_names or len(pkg.title) > NAME_FIELD_LENGTH:
+                if (
+                    new_name in taken_names
+                    or len(pkg.title) > NAME_FIELD_LENGTH
+                ):
                     click.secho(
-                        f"Dataset <{pkg_obj.title}> with the name <{cur_name}>: "
-                        f"Couldn't generate the unique name {new_name} from the title.",
-                        fg="red"
+                        f"Dataset <{pkg_obj.title}> with the name"
+                        f" <{cur_name}>: Couldn't generate the unique name"
+                        f" {new_name} from the title.",
+                        fg="red",
                     )
                     unchanged_pkgs.append(pkg_obj.title)
                     continue
                 pkg_obj.name = new_name
                 click.secho(
                     f"Renamed: from <{cur_name}> to <{pkg_obj.name}>",
-                    fg="green"
+                    fg="green",
                 )
                 counter_renamed += 1
             else:
                 # Purging duplicates of datasets from DB entirely
-                site_user = tk.get_action(u'get_site_user')({u'ignore_auth': True}, {})
-                context: Context = {u'user': site_user[u'name'], u'ignore_auth': True}
+                site_user = tk.get_action("get_site_user")(
+                    {"ignore_auth": True}, {}
+                )
+                context: Context = {
+                    "user": site_user["name"],
+                    "ignore_auth": True,
+                }
                 try:
-                    tk.get_action(u'dataset_purge')(context, {u'id': pkg[IDX_ID]})
+                    tk.get_action("dataset_purge")(
+                        context, {"id": pkg[IDX_ID]}
+                    )
                 except tk.ObjectNotFound as e:
                     click.secho(
-                        f"Purging ERROR occurred in the dataset <{pkg[IDX_ID]}>: {e}",
-                        fg="red"
+                        "Purging ERROR occurred in the dataset"
+                        f" <{pkg[IDX_ID]}>: {e}",
+                        fg="red",
                     )
                 else:
                     taken_names.remove(pkg[IDX_NAME])
                     click.secho(
                         f"Purged: {pkg[IDX_TITLE]} - ID: {pkg[IDX_ID]}",
-                        fg="yellow"
+                        fg="yellow",
                     )
                     counter_purged += 1
 
@@ -337,27 +363,33 @@ def purge_delwp_duplicates():
     click.secho("Done.", fg="green")
     click.secho(f"{counter_purged} DELWP datasets - purged.", fg="green")
     click.secho(f"{counter_renamed} DELWP datasets - renamed.", fg="green")
-    click.secho(f"{len(unchanged_pkgs)} DELWP datasets - unchanged: ", fg="yellow")
+    click.secho(
+        f"{len(unchanged_pkgs)} DELWP datasets - unchanged: ", fg="yellow"
+    )
     click.secho(f"{unchanged_pkgs}", fg="yellow")
 
 
-@maintain.command(u"list-delwp-wrong-names",
-                  short_help=u"List DELWP datasets with wrong names")
+@maintain.command(
+    "list-delwp-wrong-names", short_help="List DELWP datasets with wrong names"
+)
 def list_delwp_wrong_names():
     """
     Display a list of DELWP datasets with active state and wrong names
     which do not correspond their titles
     """
 
-    click.secho(u"Searching for DELWP datasets...")
+    click.secho("Searching for DELWP datasets...")
 
     query = _get_query_delwp_datasets()
-    datasets = query.filter(model.Package.state == model.State.ACTIVE) \
+    datasets = (
+        query.filter(model.Package.state == model.State.ACTIVE)
         .with_entities(
-            model.Package.id,
-            model.Package.name,
-            model.Package.title
-        ).distinct().order_by(model.Package.title).all()
+            model.Package.id, model.Package.name, model.Package.title
+        )
+        .distinct()
+        .order_by(model.Package.title)
+        .all()
+    )
 
     click.secho(
         f"{len(datasets)} DELWP datasets have been found.",
@@ -371,15 +403,16 @@ def list_delwp_wrong_names():
         new_name = munge_title_to_name(pkg.title)
         if cur_name != new_name:
             counter += 1
-            click.secho(f"{dataset[IDX_TITLE]} - {dataset[IDX_NAME]}", fg="yellow")
+            click.secho(
+                f"{dataset[IDX_TITLE]} - {dataset[IDX_NAME]}", fg="yellow"
+            )
 
     click.secho(
-        f"{counter} active DELWP datasets with wrong names.",
-        fg="green"
+        f"{counter} active DELWP datasets with wrong names.", fg="green"
     )
 
 
-def _get_query_delwp_datasets () -> Query[model.Package]:
+def _get_query_delwp_datasets() -> Query[model.Package]:
     """Get all DELWP datsets
 
     Returns:
@@ -388,6 +421,46 @@ def _get_query_delwp_datasets () -> Query[model.Package]:
     return (
         model.Session.query(model.Package)
         .join(HarvestObject, model.Package.id == HarvestObject.package_id)
-        .join(HarvestSource, HarvestObject.harvest_source_id == HarvestSource.id)
+        .join(
+            HarvestSource, HarvestObject.harvest_source_id == HarvestSource.id
+        )
         .filter(HarvestSource.type == "delwp")
     )
+
+
+@maintain.command("get-broken-recline")
+def identify_resources_with_broken_recline():
+    """Return a list of resources with a broken recline_view"""
+
+    query = (
+        model.Session.query(model.Resource)
+        .join(
+            model.ResourceView,
+            model.ResourceView.resource_id == model.Resource.id,
+        )
+        .filter(
+            model.ResourceView.view_type.in_(
+                ["datatables_view", "recline_view"]
+            )
+        )
+    )
+
+    resources = [resource for resource in query.all()]
+
+    if not resources:
+        return click.secho("No resources with inactive datastore")
+
+    for resource in resources:
+        if resource.extras.get("datastore_active"):
+            continue
+
+        res_url = tk.url_for(
+            "resource.read",
+            id=resource.package_id,
+            resource_id=resource.id,
+            _external=True,
+        )
+        click.secho(
+            f"Resource {res_url} has a table view but datastore is inactive",
+            fg="green",
+        )
