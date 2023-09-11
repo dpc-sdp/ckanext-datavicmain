@@ -1,3 +1,4 @@
+# Plugins for ckanext-datavicmain
 from __future__ import annotations
 
 import time
