@@ -368,6 +368,7 @@ dataset_fields:
   validators: ignore_empty
   form_snippet: vic_hidden.html
 
+
 resource_fields:
 
 - field_name: url
