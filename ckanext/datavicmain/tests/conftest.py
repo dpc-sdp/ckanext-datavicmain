@@ -26,11 +26,11 @@ class ResourceFactory(factories.Resource):
 
 
 @register
-class UserFactory(factories.User):
+class UserFactory(factories.UserWithToken):
     pass
 
 
-class SysadminFactory(factories.Sysadmin):
+class SysadminFactory(factories.SysadminWithToken):
     pass
 
 register(SysadminFactory, "sysadmin")
