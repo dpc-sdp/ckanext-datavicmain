@@ -1,6 +1,5 @@
 import logging
 import six
-import ckan.lib.mailer as mailer
 import ckan.plugins.toolkit as toolkit
 import ckan.logic as logic
 import ckan.model as model
@@ -17,6 +16,8 @@ from flask.views import MethodView
 from ckan.common import _, g, config, request
 from ckan import authz
 
+from ckanext.mailcraft.utils import get_mailer
+from ckanext.mailcraft.exception import MailerException
 
 NotFound = toolkit.ObjectNotFound
 NotAuthorized = toolkit.NotAuthorized
@@ -35,7 +36,6 @@ tuplize_dict = logic.tuplize_dict
 parse_params = logic.parse_params
 clean_dict = logic.clean_dict
 
-_edit_form_to_db_schema = user._edit_form_to_db_schema
 _extra_template_variables = user._extra_template_variables
 edit_user_form = user.edit_user_form
 set_repoze_user = user.set_repoze_user
@@ -45,7 +45,7 @@ _new_user_form = user.new_user_form
 log = logging.getLogger(__name__)
 
 datavicuser = Blueprint('datavicuser', __name__)
-
+mailer = get_mailer()
 
 class DataVicRequestResetView(user.RequestResetView):
 
@@ -102,7 +102,7 @@ class DataVicRequestResetView(user.RequestResetView):
                     return h.redirect_to(u'/user/reset')
                 else:
                     mailer.send_reset_link(user_obj)
-            except mailer.MailerException as e:
+            except MailerException as e:
                 h.flash_error(
                     _(u'Error sending the email. Try again later '
                         'or contact an administrator for help')
