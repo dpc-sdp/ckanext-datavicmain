@@ -5,16 +5,28 @@ import logging
 import csv
 from os import path
 from typing import Any
+from sqlalchemy.orm import Query
+from itertools import groupby
 
 import click
 import tqdm
 
 import ckan.model as model
+from ckan.types import Context
 import ckan.plugins.toolkit as tk
 from ckan.model import Resource, ResourceView
+from ckan.lib.munge import munge_title_to_name
+
+from ckanext.harvest.model import HarvestObject, HarvestSource
 
 
 log = logging.getLogger(__name__)
+
+IDX_ID = 0
+IDX_NAME = 1
+IDX_TITLE = 2
+IDX_STATE = 3
+NAME_FIELD_LENGTH = 99
 
 
 @click.group()
@@ -247,3 +259,140 @@ def _delete_recline_views(res_views: list[ResourceView]):
             continue
         view.delete()
     model.repo.commit()
+
+
+@maintain.command(u"purge-delwp-duplicates",
+                  short_help=u"Purge duplicates of DELWP datasets")
+def purge_delwp_duplicates():
+    """
+    Purge all duplicates of DELWP datasets and rename them in order to match
+    their names with titles
+    """
+
+    click.secho(u"Searching for duplicated DELWP datasets...")
+
+    taken_names = [name[0] for name in model.Session.query(model.Package.name).all()]
+
+    query = _get_query_delwp_datasets()
+    datasets = query.with_entities(
+            model.Package.id,
+            model.Package.name,
+            model.Package.title,
+            model.Package.state
+        ).distinct().order_by(model.Package.title).all()
+
+    click.secho(
+        f"{len(datasets)} DELWP datasets have been found.",
+        fg="green",
+    )
+    click.secho(u"Purging duplicates and renaming datasets...", fg="green")
+
+    counter_purged = 0
+    counter_renamed = 0
+    unchanged_pkgs = []
+    for key, grp in groupby(datasets, lambda x: x[IDX_TITLE]):
+        pkgs = [dataset for dataset in grp]
+        pkgs_sorted = sorted(pkgs, key=lambda x: x[IDX_NAME], reverse=False)
+        pkgs_len = len(pkgs_sorted)
+
+        if pkgs_len < 2:
+            continue
+
+        for idx, pkg in enumerate(pkgs_sorted):
+            if (idx==pkgs_len-1) and (pkg[IDX_STATE] == "active"):
+                # Renaming datasets (names match with titles)
+                pkg_obj = model.Session.query(model.Package).get(pkg[IDX_ID])
+                cur_name = pkg_obj.name
+                new_name = munge_title_to_name(pkg_obj.title)
+                if new_name in taken_names or len(pkg.title) > NAME_FIELD_LENGTH:
+                    click.secho(
+                        f"Dataset <{pkg_obj.title}> with the name <{cur_name}>: "
+                        f"Couldn't generate the unique name {new_name} from the title.",
+                        fg="red"
+                    )
+                    unchanged_pkgs.append(pkg_obj.title)
+                    continue
+                pkg_obj.name = new_name
+                click.secho(
+                    f"Renamed: from <{cur_name}> to <{pkg_obj.name}>",
+                    fg="green"
+                )
+                counter_renamed += 1
+            else:
+                # Purging duplicates of datasets from DB entirely
+                site_user = tk.get_action(u'get_site_user')({u'ignore_auth': True}, {})
+                context: Context = {u'user': site_user[u'name'], u'ignore_auth': True}
+                try:
+                    tk.get_action(u'dataset_purge')(context, {u'id': pkg[IDX_ID]})
+                except tk.ObjectNotFound as e:
+                    click.secho(
+                        f"Purging ERROR occurred in the dataset <{pkg[IDX_ID]}>: {e}",
+                        fg="red"
+                    )
+                else:
+                    taken_names.remove(pkg[IDX_NAME])
+                    click.secho(
+                        f"Purged: {pkg[IDX_TITLE]} - ID: {pkg[IDX_ID]}",
+                        fg="yellow"
+                    )
+                    counter_purged += 1
+
+    model.Session.commit()
+
+    click.secho("Done.", fg="green")
+    click.secho(f"{counter_purged} DELWP datasets - purged.", fg="green")
+    click.secho(f"{counter_renamed} DELWP datasets - renamed.", fg="green")
+    click.secho(f"{len(unchanged_pkgs)} DELWP datasets - unchanged: ", fg="yellow")
+    click.secho(f"{unchanged_pkgs}", fg="yellow")
+
+
+@maintain.command(u"list-delwp-wrong-names",
+                  short_help=u"List DELWP datasets with wrong names")
+def list_delwp_wrong_names():
+    """
+    Display a list of DELWP datasets with active state and wrong names
+    which do not correspond their titles
+    """
+
+    click.secho(u"Searching for DELWP datasets...")
+
+    query = _get_query_delwp_datasets()
+    datasets = query.filter(model.Package.state == model.State.ACTIVE) \
+        .with_entities(
+            model.Package.id,
+            model.Package.name,
+            model.Package.title
+        ).distinct().order_by(model.Package.title).all()
+
+    click.secho(
+        f"{len(datasets)} DELWP datasets have been found.",
+        fg="green",
+    )
+
+    counter = 0
+    for dataset in datasets:
+        pkg = model.Session.query(model.Package).get(dataset[IDX_ID])
+        cur_name = pkg.name
+        new_name = munge_title_to_name(pkg.title)
+        if cur_name != new_name:
+            counter += 1
+            click.secho(f"{dataset[IDX_TITLE]} - {dataset[IDX_NAME]}", fg="yellow")
+
+    click.secho(
+        f"{counter} active DELWP datasets with wrong names.",
+        fg="green"
+    )
+
+
+def _get_query_delwp_datasets () -> Query[model.Package]:
+    """Get all DELWP datsets
+
+    Returns:
+        Query[model.Package]: Package model query object
+    """
+    return (
+        model.Session.query(model.Package)
+        .join(HarvestObject, model.Package.id == HarvestObject.package_id)
+        .join(HarvestSource, HarvestObject.harvest_source_id == HarvestSource.id)
+        .filter(HarvestSource.type == "delwp")
+    )
