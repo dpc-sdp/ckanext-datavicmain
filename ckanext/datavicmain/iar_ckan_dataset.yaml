@@ -341,6 +341,7 @@ dataset_fields:
   label: Email
   form_placeholder: data.vic@salsadigital.com.au
   display_group: Custodian
+  validators: ignore_missing
 
 - field_name: syndicate
   display_snippet: null
