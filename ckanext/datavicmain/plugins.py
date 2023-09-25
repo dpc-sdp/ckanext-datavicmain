@@ -62,6 +62,7 @@ def release_date(pkg_dict):
 @toolkit.blanket.auth_functions
 @toolkit.blanket.actions
 @toolkit.blanket.validators
+@toolkit.blanket.config_declarations
 class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
     overrides the default dataset form
