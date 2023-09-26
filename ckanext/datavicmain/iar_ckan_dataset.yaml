@@ -137,19 +137,6 @@ dataset_fields:
   display_group: General
   form_snippet: text.html
 
-- field_name: enable_dtv
-  label: Enable Digital Twin Preview
-  display_snippet: null
-  required: true
-  preset: select
-  choices:
-    - value: false
-      label: "No"
-    - value: true
-      label: "Yes"
-  validators: boolean_validator
-  output_validators: boolean_validator
-
   # Security fields
 
 - field_name: personal_information
@@ -353,6 +340,7 @@ dataset_fields:
 - field_name: maintainer_email
   label: Email
   form_placeholder: data.vic@salsadigital.com.au
+  validators: ignore_missing email_validator
   display_group: Custodian
 
 - field_name: syndicate
@@ -364,6 +352,10 @@ dataset_fields:
   display_snippet: null
   form_snippet: vic_hidden.html
   validators: ignore_missing
+
+- field_name: harvester_data_hash
+  validators: ignore_empty
+  form_snippet: vic_hidden.html
 
 - field_name: harvester_data_hash
   validators: ignore_empty
