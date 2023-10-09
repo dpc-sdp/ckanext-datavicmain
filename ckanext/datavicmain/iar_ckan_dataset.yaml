@@ -20,6 +20,9 @@ dataset_fields:
   form_placeholder: eg. my-dataset
   display_group: General
 
+- field_name: alias
+  preset: dataset_alias
+
 - field_name: notes
   label: Description
   form_snippet: markdown.html
@@ -355,7 +358,7 @@ dataset_fields:
 - field_name: maintainer_email
   label: Email
   form_placeholder: email
-  validators: email_validator
+  validators: ignore_missing email_validator
   display_group: Custodian
   form_snippet: vic_custodian_autofill.html
   default_value: email
