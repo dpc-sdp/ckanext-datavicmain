@@ -2,7 +2,6 @@ import pytest
 
 import ckan.plugins.toolkit as tk
 
-@pytest.mark.parametrize("package__enable_dtv", [True])
 @pytest.mark.usefixtures("clean_db", "with_plugins")
 class TestIsDigitalTwinSupported:
     @pytest.mark.parametrize("fmt,supported", [

@@ -17,7 +17,6 @@ class PackageFactory(factories.Dataset):
     update_frequency = "unknown"
     workflow_status = "test"
     protective_marking = "official"
-    enable_dtv = False
 
 
 @register
