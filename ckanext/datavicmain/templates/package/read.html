@@ -32,7 +32,7 @@
     {% set vector_data = h.vic_iar_is_delwp_vector_data(pkg.resources) %}
     {% set raster_data = h.vic_iar_is_delwp_raster_data(pkg.resources) %}
 
-    {% if delwp_dataset and delwp_restricted %}
+    {% if delwp_dataset and delwp_restricted and (vector_data or raster_data) %}
         {% snippet "package/snippets/delwp_resources_list.html", pkg=pkg, with_button=not raster_data %}
     {% else %}
         {% set historical_resources_list = h.historical_resources_list(pkg.resources) %}
@@ -53,7 +53,7 @@
             {% endif %}
 
             {% if not vector_data and raster_data %}
-                <p>Access to this dataset is provided through Data Service Providers, please see this page for an up to date list of suppliers - <a href="https://www.land.vic.gov.au/maps-and-spatial/spatial-data/how-to-access-spatial-data">Accessing spatial data</a>. For more information you can contact the <a href="mailto:coordinated.imagery@delwp.vic.gov.au">Coordinated Imagery Program</a>.</p>
+                <p>Access to this dataset is provided through Data Service Providers, please see this page for an up to date list of suppliers - <a href="https://www.land.vic.gov.au/maps-and-spatial/spatial-data/how-to-access-spatial-data" target="_blank">Accessing spatial data</a>. For more information you can contact the <a href="mailto:coordinated.imagery@delwp.vic.gov.au">Coordinated Imagery Program</a>.</p>
             {% endif %}
         </section>
     {% endif %}

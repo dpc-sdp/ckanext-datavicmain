@@ -180,7 +180,7 @@ def organization_update(next_, context, data_dict):
 
 @validate(vic_schema.delwp_data_request_schema)
 def send_delwp_data_request(context, data_dict):
-
+    """Send a notification to admin about a new data request"""
     mailer = get_mailer()
 
     data_dict.update({
@@ -190,8 +190,8 @@ def send_delwp_data_request(context, data_dict):
 
     try:
         mailer.mail_recipients(
-            "Test",
-            [data_dict["email"]],
+            "Data request",
+            [data_dict["contact_email"]],
             body=toolkit.render(
                 "mailcraft/emails/request_delwp_data/body.txt",
                 data_dict,
