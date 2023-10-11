@@ -20,6 +20,9 @@ dataset_fields:
   form_placeholder: eg. my-dataset
   display_group: General
 
+- field_name: alias
+  preset: dataset_alias
+
 - field_name: notes
   label: Description
   form_snippet: markdown.html
@@ -331,6 +334,8 @@ dataset_fields:
   label: Data Custodian
   form_placeholder: Joe Bloggs
   display_group: Custodian
+  form_snippet: vic_custodian_autofill.html
+  default_value: display_name
 
 - field_name: role
   label: Role
@@ -342,6 +347,8 @@ dataset_fields:
   form_placeholder: data.vic@salsadigital.com.au
   validators: ignore_missing email_validator
   display_group: Custodian
+  form_snippet: vic_custodian_autofill.html
+  default_value: email
 
 - field_name: syndicate
   display_snippet: null
