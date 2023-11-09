@@ -24,9 +24,10 @@
 {% endblock %}
 
 {% block package_resources %}
-  {% set historical_resources_list = h.historical_resources_list(pkg.resources) %}
-  {% if historical_resources_list[1] and historical_resources_list[1]['period_start'] and historical_resources_list[1]['period_start'] != None  and historical_resources_list[1]['period_start'] != "" %}
-      {% snippet "package/snippets/resources_list.html", pkg=pkg, resources=[historical_resources_list[0]] %}
+  {% set grouped_resources = h.group_resources_by_temporal_range(pkg.resources) %}
+
+  {% if grouped_resources | length > 1 %}
+      {% snippet "package/snippets/resources_list.html", pkg=pkg, resources=grouped_resources[0] %}
   {% else %}
       {% snippet "package/snippets/resources_list.html", pkg=pkg, resources=pkg.resources %}
   {% endif %}
