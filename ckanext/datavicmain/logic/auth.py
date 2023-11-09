@@ -15,7 +15,7 @@ def user_update(context, data_dict=None):
         # Allow anonymous access to the user/reset path, i.e. password resets.
         return {'success': True}
     elif 'save' in context and context['save']:
-        if 'email' in toolkit.request.params:
+        if 'email' in toolkit.request.args:
             schema = context.get('schema')
 
     return {'success': True}

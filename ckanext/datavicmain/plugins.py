@@ -1,3 +1,4 @@
+# Plugins for ckanext-datavicmain
 from __future__ import annotations
 
 import time
@@ -15,9 +16,11 @@ import ckan.plugins.toolkit as toolkit
 
 from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.oidc_pkce.interfaces import IOidcPkce
+from ckanext.transmute.interfaces import ITransmute
 
 from ckanext.datavicmain import helpers, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
+from ckanext.datavicmain.transmutators import get_transmutators
 
 
 config = toolkit.config
@@ -72,6 +75,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(IOidcPkce, inherit=True)
     p.implements(p.IAuthenticator, inherit=True)
     p.implements(p.IOrganizationController, inherit=True)
+    p.implements(IOidcPkce, inherit=True)
+    p.implements(ITransmute)
 
 
     # IBlueprint
@@ -345,3 +350,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             return True
 
         return False
+
+    # ITransmute
+
+    def get_transmutators(self):
+        return get_transmutators()

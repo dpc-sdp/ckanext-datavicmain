@@ -332,6 +332,8 @@ dataset_fields:
   label: Data Custodian
   form_placeholder: Joe Bloggs
   display_group: Custodian
+  form_snippet: vic_custodian_autofill.html
+  default_value: display_name
 
 - field_name: role
   label: Role
@@ -340,9 +342,11 @@ dataset_fields:
 
 - field_name: maintainer_email
   label: Email
-  form_placeholder: data.vic@salsadigital.com.au
+  form_placeholder: email
   validators: ignore_missing email_validator
   display_group: Custodian
+  form_snippet: vic_custodian_autofill.html
+  default_value: email
 
 - field_name: syndicate
   display_snippet: null
