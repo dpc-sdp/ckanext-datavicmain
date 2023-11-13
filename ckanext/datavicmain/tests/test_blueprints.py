@@ -8,7 +8,7 @@ class TestDatavicUserEndpoints:
 
     def test_user_approve(self, app, user, sysadmin):
         url = url_for('datavicuser.approve', id= user['id'])
-        env = {"Authorization": sysadmin["apikey"]}
+        env = {"Authorization": sysadmin["token"]}
 
         response = app.get(url=url, extra_environ=env, status=200)
 
@@ -16,7 +16,7 @@ class TestDatavicUserEndpoints:
 
     def test_user_approve_not_authorized(self, app, user):
         url = url_for('datavicuser.approve', id= user['id'])
-        env = {"Authorization": user["apikey"]}
+        env = {"Authorization": user["token"]}
 
         response = app.get(url=url, extra_environ=env, status=403)
 
@@ -24,7 +24,7 @@ class TestDatavicUserEndpoints:
 
     def test_user_deny(self, app, sysadmin, user):
         url = url_for('datavicuser.deny', id= user['id'])
-        env = {"Authorization": sysadmin["apikey"]}
+        env = {"Authorization": sysadmin["token"]}
 
         response = app.get(url=url, extra_environ=env, status=200)
 
@@ -33,7 +33,7 @@ class TestDatavicUserEndpoints:
 
     def test_user_deny_not_authorized(self, app, user):
         url = url_for('datavicuser.deny', id= user['id'])
-        env = {"Authorization": user["apikey"]}
+        env = {"Authorization": user["token"]}
 
         response = app.get(url=url, extra_environ=env, status=403)
 

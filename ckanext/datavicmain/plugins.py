@@ -1,10 +1,13 @@
 # Plugins for ckanext-datavicmain
 from __future__ import annotations
+
 import time
 import calendar
 import logging
 from typing import Any
 from six import text_type
+from typing import Any
+from datetime import datetime
 
 import ckan.authz as authz
 import ckan.model as model
@@ -13,10 +16,11 @@ import ckan.plugins.toolkit as toolkit
 
 from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.oidc_pkce.interfaces import IOidcPkce
+from ckanext.transmute.interfaces import ITransmute
 
 from ckanext.datavicmain import helpers, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
-from ckanext.datavicmain.syndication.organization import sync_organization
+from ckanext.datavicmain.transmutators import get_transmutators
 
 
 config = toolkit.config
@@ -71,6 +75,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(IOidcPkce, inherit=True)
     p.implements(p.IAuthenticator, inherit=True)
     p.implements(p.IOrganizationController, inherit=True)
+    p.implements(IOidcPkce, inherit=True)
+    p.implements(ITransmute)
 
 
     # IBlueprint
@@ -130,51 +136,44 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
         if authz.is_sysadmin(user):
             return True
 
-    def historical_resources_list(self, resource_list):
-        sorted_resource_list = {}
-        i = 0
+    def group_resources_by_temporal_range(
+        self, resource_list: list[dict[str, Any]]
+    ) -> list[list[dict[str, Any]]]:
+        """Group resources by period_start/period_end dates for a historical
+        feature."""
+
+        def parse_date(date_str: str | None) -> datetime:
+            return (
+                datetime.strptime(date_str, "%Y-%m-%d") if date_str else datetime.min
+            )
+
+        grouped_resources: dict[
+            tuple[datetime], list[dict[str, Any]]
+        ] = {}
+
         for resource in resource_list:
-            i += 1
-            if resource.get('period_start') is not None and resource.get('period_start') != 'None' and resource.get(
-                    'period_start') != '':
-                key = parse_date(resource.get('period_start')[:10]) or '9999999999' + str(i)
-            else:
-                key = '9999999999' + str(i)
-            resource['key'] = key
-            # print parser.parse(resource.get('period_start')).strftime("%Y-%M-%d") + " " + resource.get('period_start')
-            sorted_resource_list[key] = resource
+            end_date = parse_date(resource.get("period_end"))
 
-        list = sorted(sorted_resource_list.values(), key=lambda item: int(item.get('key')), reverse=True)
-        # for item in list:
-        #    print item.get('period_start') + " " + str(item.get('key'))
-        return list
+            grouped_resources.setdefault((end_date,), [])
+            grouped_resources[(end_date,)].append(resource)
 
-    def historical_resources_range(resource_list):
-        range_from = ""
-        from_ts = None
-        range_to = ""
-        to_ts = None
-        for resource in resource_list:
 
-            if resource.get('period_start') is not None and resource.get('period_start') != 'None' and resource.get(
-                    'period_start') != '':
-                ts = parse_date(resource.get('period_start')[:10])
-                if ts and (from_ts is None or ts < from_ts):
-                    from_ts = ts
-                    range_from = resource.get('period_start')[:10]
-            if resource.get('period_end') is not None and resource.get('period_end') != 'None' and resource.get(
-                    'period_end') != '':
-                ts = parse_date(resource.get('period_end')[:10])
-                if ts and (to_ts is None or ts > to_ts):
-                    to_ts = ts
-                    range_to = resource.get('period_end')[:10]
+        sorted_grouped_resources = dict(
+            sorted(
+                grouped_resources.items(),
+                reverse=True,
+                key=lambda x: x[0],
+            )
+        )
 
-        if range_from != "" and range_to != "":
-            return range_from + " to " + range_to
-        elif range_from != "" or range_to != "":
-            return range_from + range_to
-        else:
-            return None
+        return [res_group for res_group in sorted_grouped_resources.values()]
+
+    def ungroup_temporal_resources(
+        self, resource_groups: list[list[dict[str, Any]]]
+    ) -> list[dict[str, Any]]:
+        return [
+            resource for res_group in resource_groups for resource in res_group
+        ]
 
     def is_historical(self):
         if toolkit.get_endpoint()[1] == 'historical':
@@ -221,8 +220,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'workflow_status_options': helpers.workflow_status_options,
             'is_admin': self.is_admin,
             'workflow_status_pretty': helpers.workflow_status_pretty,
-            'historical_resources_list': self.historical_resources_list,
-            'historical_resources_range': self.historical_resources_range,
+            'group_resources_by_temporal_range': self.group_resources_by_temporal_range,
+            'ungroup_temporal_resources': self.ungroup_temporal_resources,
             'is_historical': self.is_historical,
             'get_formats': self.get_formats,
             'is_sysadmin': self.is_sysadmin,
@@ -351,3 +350,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             return True
 
         return False
+
+    # ITransmute
+
+    def get_transmutators(self):
+        return get_transmutators()

@@ -16,9 +16,12 @@ dataset_fields:
 
 - field_name: name
   label: URL
-  preset: dataset_slug
+  preset: dataset_alias_slug
   form_placeholder: eg. my-dataset
   display_group: General
+
+- field_name: alias
+  preset: dataset_alias
 
 - field_name: notes
   label: Description
@@ -313,14 +316,12 @@ dataset_fields:
   form_snippet: public_release.html # custom select_workflow
   display_group: Workflow
 
-
 - field_name: workflow_status
   label: Workflow Status
   form_snippet: workflow_status.html # custom select_workflow
   display_group: Workflow
   validators: not_empty
   required: true
-
 
 - field_name: workflow_status_notes
   label: Workflow Status Notes
@@ -331,6 +332,8 @@ dataset_fields:
   label: Data Custodian
   form_placeholder: Joe Bloggs
   display_group: Custodian
+  form_snippet: vic_custodian_autofill.html
+  default_value: display_name
 
 - field_name: role
   label: Role
@@ -339,9 +342,11 @@ dataset_fields:
 
 - field_name: maintainer_email
   label: Email
-  form_placeholder: data.vic@salsadigital.com.au
+  form_placeholder: email
   validators: ignore_missing email_validator
   display_group: Custodian
+  form_snippet: vic_custodian_autofill.html
+  default_value: email
 
 - field_name: syndicate
   display_snippet: null
@@ -357,23 +362,16 @@ dataset_fields:
   validators: ignore_empty
   form_snippet: vic_hidden.html
 
-- field_name: harvester_data_hash
-  validators: ignore_empty
-  form_snippet: vic_hidden.html
-
-- field_name: harvester_data_hash
-  validators: ignore_empty
-  form_snippet: vic_hidden.html
-
 resource_fields:
 
 - field_name: url
   label: URL
-  preset: resource_url_upload
+  preset: vic_resource_url_upload
 
 - field_name: name
   label: Name
   form_placeholder: eg. January 2011 Gold Prices
+  required: true
 
 - field_name: format
   label: Format
@@ -398,7 +396,8 @@ resource_fields:
 
 - field_name: data_quality
   label: Data Quality Statement
-  form_snippet: textarea.html
+  form_snippet: markdown.html
+  display_snippet: markdown.html
 
 - field_name: attribution
   label: Attribution Statement
