@@ -19,8 +19,6 @@ from ckan.lib.munge import munge_title_to_name
 
 from ckanext.harvest.model import HarvestObject, HarvestSource
 
-import ckan.model as model
-
 log = logging.getLogger(__name__)
 
 IDX_ID = 0
@@ -439,9 +437,9 @@ def identify_resources_with_broken_recline():
             model.ResourceView.resource_id == model.Resource.id,
         )
         .filter(
-            model.ResourceView.view_type.in_(
-                ["datatables_view", "recline_view"]
-            )
+            model.ResourceView.view_type.in_([
+                "datatables_view", "recline_view"
+            ])
         )
     )
 
@@ -464,3 +462,73 @@ def identify_resources_with_broken_recline():
             f"Resource {res_url} has a table view but datastore is inactive",
             fg="green",
         )
+
+
+@maintain.command("ckan-resources-format-fix")
+def ckan_iar_resources_format_fix():
+    """Fix resources with empty format field."""
+    user = tk.get_action("get_site_user")({"ignore_auth": True}, {})
+    guess_format_validator = tk.get_validator("if_empty_guess_format")
+
+    limit = 100
+    offset = 0
+    packages_found = True
+
+    while packages_found:
+        package_list = tk.get_action("current_package_list_with_resources")(
+            {"user": user["name"]}, {"limit": limit, "offset": offset}
+        )
+        if len(package_list) == 0:
+            packages_found = False
+        offset += 1
+
+        for package in package_list:
+            click.secho(
+                f"Processing resources in {package['name']}", fg="green"
+            )
+
+            fix_available = False
+
+            if "resources" in package:
+                old_data = df.flatten_dict(package)
+                new_data = old_data.copy()
+
+                for i, resource in enumerate(package["resources"]):
+                    if "format" in resource and not resource["format"]:
+                        fix_available = True
+                        click.secho(
+                            f"Found empty format in {resource['name']}.",
+                            fg="red",
+                        )
+                        key = ("resources", i, "format")
+
+                        # remove id in resource field needed for validator logic work !!!
+                        new_data[("resources", i, "id")] = ""
+                        guess_format_validator(
+                            key=key, data=new_data, errors={}, context={}
+                        )
+
+                        resource["format"] = (
+                            new_data[key] if new_data[key] else tk._("unknown")
+                        )
+                        click.secho(
+                            f"Set format in {resource['name']} to"
+                            f" {resource['format']}",
+                            fg="yellow",
+                        )
+            if not fix_available:
+                continue
+            try:
+                tk.get_action("package_patch")(
+                    {"user": user["name"]},
+                    {"id": package["id"], "resources": package["resources"]},
+                )
+                click.secho(
+                    f"Fixed date issues for resources in {package['name']}",
+                    fg="green",
+                )
+            except tk.ValidationError as e:
+                click.secho(
+                    f"Failed to fix  resources {package['name']}: {e}",
+                    fg="red",
+                )
