@@ -1,26 +1,26 @@
 from __future__ import annotations
 
+import csv
 import datetime
 import logging
-import csv
 import openpyxl
+import mimetypes
+from itertools import groupby
 from os import path
 from typing import Any
-from sqlalchemy.orm import Query
-from itertools import groupby
+from urllib.parse import urlparse
 
-import click
-import tqdm
-
+import ckan.logic.validators as validators
 import ckan.model as model
 import ckan.plugins.toolkit as tk
-from ckan.types import Context
-from ckan.model import Resource, ResourceView
+import click
+import tqdm
 from ckan.lib.munge import munge_title_to_name
+from ckan.model import Resource, ResourceView
+from ckan.types import Context
+from sqlalchemy.orm import Query
 
 from ckanext.harvest.model import HarvestObject, HarvestSource
-
-import ckan.model as model
 
 log = logging.getLogger(__name__)
 
@@ -444,9 +444,9 @@ def identify_resources_with_broken_recline():
             model.ResourceView.resource_id == model.Resource.id,
         )
         .filter(
-            model.ResourceView.view_type.in_(
-                ["datatables_view", "recline_view"]
-            )
+            model.ResourceView.view_type.in_([
+                "datatables_view", "recline_view"
+            ])
         )
     )
 
@@ -506,3 +506,40 @@ def update_broken_urls():
         )
 
         model.Session.commit()
+
+
+@maintain.command("ckan-resources-format-fix")
+def ckan_iar_resources_format_fix():
+    """Fix resources with empty format field."""
+
+    resources = (
+        model.Session.query(Resource).filter(model.Resource.format == "").all()
+    )
+
+    if not resources:
+        return click.secho("No resources with empty format", fg="green")
+
+    for resource in resources:
+        resource.format = _suggest_file_format(resource.url)
+
+        click.secho(
+            f"Resource '{resource.name}' changed format to: {resource.format}",
+            fg="green",
+        )
+    model.Session.commit()
+    click.secho(
+        f"All formats was corrected.",
+        fg="green",
+    )
+
+
+def _suggest_file_format(url: str | None) -> str:
+    if not url:
+        return "unknown"
+
+    parsed = urlparse(url)
+    if parsed.scheme and not parsed.path:
+        return "unknown"
+
+    mimetype, _ = mimetypes.guess_type(url)
+    return validators.clean_format(mimetype) if mimetype else "unknown"
