@@ -271,7 +271,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     # IPackageController
 
-    def after_create(self, context, pkg_dict):
+    def after_dataset_create(self, context, pkg_dict):
         # Only add packages to groups when being created via the CKAN UI
         # (i.e. not during harvesting)
         if repr(toolkit.request) != '<LocalProxy unbound>' \
@@ -287,7 +287,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
                 helpers.set_private_activity(pkg_dict, context, str('new'))
         pass
 
-    def after_update(self, context, pkg_dict):
+    def after_dataset_update(self, context, pkg_dict):
         # Only add packages to groups when being updated via the CKAN UI
         # (i.e. not during harvesting)
         if repr(toolkit.request) != '<LocalProxy unbound>' \
