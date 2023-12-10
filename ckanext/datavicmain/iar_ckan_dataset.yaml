@@ -150,7 +150,7 @@ dataset_fields:
       label: "Yes"
     - value: false
       label: "No"
-  validators: boolean_validator
+  validators: default(true) boolean_validator
   output_validators: boolean_validator
 
   # Security fields
