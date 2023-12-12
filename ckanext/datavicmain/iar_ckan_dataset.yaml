@@ -146,9 +146,9 @@ dataset_fields:
   required: true
   preset: select
   choices:
-    - value: true
+    - value: on
       label: "On"
-    - value: false
+    - value: off
       label: "Off"
   validators: default(true) boolean_validator
   output_validators: boolean_validator
