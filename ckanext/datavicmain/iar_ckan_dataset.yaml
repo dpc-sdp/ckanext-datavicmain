@@ -145,12 +145,13 @@ dataset_fields:
   display_snippet: null
   required: true
   preset: select
-  default: on
   choices:
-    - value: on
+    - value: true
       label: "On"
-    - value: off
+    - value: false
       label: "Off"
+  validators: default(true) boolean_validator
+  output_validators: boolean_validator
 
   # Security fields
 
