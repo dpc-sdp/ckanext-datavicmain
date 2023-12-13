@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import datetime
 import logging
 import csv
@@ -18,9 +19,12 @@ import tqdm
 import ckan.logic.validators as validators
 import ckan.model as model
 import ckan.plugins.toolkit as tk
-from ckan.types import Context
-from ckan.model import Resource, ResourceView
+import click
+import tqdm
 from ckan.lib.munge import munge_title_to_name
+from ckan.model import Resource, ResourceView
+from ckan.types import Context
+from sqlalchemy.orm import Query
 
 from ckanext.harvest.model import HarvestObject, HarvestSource
 
@@ -446,9 +450,9 @@ def identify_resources_with_broken_recline():
             model.ResourceView.resource_id == model.Resource.id,
         )
         .filter(
-            model.ResourceView.view_type.in_(
-                ["datatables_view", "recline_view"]
-            )
+            model.ResourceView.view_type.in_([
+                "datatables_view", "recline_view"
+            ])
         )
     )
 
