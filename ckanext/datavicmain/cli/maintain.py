@@ -517,7 +517,7 @@ def _search_incomplete_datasets() -> dict[str, dict[str, str]]:
             },
         )
 
-        datasets = result["results"]
+        datasets: list[dict[str, Any]] = result["results"]
         incomplete_datasets.update(_search_in_batch(datasets))
 
         start += len(datasets)
@@ -526,7 +526,7 @@ def _search_incomplete_datasets() -> dict[str, dict[str, str]]:
     return incomplete_datasets
 
 
-def _search_in_batch(datasets: dict[str, Any]) -> dict[str, dict[str, str]]:
+def _search_in_batch(datasets: list[dict[str, Any]]) -> dict[str, dict[str, str]]:
     """Processes a batch of datasets to find and list those with missing fields,
     providing default values for these fields.
     """
