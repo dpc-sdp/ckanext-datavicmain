@@ -1,5 +1,8 @@
 import ckan.plugins.toolkit as toolkit
 
+from ckan import authz
+from ckan.types import Context, DataDict, AuthResult
+
 from ckanext.datavicmain import helpers
 
 _t = toolkit._
@@ -45,4 +48,27 @@ def package_update(next_auth, context, data_dict):
 
 
 def datavic_toggle_organization_uploads(context, data_dict):
+    return {"success": False}
+
+
+def user_show(context: Context, data_dict: DataDict) -> AuthResult:
+    user_id = authz.get_user_id_for_username(data_dict.get("id"))
+    is_myself = toolkit.current_user.id == user_id
+    is_sysadmin = toolkit.current_user.sysadmin
+
+    orgs = toolkit.get_action("organization_list_for_user")(
+        {"user": toolkit.current_user.id}, {"permission": "admin"}
+    )
+    for org in orgs:
+        members = toolkit.get_action("member_list")(
+            {}, {"id": org.get("id"), "object_type": "user"}
+        )
+        member_ids = [
+            member[0] for member in members if member[2] != authz.trans_role("admin")
+        ]
+        is_member = user_id in member_ids
+
+        if is_sysadmin or is_myself or is_member:
+            return {"success": True}
+
     return {"success": False}
