@@ -7,6 +7,7 @@ import ckanapi
 from ckan.model import State
 from ckan.lib.dictization import model_dictize, model_save
 from ckan.logic import schema as ckan_schema, validate
+from ckan.lib.navl.validators import not_empty # noqa
 
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
