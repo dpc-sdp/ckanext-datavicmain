@@ -56,6 +56,9 @@ def user_show(context: Context, data_dict: DataDict) -> AuthResult:
     is_myself = toolkit.current_user.id == user_id
     is_sysadmin = toolkit.current_user.sysadmin
 
+    if is_sysadmin or is_myself:
+        return {"success": True}
+
     orgs = toolkit.get_action("organization_list_for_user")(
         {"user": toolkit.current_user.id}, {"permission": "admin"}
     )
@@ -63,12 +66,9 @@ def user_show(context: Context, data_dict: DataDict) -> AuthResult:
         members = toolkit.get_action("member_list")(
             {}, {"id": org.get("id"), "object_type": "user"}
         )
-        member_ids = [
-            member[0] for member in members if member[2] != authz.trans_role("admin")
-        ]
-        is_member = user_id in member_ids
+        member_ids = [member[0] for member in members]
 
-        if is_sysadmin or is_myself or is_member:
+        if user_id in member_ids:
             return {"success": True}
 
     return {"success": False}

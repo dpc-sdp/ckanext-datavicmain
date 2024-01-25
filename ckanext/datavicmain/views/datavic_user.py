@@ -271,6 +271,12 @@ class DataVicUserEditView(user.EditView):
     def get(self, id=None, data=None, errors=None, error_summary=None):
         context, id = self._prepare(id)
         data_dict = {u'id': id}
+        is_myself = toolkit.current_user.name == id
+        is_sysadmin = toolkit.current_user.sysadmin
+
+        if not any([is_sysadmin, is_myself]):
+            return abort(403, _(u'Not authorized to see this page.'))
+
         try:
             old_data = get_action(u'user_show')(context, data_dict)
 
@@ -283,7 +289,6 @@ class DataVicUserEditView(user.EditView):
             abort(403, _(u'Unauthorized to edit user %s') % u'')
         except NotFound:
             abort(404, _(u'User not found'))
-        user_obj = context.get(u'user_obj')
 
         errors = errors or {}
         vars = {
