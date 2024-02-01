@@ -5,6 +5,7 @@ import ckan.lib.plugins as lib_plugins
 import ckan.plugins.toolkit as toolkit
 import ckanapi
 import ckanext.datavic_iar_theme.helpers as theme_helpers
+from ckan import model
 from ckan.lib.dictization import model_dictize, model_save, table_dictize
 from ckan.lib.navl.validators import not_empty
 from ckan.logic import schema as ckan_schema
@@ -12,6 +13,7 @@ from ckan.model import State
 from ckan.types import Action, Context, DataDict
 from ckan.types.logic import ActionResult
 from ckanext.datavicmain import helpers, jobs
+from sqlalchemy import or_
 
 _check_access = toolkit.check_access
 config = toolkit.config
@@ -232,3 +234,47 @@ def _show_errors_in_sibling_resources(
         })
     if errors:
         raise ValidationError(errors)
+
+
+@toolkit.side_effect_free
+def datavic_list_incomplete_resources(context, data_dict):
+    """Retrieves a list of resources that are missing at least one required field."""
+    try:
+        pkg_type = data_dict.get("type", "dataset")
+        resource_schema = toolkit.h.scheming_get_dataset_schema(pkg_type)[
+            "resource_fields"
+        ]
+    except TypeError:
+        raise toolkit.ValidationError(f"No schema for {pkg_type} package type")
+
+    required_fields = [
+        field["field_name"]
+        for field in resource_schema
+        if toolkit.h.scheming_field_required(field)
+    ]
+
+    missing_conditions = []
+    for field in required_fields:
+        model_attr = getattr(model.Resource, field)
+        missing_conditions.append(or_(model_attr == None, model_attr == ""))
+
+    q = (
+        model.Session.query(model.Resource)
+        .join(model.Package)
+        .filter(model.Package.state == "active")
+        .filter(model.Resource.state == "active")
+        .filter(or_(*missing_conditions))
+    )
+
+    results = []
+    for resource in q:
+        results.append({
+            "id": resource.id,
+            "missing_fields": [
+                field
+                for field in required_fields
+                if not getattr(resource, field)
+            ],
+        })
+
+    return {"count": q.count(), "results": results}
