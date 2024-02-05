@@ -1,0 +1,8 @@
+Dear {{ username }},
+
+There is new organisation access request for {{ org_name }} where you are one of administrators
+
+The request can be processed on the following page: {{ link }}.
+
+Regards,
+Data.Vic Team
