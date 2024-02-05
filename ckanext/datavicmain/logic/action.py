@@ -52,6 +52,7 @@ def user_create(next_func, context, data_dict):
     user_dict = next_func(context, data_dict)
     data_dict["user_id"] = user_dict["id"]
 
+    context.pop("schema", None)
     vicmain_utils.new_pending_user(context, data_dict)
 
     return user_dict
