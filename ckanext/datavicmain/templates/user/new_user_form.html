@@ -1,0 +1,35 @@
+{% ckan_extends %}
+
+{% block core_fields %}
+    <div class="custom-select">
+        {{ form.select("organisation_id", label=_("Organisation"), options=h.vic_iar_get_parent_orgs(), selected=data.organisation_id, error=errors.organisation_id, classes=["control-medium"]) }}
+    </div>
+
+    <div class="custom-select">
+        {{ form.select("organisation_role", label=_("Role"), options=h.datavic_get_registration_org_role_options(), selected=data.organisation_role, error=errors.organisation_role, classes=["control-medium"]) }}
+    </div>
+
+    {% block required_core_fields %}
+        {{ form.input("name", id="field-username", label=_("Username"), placeholder=_("username"), value=data.name, error=errors.name, classes=["control-medium"], is_required=True) }}
+        {{ form.input("fullname", id="field-fullname", label=_("Full Name"), placeholder=_("Joe Bloggs"), value=data.fullname, error=errors.fullname, classes=["control-medium"]) }}
+        {{ form.input("email", id="field-email", label=_("Email"), type="email", placeholder=_("joe@example.com"), value=data.email, error=errors.email, classes=["control-medium"], is_required=True) }}
+
+        <div class="password-block">
+            <div class="password-block--info">
+                <div class="info--title">
+                    <h2>{{ _("Password") }}</h2>
+                </div>
+                <div class="info--text">
+                    <p>
+                        {%- trans -%}
+                            Your password must be a minimum of 12 characters in length and include at least one upper and lower-case letter, a number and a symbol.
+                        {%- endtrans -%}
+                    </p>
+                </div>
+            </div>
+
+            {{ form.input("password1", id="field-password", label=_("Password"), type="password", placeholder="••••••••", value=data.password1, error=errors.password1, classes=["control-medium"], is_required=True) }}
+            {{ form.input("password2", id="field-confirm-password", label=_("Confirm password"), type="password", placeholder="••••••••", value=data.password2, error=errors.password2, classes=["control-medium"], is_required=True) }}
+        </div>
+    {% endblock %}
+{% endblock %}

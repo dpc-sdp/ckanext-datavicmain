@@ -1,8 +1,16 @@
-
+import pytest
 import factory
 from pytest_factoryboy import register
 
 from ckan.tests import factories
+
+
+@pytest.fixture
+def clean_db(reset_db, migrate_db_for, with_plugins):
+    reset_db()
+
+    migrate_db_for("flakes")
+    migrate_db_for("mailcraft")
 
 
 @register
@@ -29,7 +37,13 @@ class UserFactory(factories.UserWithToken):
     pass
 
 
+@register
+class OrganizationFactory(factories.Organization):
+    pass
+
+
 class SysadminFactory(factories.SysadminWithToken):
     pass
+
 
 register(SysadminFactory, "sysadmin")

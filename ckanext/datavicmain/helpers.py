@@ -326,3 +326,31 @@ def datavic_org_uploads_allowed(org_id: str) -> bool:
         return False
 
     return flake["data"].get(org.id, False)
+
+
+def datavic_get_registration_org_role_options() -> list[dict[str, str]]:
+    return [
+        {"value": "editor", "text": toolkit._("Editor")},
+        {"value": "member", "text": toolkit._("Member")},
+        {"value": "not-sure", "text": toolkit._("I am not sure")}
+    ]
+
+
+def datavic_user_is_a_member_of_org(user_id: str, org_id: str) -> bool:
+    user_orgs = get_user_organizations(user_id)
+
+    for org in user_orgs:
+        if org.id == org_id:
+            return True
+
+    return False
+
+
+def datavic_is_pending_request_to_join_org(username: str, org_id: str) -> bool:
+    requests = utils.get_pending_org_access_requests()
+
+    for req in requests:
+        if req["name"] == username and req["organisation_id"] == org_id:
+            return True
+
+    return False

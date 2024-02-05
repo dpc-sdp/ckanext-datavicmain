@@ -239,6 +239,10 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'get_digital_twin_resources': helpers.get_digital_twin_resources,
             'url_for_dtv_config': helpers.url_for_dtv_config,
             "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
+            "datavic_get_registration_org_role_options": helpers.datavic_get_registration_org_role_options,
+            "datavic_user_is_a_member_of_org": helpers.datavic_user_is_a_member_of_org,
+            "datavic_is_pending_request_to_join_org": helpers.datavic_is_pending_request_to_join_org,
+            "datavic_send_email": helpers.send_email,
         }
 
     ## IConfigurer interface ##
