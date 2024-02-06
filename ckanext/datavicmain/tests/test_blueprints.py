@@ -309,3 +309,111 @@ class TestDatavicOrgRequestJoin:
         assert pending_request["name"] == user["name"]
         assert pending_request["organisation_id"] == organization["name"]
         assert pending_request["organisation_role"] == "member"
+
+    def test_join_if_already_member(
+        self, send_email_notification, app, user, organization
+    ):
+        call_action(
+            "member_create",
+            id=organization["id"],
+            object=user["id"],
+            object_type="user",
+            capacity="editor",
+        )
+
+        resp = app.post(
+            url_for(
+                "datavic_org.request_join",
+                org_id=organization["name"],
+            ),
+            extra_environ={"Authorization": user["token"]},
+            data={"organisation_role": "member"},
+        )
+
+        send_email_notification.assert_not_called()
+
+        assert not get_pending_org_access_requests()
+        assert "You are already a member of this organisation" in resp.body
+
+
+@pytest.mark.usefixtures("clean_db", "with_plugins", "with_request_context")
+class TestDatavicOrgRequestList:
+    def test_regular_user(self, app, user, organization):
+        resp = app.get(
+            url_for(
+                "datavic_org.request_list",
+                org_id=organization["name"],
+            ),
+            extra_environ={"Authorization": user["token"]},
+        )
+
+        assert resp.status_code == 403
+
+    def test_sysadmin(self, app, sysadmin, organization):
+        resp = app.get(
+            url_for(
+                "datavic_org.request_list",
+                org_id=organization["name"],
+            ),
+            extra_environ={"Authorization": sysadmin["token"]},
+        )
+
+        assert resp.status_code == 200
+
+    @pytest.mark.parametrize(
+        "role, status_code",
+        [("admin", 200), ("editor", 403), ("member", 403)],
+    )
+    def test_roles_access(self, role, status_code, app, user, organization):
+        call_action(
+            "member_create",
+            id=organization["id"],
+            object=user["id"],
+            object_type="user",
+            capacity=role,
+        )
+
+        resp = app.get(
+            url_for(
+                "datavic_org.request_list",
+                org_id=organization["name"],
+            ),
+            extra_environ={"Authorization": user["token"]},
+        )
+
+        assert resp.status_code == status_code
+
+    def test_empty_list(self, app, sysadmin, organization):
+        resp = app.get(
+            url_for(
+                "datavic_org.request_list",
+                org_id=organization["name"],
+            ),
+            extra_environ={"Authorization": sysadmin["token"]},
+        )
+
+        assert "No pending access requests" in resp.body
+
+    @mock.patch("ckanext.datavicmain.utils.notify_about_org_join_request")
+    def test_with_request(self, send_email_notification, app, user, sysadmin, organization):
+        app.post(
+            url_for(
+                "datavic_org.request_join",
+                org_id=organization["name"],
+            ),
+            extra_environ={"Authorization": user["token"]},
+            data={"organisation_role": "member"},
+            follow_redirects=False,
+        )
+
+        resp = app.get(
+            url_for(
+                "datavic_org.request_list",
+                org_id=organization["name"],
+            ),
+            extra_environ={"Authorization": sysadmin["token"]},
+        )
+
+        assert "No pending access requests" not in resp.body
+        assert "Reject" in resp.body
+        assert "Approve" in resp.body

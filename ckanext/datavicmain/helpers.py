@@ -336,7 +336,17 @@ def datavic_get_registration_org_role_options() -> list[dict[str, str]]:
     ]
 
 
+def datavic_get_join_org_role_options() -> list[dict[str, str]]:
+    return [
+        {"value": "editor", "text": toolkit._("Editor")},
+        {"value": "member", "text": toolkit._("Member")},
+    ]
+
+
 def datavic_user_is_a_member_of_org(user_id: str, org_id: str) -> bool:
+    if not user_id:
+        return False
+
     user_orgs = get_user_organizations(user_id)
 
     for org in user_orgs:
