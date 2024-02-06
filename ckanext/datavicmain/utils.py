@@ -104,6 +104,21 @@ def store_user_org_join_request(
     return users
 
 
+def remove_user_from_join_request_list(username: str) -> bool:
+    users = get_pending_org_access_requests()
+
+    tk.get_action("flakes_flake_override")(
+        {"ignore_auth": True},
+        {
+            "author_id": None,
+            "name": PENDING_USERS_FLAKE_NAME,
+            "data": {"users": [user for user in users if user["name"] != username]},
+        },
+    )
+
+    return True
+
+
 def _create_empty_pending_users_flake():
     tk.get_action("flakes_flake_create")(
         {"ignore_auth": True},
