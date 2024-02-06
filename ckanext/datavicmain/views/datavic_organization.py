@@ -82,6 +82,7 @@ class JoinOrgRequestView(MethodView):
             "organisation_role": data_dict["organisation_role"],
         })
 
+        tk.h.flash_success(tk._("Request has been sent"))
         return tk.redirect_to("organization.read", id=org_id)
 
     def is_user_already_a_member(self, org_id: str, user_id: str) -> list[str]:
