@@ -32,7 +32,7 @@ def get_pending_org_access_requests() -> list[OrgJoinRequest]:
         _create_empty_pending_users_flake()
         return []
 
-    return flake["data"]["users"]
+    return flake["data"]["org_requests"]
 
 
 def new_pending_user(
@@ -73,13 +73,13 @@ def new_pending_user(
 def store_user_org_join_request(
     user_data: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    users = get_pending_org_access_requests()
+    requests = get_pending_org_access_requests()
 
-    for user in users:
-        if user["name"] == user_data["name"]:
-            return users
+    for req in requests:
+        if req["name"] == user_data["name"]:
+            return requests
 
-    users.append(
+    requests.append(
         OrgJoinRequest(
             name=user_data["name"],
             email=user_data["email"],
@@ -97,11 +97,11 @@ def store_user_org_join_request(
         {
             "author_id": None,
             "name": PENDING_USERS_FLAKE_NAME,
-            "data": {"users": users},
+            "data": {"org_requests": requests},
         },
     )
 
-    return users
+    return requests
 
 
 def remove_user_from_join_request_list(username: str) -> bool:
@@ -112,7 +112,11 @@ def remove_user_from_join_request_list(username: str) -> bool:
         {
             "author_id": None,
             "name": PENDING_USERS_FLAKE_NAME,
-            "data": {"users": [user for user in users if user["name"] != username]},
+            "data": {
+                "org_requests": [
+                    user for user in users if user["name"] != username
+                ]
+            },
         },
     )
 
@@ -125,7 +129,7 @@ def _create_empty_pending_users_flake():
         {
             "author_id": None,
             "name": PENDING_USERS_FLAKE_NAME,
-            "data": {"users": []},
+            "data": {"org_requests": []},
         },
     )
 
