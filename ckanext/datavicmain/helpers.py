@@ -19,7 +19,7 @@ import ckan.lib.mailer as mailer
 
 from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
-from . import utils
+from . import utils, const
 
 config = toolkit.config
 request = toolkit.request
@@ -364,3 +364,53 @@ def datavic_is_pending_request_to_join_org(username: str, org_id: str) -> bool:
             return True
 
     return False
+
+
+
+def datavic_org_has_unrestricted_children(org_id: str) -> bool:
+    """Check if the organization has restricted children orgs"""
+    hierarchy_tree = toolkit.h.group_tree_section(
+        org_id, include_parents=False
+    )
+
+    if not hierarchy_tree.get("children"):
+        return False
+
+    # group_tree_section doesn't include scheming custom fields
+    for child_org in hierarchy_tree["children"]:
+        if not toolkit.h.datavic_is_org_restricted(child_org["id"]):
+            return True
+
+    return False
+
+
+def datavic_org_has_restricted_parents(org_id: str) -> bool:
+    """Check if the organization has restricted children orgs"""
+    parent_orgs = toolkit.h.group_tree_parents(org_id)
+
+    if not parent_orgs:
+        return False
+
+    # group_tree_parents doesn't include scheming custom fields
+    for parent_org in parent_orgs:
+        if toolkit.h.datavic_is_org_restricted(parent_org["id"]):
+            return True
+
+    return False
+
+
+def datavic_is_org_restricted(org_id: str) -> bool:
+    """Check if the organization is restricted"""
+    org_dict = toolkit.get_action("organization_show")(
+        {
+            "model": model,
+            "session": model.Session,
+            "user": toolkit.current_user.name,
+        },
+        {"id": org_id},
+    )
+
+    return (
+        org_dict.get(const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT)
+        == const.ORG_RESTRICTED
+    )

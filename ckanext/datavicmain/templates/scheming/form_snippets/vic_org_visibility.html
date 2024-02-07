@@ -1,0 +1,55 @@
+{% import 'macros/form.html' as form %}
+
+{% set has_unrestricted_child = h.datavic_org_has_unrestricted_children(data.id) %}
+{% set has_restricted_parent = h.datavic_org_has_restricted_parents(data.id) %}
+
+{% set options=[] %}
+{% set attrs = dict({"class": "form-control"}, **(field.get('form_attrs', {}))) %}
+
+{% if has_unrestricted_child or has_restricted_parent %}
+    {% do attrs.update({"disabled": 1}) %}
+{% endif %}
+
+{% for c in h.scheming_field_choices(field) %}
+  {% if not form_restrict_choices_to or c.value in form_restrict_choices_to %}
+    {% do options.append({
+      'value': c.value|string,
+      'text': h.scheming_language_text(c.label)
+    }) %}
+  {% endif %}
+{% endfor %}
+
+{% set option_selected = data[field.field_name]|string if data[field.field_name] else None %}
+
+<div class="d-flex">
+
+
+    {% call form.select(
+        field.field_name,
+        id='field-' + field.field_name,
+        label=h.scheming_language_text(field.label),
+        options=options,
+        selected=option_selected,
+        error=errors[field.field_name],
+        classes=field.classes if 'classes' in field else ['control-medium'],
+        attrs=attrs,
+        is_required=h.scheming_field_required(field)
+        )
+    %}
+        {% snippet 'scheming/form_snippets/help_text.html', field=field %}
+
+        {% if has_unrestricted_child %}
+            <div class="info-block">
+                <i class="fa fa-warning"></i>
+                {{ _('Restrictions cannot be applied as long as at least one child organization remains unrestricted') }}
+            </div>
+        {% endif %}
+
+        {% if has_restricted_parent %}
+            <div class="info-block">
+                <i class="fa fa-warning"></i>
+                {{ _('Restrictions cannot be removed because the parent organization has the restriction applied') }}
+            </div>
+        {% endif %}
+    {% endcall %}
+</div>

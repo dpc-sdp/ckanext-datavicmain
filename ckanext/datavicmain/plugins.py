@@ -243,6 +243,9 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             "datavic_user_is_a_member_of_org": helpers.datavic_user_is_a_member_of_org,
             "datavic_is_pending_request_to_join_org": helpers.datavic_is_pending_request_to_join_org,
             "datavic_send_email": helpers.send_email,
+            "datavic_org_has_unrestricted_children": helpers.datavic_org_has_unrestricted_children,
+            "datavic_is_org_restricted": helpers.datavic_is_org_restricted,
+            "datavic_org_has_restricted_parents": helpers.datavic_org_has_restricted_parents
         }
 
     ## IConfigurer interface ##
