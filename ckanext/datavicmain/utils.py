@@ -76,7 +76,10 @@ def store_user_org_join_request(
     requests = get_pending_org_access_requests()
 
     for req in requests:
-        if req["name"] == user_data["name"]:
+        if (
+            req["name"] == user_data["name"]
+            and req["organisation_id"] == user_data["organisation_id"]
+        ):
             return requests
 
     requests.append(
