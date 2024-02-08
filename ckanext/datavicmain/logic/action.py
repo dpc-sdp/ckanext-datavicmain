@@ -93,6 +93,26 @@ def organization_update(next_, context, data_dict):
         }
         ckan.action.organization_patch(id=remote["id"], **patch)
 
+    # Changing visibility field should change the visibility datasets. We are
+    # using permissions labels, so we have to reindex all the datasets to index
+    # new labels into solr
+    current_visibility = model.Group.get(data_dict["id"]).extras.get(
+        const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
+    )
+
+    org_dict = next_(context, data_dict)
+
+    new_visibility = utils.get_extra_value(
+        const.ORG_VISIBILITY_FIELD, org_dict
+    )
+
+    if new_visibility != current_visibility:
+        log.info(
+            "The organisation %s visibility has changed. Rebuilding datasets index",
+            org_dict["id"],
+        )
+        toolkit.enqueue_job(jobs.reindex_organization, [org_dict["id"]])
+
     return result
 
 
@@ -255,6 +275,7 @@ def datavic_list_incomplete_resources(context, data_dict):
     }
 
 
+@toolkit.chained_action
 @toolkit.side_effect_free
 def organization_show(
     next_: types.ChainedAction,
@@ -267,35 +288,6 @@ def organization_show(
         "_skip_restriction_check"
     ) and not utils.user_has_org_access(org_dict["id"], context["user"]):
         raise toolkit.ObjectNotFound
-
-    return org_dict
-
-
-@toolkit.chained_action
-def organization_update(
-    next_: types.ChainedAction,
-    context: types.Context,
-    data_dict: types.DataDict,
-) -> types.ActionResult.OrganizationUpdate:
-    """Changing visibility field should change the visibility datasets. We are
-    using permissions labels, so we have to reindex all the datasets to index
-    new labels into solr"""
-    current_visibility = model.Group.get(data_dict["id"]).extras.get(
-        const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
-    )
-
-    org_dict = next_(context, data_dict)
-
-    new_visibility = utils.get_extra_value(
-        const.ORG_VISIBILITY_FIELD, org_dict
-    )
-
-    if new_visibility != current_visibility:
-        log.info(
-            "The organisation %s visibility has changed. Rebuilding datasets index",
-            org_dict["id"],
-        )
-        toolkit.enqueue_job(jobs.reindex_organization, [org_dict["id"]])
 
     return org_dict
 
