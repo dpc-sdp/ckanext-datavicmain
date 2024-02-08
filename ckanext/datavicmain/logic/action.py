@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 import logging
 
 import ckanapi
 
+import ckan.model as model
 import ckan.types as types
 import ckan.plugins.toolkit as toolkit
 
-import ckanext.datavicmain.const as const
-import ckanext.datavicmain.utils as utils
+from ckanext.datavicmain import utils, const, jobs
 from ckanext.datavicmain.helpers import user_is_registering
 from ckanext.datavicmain.logic.schema import custom_user_create_schema
 
@@ -82,10 +84,10 @@ def organization_show(
 ) -> types.ActionResult.OrganizationShow:
     org_dict = next_(context, data_dict)
 
-    if org_dict.get(const.ORG_VISIBILITY_FIELD) == const.ORG_RESTRICTED:
-        toolkit.check_access(
-            "datavic_restricted_organization", context, data_dict
-        )
+    if not context.get(
+        "_skip_restriction_check"
+    ) and not utils.user_has_org_access(org_dict["id"], context["user"]):
+        raise toolkit.ObjectNotFound
 
     return org_dict
 
@@ -96,12 +98,27 @@ def organization_update(
     context: types.Context,
     data_dict: types.DataDict,
 ) -> types.ActionResult.OrganizationUpdate:
-    if data_dict.get(const.ORG_VISIBILITY_FIELD) == const.ORG_RESTRICTED:
-        toolkit.check_access(
-            "datavic_restricted_organization", context, data_dict
-        )
+    """Changing visibility field should change the visibility datasets. We are
+    using permissions labels, so we have to reindex all the datasets to index
+    new labels into solr"""
+    current_visibility = model.Group.get(data_dict["id"]).extras.get(
+        const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
+    )
 
-    return next_(context, data_dict)
+    org_dict = next_(context, data_dict)
+
+    new_visibility = utils.get_extra_value(
+        const.ORG_VISIBILITY_FIELD, org_dict
+    )
+
+    if new_visibility != current_visibility:
+        log.info(
+            "The organisation %s visibility has changed. Rebuilding datasets index",
+            org_dict["id"],
+        )
+        toolkit.enqueue_job(jobs.reindex_organization, [org_dict["id"]])
+
+    return org_dict
 
 
 @toolkit.chained_action
@@ -111,27 +128,36 @@ def organization_list(
     context: types.Context,
     data_dict: types.DataDict,
 ) -> types.ActionResult.OrganizationList:
-    if not data_dict.get("all_fields", None):
-        return next_(context, data_dict)
+    """Restrict organisations. Force all_fields and include_extras, because we
+    need visibility field to be here.
+    Throw out extra fields later if it's not all_fields initially"""
+    all_fields = data_dict.pop("all_fields", False)
 
-    org_list = next_(context, data_dict)
+    data_dict.update({"all_fields": True, "include_extras": True})
 
-    for org_dict in org_list:
-        _hide_sensitive_fields(org_dict)
+    context["_skip_restriction_check"] = True
 
-def _hide_sensitive_fields(org_dict: types.DataDict) -> None:
-    allowed_fields = (
-        "created",
-        "description",
-        "id",
-        "image_display_url",
-        "is_organization",
-        "name",
-        "title",
-    )
+    org_list: types.ActionResult.OrganizationList = next_(context, data_dict)
 
-    for field_name in list(org_dict.keys()):
-        if field_name in allowed_fields:
+    filtered_orgs = _hide_restricted_orgs(context, org_list)
+
+    if not all_fields:
+        return [org["name"] for org in filtered_orgs]
+
+    return filtered_orgs
+
+
+def _hide_restricted_orgs(
+    context: types.Context,
+    org_list: types.ActionResult.OrganizationList,
+) -> types.ActionResult.OrganizationList:
+    """Throw out organisation if it's restricted and user doesn't have access to it"""
+    result = []
+
+    for org in org_list:
+        if not utils.user_has_org_access(org["id"], context["user"]):
             continue
 
-        org_dict.pop(field_name, None)
+        result.append(org)
+
+    return result

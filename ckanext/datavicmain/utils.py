@@ -1,10 +1,13 @@
 from __future__ import annotations
+from itertools import chain
 
 from typing import Any, TypedDict
 
 import ckan.types as types
 import ckan.model as model
 import ckan.plugins.toolkit as tk
+
+import ckanext.datavicmain.const as const
 
 
 PENDING_USERS_FLAKE_NAME = "datavic:organization:join_request"
@@ -174,3 +177,74 @@ def notify_about_org_join_request(username: str, orgname: str) -> None:
             "link": tk.h.url_for("home.index", qualified=True),
         },
     )
+
+
+def user_has_org_access(org_id: str, user_id: str):
+    """Organisation could be restricted. Only sysadmins and org members should
+    have an access to the restricted organisation"""
+
+    if not is_org_restricted(org_id):
+        return True
+
+    user_orgs = tk.get_action("organization_list_for_user")(
+        {"ignore_auth": True}, {"id": user_id}
+    )
+
+    for org in user_orgs:
+        if org_id in [org["id"], org["name"]]:
+            return True
+
+    return False
+
+
+def is_org_restricted(org_id: str) -> bool:
+    """Check if the organization is restricted"""
+    is_restricted = bool(
+        model.Session.query(model.GroupExtra)
+        .filter(model.GroupExtra.group_id == org_id)
+        .filter(model.GroupExtra.key == const.ORG_VISIBILITY_FIELD)
+        .filter(model.GroupExtra.value == const.ORG_RESTRICTED)
+        .first()
+    )
+
+    return is_restricted or bool(get_org_restricted_parents(org_id))
+
+
+def get_org_restricted_parents(org_id: str) -> list[model.Group]:
+    """Return a list of organisation restricted parents hierarchy. Restriction
+    is inherited, so if the org is restricted all child orgs will be treated as
+    restricted as well"""
+    organization = model.Group.get(org_id)
+
+    if not organization:
+        return []
+
+    parent_orgs = organization.get_parent_group_hierarchy("organization")
+
+    if not parent_orgs:
+        return []
+
+    found_restricted = False
+    restricted_parents = []
+
+    for parent_org in parent_orgs:
+        if not found_restricted and (
+            parent_org.extras.get(const.ORG_VISIBILITY_FIELD)
+            == const.ORG_RESTRICTED
+        ):
+            found_restricted = True
+
+        if found_restricted:
+            restricted_parents.append(parent_org)
+
+    return restricted_parents
+
+
+def get_extra_value(
+    key: str, org_dict: types.ActionResult.OrganizationUpdate
+) -> Any | None:
+    for extra in org_dict.get("extras", []):
+        if extra["key"] != key:
+            continue
+
+        return extra["value"]

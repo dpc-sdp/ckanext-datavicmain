@@ -45,10 +45,3 @@ def package_update(next_auth, context, data_dict):
 
 def datavic_toggle_organization_uploads(context, data_dict):
     return {"success": False}
-
-
-def datavic_restricted_organization(context, data_dict):
-    if data_dict.get(const.ORG_VISIBILITY_FIELD) == const.ORG_UNRESTRICTED:
-        return {"success": True}
-
-    return tk.check_access("sysadmin", context)

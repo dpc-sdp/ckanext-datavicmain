@@ -4,6 +4,7 @@ from pytest_factoryboy import register
 
 from ckan.tests import factories
 
+from ckanext.datavicmain import const
 
 @pytest.fixture
 def clean_db(reset_db, migrate_db_for, with_plugins):
@@ -38,7 +39,7 @@ class UserFactory(factories.UserWithToken):
 
 @register
 class OrganizationFactory(factories.Organization):
-    pass
+    visibility = const.ORG_UNRESTRICTED
 
 
 class SysadminFactory(factories.SysadminWithToken):
