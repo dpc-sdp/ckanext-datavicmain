@@ -15,7 +15,7 @@ jquery-ui-js:
 datavicmain-js:
   output: ckanext-datavicmain/%(version)s_datavicmain.js
   contents:
-    - datavicmain.js
+    - datavicmain-toggle-tooltip.js
   extra:
     preload:
       - base/main

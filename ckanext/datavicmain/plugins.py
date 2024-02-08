@@ -21,6 +21,7 @@ from ckanext.transmute.interfaces import ITransmute
 from ckanext.datavicmain import helpers, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.transmutators import get_transmutators
+from ckanext.datavicmain.implementation import PermissionLabels
 
 
 config = toolkit.config
@@ -62,7 +63,7 @@ def release_date(pkg_dict):
 @toolkit.blanket.auth_functions
 @toolkit.blanket.actions
 @toolkit.blanket.validators
-class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
+class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
     overrides the default dataset form
     '''
@@ -243,6 +244,11 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             "datavic_user_is_a_member_of_org": helpers.datavic_user_is_a_member_of_org,
             "datavic_is_pending_request_to_join_org": helpers.datavic_is_pending_request_to_join_org,
             "datavic_send_email": helpers.send_email,
+            "datavic_is_org_restricted": helpers.datavic_is_org_restricted,
+            "datavic_org_has_restricted_parents": helpers.datavic_org_has_restricted_parents,
+            "datavic_restrict_hierarchy_tree": helpers.datavic_restrict_hierarchy_tree,
+            "datavic_org_has_unrestricted_child": helpers.datavic_org_has_unrestricted_child,
+            "group_tree_parents": helpers.group_tree_parents,
         }
 
     ## IConfigurer interface ##
@@ -338,6 +344,10 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     def skip_syndication(
         self, package: model.Package, profile: Profile
     ) -> bool:
+        if toolkit.h.datavic_is_org_restricted(package.owner_org):
+            log.debug("Do not syndicate %s because its organisation is restricted", package.id)
+            return True
+
         if package.type == "harvest":
             log.debug("Do not syndicate %s because it is a harvest source", package.id)
             return True
