@@ -1,6 +1,8 @@
 {% import 'macros/form.html' as form %}
 
-{% set has_restricted_parent = h.datavic_org_has_restricted_parents(data.id) %}
+{% if data.id %}
+    {% set has_restricted_parent = h.datavic_org_has_restricted_parents(data.id) %}
+{% endif %}
 
 {% set options=[] %}
 {% set attrs = dict({"class": "form-control"}, **(field.get('form_attrs', {}))) %}
