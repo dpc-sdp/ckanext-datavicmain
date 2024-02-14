@@ -13,14 +13,14 @@ from ckanext.datavicmain import helpers
 @tk.auth_sysadmins_check
 @tk.auth_allow_anonymous_access
 def user_update(context, data_dict=None):
-    if tk.request and tk.get_endpoint() == ('user', 'perform_reset'):
+    if tk.request and tk.get_endpoint() == ('datavicuser', 'perform_reset'):
         # Allow anonymous access to the user/reset path, i.e. password resets.
         return {'success': True}
     elif 'save' in context and context['save']:
         if 'email' in tk.request.args:
             schema = context.get('schema')
 
-    return {'success': True}
+    return {"success": True}
 
 
 @tk.auth_allow_anonymous_access
@@ -30,7 +30,7 @@ def user_reset(context, data_dict):
                 'msg': tk._('User %s not authorized to reset password') %
                 (str(context.get('user')))}
     else:
-        return {'success': True}
+        return {"success": True}
 
 
 @tk.chained_auth_function
@@ -51,18 +51,20 @@ def datavic_toggle_organization_uploads(context, data_dict):
 
 
 def user_show(context: Context, data_dict: DataDict) -> AuthResult:
+    if tk.request and tk.get_endpoint() == ("datavicuser", "perform_reset"):
+        return {"success": True}
     user_id = authz.get_user_id_for_username(data_dict.get("id"))
-    is_myself = toolkit.current_user.id == user_id
-    is_sysadmin = toolkit.current_user.sysadmin
+    is_myself = tk.current_user.name == data_dict.get("id")
+    is_sysadmin = authz.is_sysadmin(tk.current_user.name)
 
     if is_sysadmin or is_myself:
         return {"success": True}
 
-    orgs = toolkit.get_action("organization_list_for_user")(
-        {"user": toolkit.current_user.id}, {"permission": "admin"}
+    orgs = tk.get_action("organization_list_for_user")(
+        {"user": tk.current_user.name}, {"permission": "admin"}
     )
     for org in orgs:
-        members = toolkit.get_action("member_list")(
+        members = tk.get_action("member_list")(
             {}, {"id": org.get("id"), "object_type": "user"}
         )
         member_ids = [member[0] for member in members]
