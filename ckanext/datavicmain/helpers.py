@@ -325,3 +325,8 @@ def datavic_org_uploads_allowed(org_id: str) -> bool:
         return False
 
     return flake["data"].get(org.id, False)
+
+
+def datavic_max_image_size():
+    """Return max size for image configurate for portal"""
+    return toolkit.config["ckan.max_image_size"]
