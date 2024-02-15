@@ -532,3 +532,8 @@ def _group_tree_parents(id_, type_="organization"):
         return _group_tree_parents(parent_id) + [parent_node]
     else:
         return []
+
+
+def datavic_max_image_size():
+    """Return max size for image configurate for portal"""
+    return toolkit.config["ckan.max_image_size"]

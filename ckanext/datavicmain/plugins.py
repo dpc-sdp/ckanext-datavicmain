@@ -248,6 +248,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "datavic_restrict_hierarchy_tree": helpers.datavic_restrict_hierarchy_tree,
             "datavic_org_has_unrestricted_child": helpers.datavic_org_has_unrestricted_child,
             "group_tree_parents": helpers.group_tree_parents,
+            "datavic_max_image_size": helpers.datavic_max_image_size,
         }
 
     ## IConfigurer interface ##
