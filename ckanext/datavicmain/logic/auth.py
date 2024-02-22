@@ -14,35 +14,50 @@ _t = toolkit._
 @toolkit.auth_sysadmins_check
 @toolkit.auth_allow_anonymous_access
 def user_update(context, data_dict=None):
-    if toolkit.request and toolkit.get_endpoint() == ('user', 'perform_reset'):
+    if toolkit.request and toolkit.get_endpoint() == ("datavicuser", "perform_reset"):
         # Allow anonymous access to the user/reset path, i.e. password resets.
-        return {'success': True}
-    elif 'save' in context and context['save']:
-        if 'email' in toolkit.request.args:
-            schema = context.get('schema')
+        return {"success": True}
+    elif "save" in context and context["save"]:
+        if "email" in toolkit.request.args:
+            schema = context.get("schema")
 
-    return {'success': True}
+    return {"success": True}
 
 
 @toolkit.auth_allow_anonymous_access
 def user_reset(context, data_dict):
-    if helpers.is_user_account_pending_review(context.get('user', None)):
-        return {'success': False,
-                'msg': _t('User %s not authorized to reset password') %
-                (str(context.get('user')))}
+    if helpers.is_user_account_pending_review(context.get("user", None)):
+        return {
+            "success": False,
+            "msg": _t("User %s not authorized to reset password")
+            % (str(context.get("user"))),
+        }
     else:
-        return {'success': True}
+        return {"success": True}
 
 
 @toolkit.chained_auth_function
 def package_update(next_auth, context, data_dict):
-    if toolkit.request and toolkit.get_endpoint()[0] in ['dataset', 'package'] and toolkit.get_endpoint()[1] in ['read', 'edit', 'resource_read', 'resource_edit']:
+    if (
+        toolkit.request
+        and toolkit.get_endpoint()[0] in ["dataset", "package"]
+        and toolkit.get_endpoint()[1]
+        in ["read", "edit", "resource_read", "resource_edit"]
+    ):
         # Harvested dataset are not allowed to be updated, apart from sysadmins
-        package_id = data_dict.get('id') if data_dict else toolkit.g.pkg_dict.get('id') if 'pkg_dict' in toolkit.g else None
+        package_id = (
+            data_dict.get("id")
+            if data_dict
+            else toolkit.g.pkg_dict.get("id")
+            if "pkg_dict" in toolkit.g
+            else None
+        )
         if package_id and helpers.is_dataset_harvested(package_id):
-            return {'success': False,
-                    'msg': _t('User %s not authorized to edit this harvested package') %
-                    (str(context.get('user')))}
+            return {
+                "success": False,
+                "msg": _t("User %s not authorized to edit this harvested package")
+                % (str(context.get("user"))),
+            }
 
     return next_auth(context, data_dict)
 
@@ -52,15 +67,17 @@ def datavic_toggle_organization_uploads(context, data_dict):
 
 
 def user_show(context: Context, data_dict: DataDict) -> AuthResult:
+    if toolkit.request and toolkit.get_endpoint() == ("datavicuser", "perform_reset"):
+        return {"success": True}
     user_id = authz.get_user_id_for_username(data_dict.get("id"))
-    is_myself = toolkit.current_user.id == user_id
-    is_sysadmin = toolkit.current_user.sysadmin
+    is_myself = toolkit.current_user.name == data_dict.get("id")
+    is_sysadmin = authz.is_sysadmin(toolkit.current_user.name)
 
     if is_sysadmin or is_myself:
         return {"success": True}
 
     orgs = toolkit.get_action("organization_list_for_user")(
-        {"user": toolkit.current_user.id}, {"permission": "admin"}
+        {"user": toolkit.current_user.name}, {"permission": "admin"}
     )
     for org in orgs:
         members = toolkit.get_action("member_list")(
