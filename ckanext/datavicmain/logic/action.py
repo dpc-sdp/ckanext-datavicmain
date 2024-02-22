@@ -4,31 +4,21 @@ import logging
 from typing import Any
 
 import ckan.lib.plugins as lib_plugins
+import ckan.model as model
 import ckan.plugins.toolkit as toolkit
+import ckan.types as types
 import ckanapi
-import ckanext.datavic_iar_theme.helpers as theme_helpers
-from ckan import model
-from ckan.lib.dictization import model_dictize, model_save, table_dictize
 from ckan.lib.navl.validators import not_empty  # noqa
-from ckan.logic import schema as ckan_schema
 from ckan.logic import validate
-from ckan.model import State
 from ckan.types import Action, Context, DataDict
 from ckan.types.logic import ActionResult
-from ckanext.datavicmain import helpers, jobs
+from ckanext.datavicmain import const, helpers, jobs, utils
+from ckanext.datavicmain.helpers import user_is_registering
 from ckanext.datavicmain.logic import schema as vic_schema
+from ckanext.datavicmain.logic.schema import custom_user_create_schema
 from ckanext.mailcraft.exception import MailerException
 from ckanext.mailcraft.utils import get_mailer
 from sqlalchemy import or_
-
-import ckan.model as model
-import ckan.types as types
-import ckan.plugins.toolkit as toolkit
-
-from ckanext.datavicmain import utils, const, jobs
-from ckanext.datavicmain.helpers import user_is_registering
-from ckanext.datavicmain.logic.schema import custom_user_create_schema
-
 
 log = logging.getLogger(__name__)
 user_is_registering = helpers.user_is_registering
@@ -108,7 +98,8 @@ def organization_update(next_, context, data_dict):
 
     if new_visibility != current_visibility:
         log.info(
-            "The organisation %s visibility has changed. Rebuilding datasets index",
+            "The organisation %s visibility has changed. Rebuilding datasets"
+            " index",
             org_dict["id"],
         )
         toolkit.enqueue_job(jobs.reindex_organization, [org_dict["id"]])
