@@ -10,7 +10,7 @@ import ckan.types as types
 import ckanapi
 from ckan.lib.navl.validators import not_empty  # noqa
 from ckan.logic import validate
-from ckan.types import Action, Context, DataDict
+from ckan.types import Action, Context, DataDict, ErrorDict
 from ckan.types.logic import ActionResult
 from ckanext.datavicmain import const, helpers, jobs, utils
 from ckanext.datavicmain.helpers import user_is_registering
@@ -24,7 +24,6 @@ log = logging.getLogger(__name__)
 user_is_registering = helpers.user_is_registering
 ValidationError = toolkit.ValidationError
 get_action = toolkit.get_action
-_validate = toolkit.navl_validate
 
 CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS = (
     "ckanext.datavicmain.synchronized_organization_fields"
@@ -114,8 +113,8 @@ def resource_update(
     try:
         result = next_(context, data_dict)
         return result
-    except ValidationError:
-        _show_errors_in_sibling_resources(context, data_dict)
+    except ValidationError as e:
+        _show_errors_in_sibling_resources(context, data_dict, e.error_dict)
 
 
 @toolkit.chained_action
@@ -125,12 +124,12 @@ def resource_create(
     try:
         result = next_(context, data_dict)
         return result
-    except ValidationError:
-        _show_errors_in_sibling_resources(context, data_dict)
+    except ValidationError as e:
+        _show_errors_in_sibling_resources(context, data_dict, e.error_dict)
 
 
 def _show_errors_in_sibling_resources(
-    context: Context, data_dict: DataDict
+    context: Context, data_dict: DataDict, current_resource_errors: ErrorDict
 ) -> Any:
     """Retrieves and raises validation errors for resources within the same package."""
     pkg_dict = toolkit.get_action("package_show")(
@@ -147,18 +146,23 @@ def _show_errors_in_sibling_resources(
         "package_update",
     )
 
-    resources_errors = errors["resources"]
-    del errors["resources"]
+    resources_errors = errors.pop("resources", {})
 
     for i, resource_error in enumerate(resources_errors):
         if not resource_error:
             continue
-        errors.update({
-            f"Field '{field}' in the resource '{pkg_dict['resources'][i]['name']}'": (
-                error
-            )
-            for field, error in resource_error.items()
-        })
+
+        errors.update(
+            {
+                f"Field '{field}' in the resource '{pkg_dict['resources'][i]['name']}'": (
+                    error
+                )
+                for field, error in resource_error.items()
+            }
+        )
+
+    errors.update(current_resource_errors)
+
     if errors:
         raise ValidationError(errors)
 
@@ -195,8 +199,9 @@ def send_delwp_data_request(context, data_dict):
 @toolkit.side_effect_free
 def datavic_list_incomplete_resources(context, data_dict):
     """Retrieves a list of resources that are missing at least one required field."""
+    pkg_type = data_dict.get("type", "dataset")
+
     try:
-        pkg_type = data_dict.get("type", "dataset")
         resource_schema = toolkit.h.scheming_get_dataset_schema(pkg_type)[
             "resource_fields"
         ]
@@ -249,14 +254,16 @@ def datavic_list_incomplete_resources(context, data_dict):
         package_ids = set()
         for resource in q:
             package_ids.add(resource.package_id)
-            results.append({
-                "id": resource.id,
-                "missing_fields": [
-                    field
-                    for field in required_fields
-                    if not getattr(resource, field)
-                ],
-            })
+            results.append(
+                {
+                    "id": resource.id,
+                    "missing_fields": [
+                        field
+                        for field in required_fields
+                        if not getattr(resource, field)
+                    ],
+                }
+            )
         num_packages = len(package_ids)
 
     return {
