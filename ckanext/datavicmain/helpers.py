@@ -203,10 +203,12 @@ def workflow_status_options(current_workflow_status, owner_org):
         for option in workflow_helpers.get_available_workflow_statuses(
             current_workflow_status, owner_org, user
         ):
-            options.append({
-                "value": option,
-                "text": option.replace("_", " ").capitalize(),
-            })
+            options.append(
+                {
+                    "value": option,
+                    "text": option.replace("_", " ").capitalize(),
+                }
+            )
 
         return options
     else:
@@ -292,7 +294,9 @@ def get_digital_twin_resources(pkg_id: str) -> list[dict[str, Any]]:
     }
 
     try:
-        pkg = toolkit.get_action("package_show")({}, {"id": pkg_id})
+        pkg = toolkit.get_action("package_show")(
+            {"ignore_auth": True}, {"id": pkg_id}
+        )
     except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
         return []
 
@@ -518,7 +522,11 @@ def group_tree_parents(next_func, id_, type_="organization"):
 
 
 def _group_tree_parents(id_, type_="organization"):
-    tree_node = toolkit.get_action("organization_show")({}, {"id": id_})
+    try:
+        tree_node = toolkit.get_action("organization_show")({}, {"id": id_})
+    except toolkit.ObjectNotFound:
+        return []
+
     if tree_node["groups"]:
         parent_id = tree_node["groups"][0]["name"]
 
@@ -532,3 +540,23 @@ def _group_tree_parents(id_, type_="organization"):
         return _group_tree_parents(parent_id) + [parent_node]
     else:
         return []
+
+
+def add_curent_organisation(
+    avalable_organisations: list[dict[str, Any]], current_org: dict[str, Any]
+):
+    """When user doesn't have an access to an organisation, it won't be included
+    for a list of available organisations. Include it there, but check if it's
+    not already there"""
+
+    current_org_included = False
+
+    for organization in avalable_organisations:
+        if organization["id"] == current_org["id"]:
+            current_org_included = True
+            break
+
+    if not current_org_included:
+        avalable_organisations.append(current_org)
+
+    return avalable_organisations

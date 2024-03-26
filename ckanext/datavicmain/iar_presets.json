@@ -10,6 +10,13 @@
                 "form_snippet": "select.html",
                 "display_snippet": "select.html"
             }
+        },
+        {
+            "preset_name": "vic_dataset_organization",
+            "values": {
+              "validators": "datavic_owner_org_validator unicode_safe",
+              "form_snippet": "organization.html"
+            }
         }
     ]
 }
