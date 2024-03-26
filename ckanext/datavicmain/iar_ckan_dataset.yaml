@@ -54,7 +54,7 @@ dataset_fields:
 - field_name: owner_org
   label: Organization
   display_group: General
-  preset: dataset_organization
+  preset: vic_dataset_organization
 
 - field_name: agency_program_domain
   label: Agency Program/Domain

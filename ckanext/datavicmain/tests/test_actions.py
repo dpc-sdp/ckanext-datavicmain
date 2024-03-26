@@ -46,7 +46,6 @@ class TestOrganisationListRestricted(object):
 
         assert not results
 
-
     def test_not_resticted_for_sysadmins(self, sysadmin, organization_factory):
         organization_factory(
             **{const.ORG_VISIBILITY_FIELD: const.ORG_RESTRICTED}
@@ -66,9 +65,3 @@ class TestOrganisationListRestricted(object):
         )
 
         assert results
-
-@pytest.mark.usefixtures("with_plugins", "clean_db")
-class TestOrganisationUpdate(object):
-    @mock.patch("ckanext.datavicmain.logic.action.notify_about_org_join_request")
-    def test_reindex_not_triggered(self, reindex_job, organization):
-        pass
