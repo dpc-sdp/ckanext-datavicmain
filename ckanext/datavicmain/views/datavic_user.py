@@ -223,31 +223,18 @@ class DataVicUserEditView(user.EditView):
             abort(400, _("Integrity Error"))
         data_dict.setdefault("activity_streams_email_notifications", False)
 
-        context[u'message'] = data_dict.get(u'log_message', u'')
-        data_dict[u'id'] = id
-        email_changed = data_dict[u'email'] != toolkit.current_user.email
+        context["message"] = data_dict.get("log_message", "")
+        data_dict["id"] = id
+        email_changed = data_dict["email"] != g.userobj.email
 
-        if (data_dict[u'password1']
-                and data_dict[u'password2']) or email_changed:
-
-            # CUSTOM CODE to allow updating user pass for sysadmin without a sys pass
-            self_update = data_dict["name"] == toolkit.current_user.name
-            is_sysadmin = False if toolkit.current_user.is_anonymous else toolkit.current_user.sysadmin  # type: ignore
-
-            if not is_sysadmin or self_update:
-                identity = {
-                    u'login': toolkit.current_user.name,
-                    u'password': data_dict[u'old_password']
-                }
-                auth_user = authenticator.ckan_authenticator(identity)
-                auth_username = auth_user.name if auth_user else ''
-
-                if auth_username != toolkit.current_user.name:
-                    errors = {
-                        u'oldpassword': [_(u'Password entered was incorrect')]
-                    }
-                    error_summary = {_(u'Old Password'): _(u'incorrect password')}
-                    return self.get(id, data_dict, errors, error_summary)
+        if (data_dict["password1"] and data_dict["password2"]) or email_changed:
+            identity = {"login": g.user, "password": data_dict["old_password"]}
+            auth_user = authenticator.ckan_authenticator(identity)
+            auth_username = auth_user.name if auth_user else ""
+            if auth_username != toolkit.current_user.name:
+                errors = {"oldpassword": [_("Password entered was incorrect")]}
+                error_summary = {_("Old Password"): _("incorrect password")}
+                return self.get(id, data_dict, errors, error_summary)
 
         try:
             user = get_action("user_update")(context, data_dict)

@@ -250,6 +250,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "group_tree_parents": helpers.group_tree_parents,
             "datavic_max_image_size": helpers.datavic_max_image_size,
             "add_curent_organisation": helpers.add_curent_organisation,
+            "datavic_get_dtv_url": helpers.datavic_get_dtv_url
         }
 
     ## IConfigurer interface ##
