@@ -19,7 +19,9 @@ import ckan.lib.mailer as mailer
 
 from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
+
 from . import utils
+from ckanext.datavicmain.config import get_dtv_url
 
 config = toolkit.config
 request = toolkit.request
@@ -326,3 +328,16 @@ def datavic_org_uploads_allowed(org_id: str) -> bool:
         return False
 
     return flake["data"].get(org.id, False)
+
+
+def datavic_get_dtv_url() -> str:
+    """Return a URL for DTV map preview"""
+    url = get_dtv_url()
+
+    if not url:
+        return url
+
+    if not url.endswith("/"):
+        url = url + "/"
+
+    return url
