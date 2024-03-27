@@ -238,6 +238,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'get_digital_twin_resources': helpers.get_digital_twin_resources,
             'url_for_dtv_config': helpers.url_for_dtv_config,
             "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
+            "datavic_get_dtv_url": helpers.datavic_get_dtv_url
         }
 
     ## IConfigurer interface ##
