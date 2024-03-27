@@ -192,7 +192,7 @@ def send_delwp_data_request(context, data_dict):
     try:
         mailer.mail_recipients(
             "Data request",
-            [data_dict["contact_email"]],
+            [toolkit.config["ckanext.datavicmain.data_request.contact_point"]],
             body=toolkit.render(
                 "mailcraft/emails/request_delwp_data/body.txt",
                 data_dict,

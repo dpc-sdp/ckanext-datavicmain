@@ -150,14 +150,7 @@ def delwp_request_data(package_type: str, package_id: str):
         tk.abort(403)
 
     data_dict = dict(tk.request.form)
-    data_dict.update(
-        {
-            "package_id": pkg_dict["name"],
-            "contact_email": pkg_dict.get(
-                "maintainer_email", "data.vic@salsadigital.com.au"
-            ),
-        }
-    )
+    data_dict.update({"package_id": pkg_dict["name"]})
 
     try:
         result = tk.get_action("send_delwp_data_request")({}, data_dict)
