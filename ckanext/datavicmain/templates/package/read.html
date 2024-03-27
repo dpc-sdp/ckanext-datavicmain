@@ -49,11 +49,21 @@
             <h2>{{ _("Access Notes") }}</h2>
 
             {% if vector_data %}
-                <p>Access to this dataset is provided by the Department of Energy, Environment and Climate Action (DEECA). Use the form below to make your request to DEECA. The data custodian will respond to your request by email, and provide the necessary instructions to access this dataset.</p>
+                <p>Access to this dataset is managed  by the Department of Energy, Environment and Climate Action (DEECA). Use the form below to make your request to DEECA. The data custodian will respond to your request by email, and provide the necessary instructions to access this dataset.</p>
             {% endif %}
 
             {% if not vector_data and raster_data %}
-                <p>Access to this dataset is provided through Data Service Providers, please see this page for an up to date list of suppliers - <a href="https://www.land.vic.gov.au/maps-and-spatial/spatial-data/how-to-access-spatial-data" target="_blank">Accessing spatial data</a>. For more information you can contact the <a href="mailto:coordinated.imagery@delwp.vic.gov.au">Coordinated Imagery Program</a>.</p>
+                <p style="word-break: break-all;">Access to this dataset is provided through Data Service Providers, please see <a href="https://www.land.vic.gov.au/maps-and-spatial/spatial-data/how-to-access-spatial-data" target="_blank">Accessing spatial data</a> for an up to date list of suppliers. For more information see <a href="http://land.vic.gov.au/maps-and-spatial/imagery/coordinated-imagery-program">Coordinated Imagery Program</a>. Email: <a href="mailto:coordinated.imagery@delwp.vic.gov.au">coordinated.imagery@delwp.vic.gov.au</a></p>
+                <div>
+                    <h4>Aerial imagery and elevation datasets</h4>
+                    <p>You can access high-resolution aerial imagery and elevation (LiDAR point cloud) datasets by contacting a business that holds a commercial licence.</p>
+                    <p>We have two types of commercial licensing:</p>
+
+                    <ol>
+                        <li><b>Data Service Providers (DSPs)</b> provide access to the source imagery or elevation data.</li>
+                        <li><b>Value Added Retailers (VARs)</b> use the imagery and elevation data to create new products and services. This includes advisory services and new knowledge products.</li>
+                    </ol>
+                </div>
             {% endif %}
         </section>
     {% endif %}

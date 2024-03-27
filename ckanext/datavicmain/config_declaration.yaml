@@ -8,3 +8,6 @@ groups:
 
       - key: ckan.pages.base_url
         default: pages
+
+      - key: ckanext.datavicmain.data_request.contact_email
+        default: datavic@dpc.vic.gov.au
