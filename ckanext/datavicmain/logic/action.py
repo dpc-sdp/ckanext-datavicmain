@@ -179,7 +179,7 @@ def send_delwp_data_request(context, data_dict):
 
     try:
         mailer.mail_recipients(
-            "Data request",
+            "Data request via VPS Data Directory",
             [toolkit.config["ckanext.datavicmain.data_request.contact_point"]],
             body=toolkit.render(
                 "mailcraft/emails/request_delwp_data/body.txt",
