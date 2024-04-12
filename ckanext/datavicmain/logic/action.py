@@ -4,6 +4,7 @@ import logging
 
 import ckanapi
 
+from ckan.common import g
 from ckan.model import State
 from ckan.lib.dictization import model_dictize, model_save
 from ckan.logic import schema as ckan_schema, validate
@@ -189,9 +190,13 @@ def send_delwp_data_request(context, data_dict):
         "site_url": toolkit.config.get("ckan.site_url")
     })
 
+    pkg_title = data_dict["__extras"]["package_title"]
+    user = g.userobj.fullname or g.user
+    subject = f"Data request via VPS Data Directory - {pkg_title} requested by {user}"
+
     try:
         mailer.mail_recipients(
-            "Data request via VPS Data Directory",
+            subject,
             [toolkit.config["ckanext.datavicmain.data_request.contact_point"]],
             body=toolkit.render(
                 "mailcraft/emails/request_delwp_data/body.txt",
