@@ -3,10 +3,7 @@ import ckan.plugins.toolkit as tk
 from ckan import authz
 from ckan.types import Context, DataDict, AuthResult
 
-from ckan import authz
-from ckan.types import Context, DataDict, AuthResult
-
-from ckanext.datavicmain import helpers
+from ckanext.datavicmain import helpers, const
 
 
 #   Need this decorator to force auth function to be checked for sysadmins aswell
@@ -67,7 +64,10 @@ def datavic_toggle_organization_uploads(context, data_dict):
 
 
 def user_show(context: Context, data_dict: DataDict) -> AuthResult:
-    if tk.request and tk.get_endpoint() == ("datavicuser", "perform_reset"):
+    if tk.request and (
+        tk.get_endpoint() == ("datavicuser", "perform_reset") or
+        tk.get_endpoint() == ("activity", "user_activity")
+    ):
         return {"success": True}
     user_id = authz.get_user_id_for_username(data_dict.get("id"))
     is_myself = tk.current_user.name == data_dict.get("id")
