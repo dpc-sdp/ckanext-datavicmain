@@ -150,7 +150,10 @@ def delwp_request_data(package_type: str, package_id: str):
         tk.abort(403)
 
     data_dict = dict(tk.request.form)
-    data_dict.update({"package_id": pkg_dict["name"]})
+    data_dict.update({
+        "package_id": pkg_dict["name"],
+        "package_title": pkg_dict["title"]
+    })
 
     try:
         result = tk.get_action("send_delwp_data_request")({}, data_dict)
