@@ -1,19 +1,25 @@
 import logging
 from typing import Any
 
+from sqlalchemy import or_
+
 import ckan.lib.plugins as lib_plugins
 import ckan.plugins.toolkit as toolkit
 import ckanapi
 import ckanext.datavic_iar_theme.helpers as theme_helpers
 from ckan import model
-from ckan.lib.dictization import model_dictize, model_save, table_dictize
+from ckan.lib.dictization import model_dictize, model_save
 from ckan.lib.navl.validators import not_empty
-from ckan.logic import schema as ckan_schema
+from ckan.logic import schema as ckan_schema, validate
 from ckan.model import State
 from ckan.types import Action, Context, DataDict
 from ckan.types.logic import ActionResult
-from ckanext.datavicmain import helpers, jobs
-from sqlalchemy import or_
+
+from ckanext.mailcraft.utils import get_mailer
+from ckanext.mailcraft.exception import MailerException
+
+from ckanext.datavicmain import helpers
+from ckanext.datavicmain.logic import schema as vic_schema
 
 _check_access = toolkit.check_access
 config = toolkit.config
@@ -22,7 +28,6 @@ user_is_registering = helpers.user_is_registering
 ValidationError = toolkit.ValidationError
 get_action = toolkit.get_action
 _validate = toolkit.navl_validate
-_get_or_bust = toolkit.get_or_bust
 
 CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS = (
     "ckanext.datavicmain.synchronized_organization_fields"
@@ -226,12 +231,14 @@ def _show_errors_in_sibling_resources(
     for i, resource_error in enumerate(resources_errors):
         if not resource_error:
             continue
-        errors.update({
-            f"Field '{field}' in the resource '{pkg_dict['resources'][i]['name']}'": (
-                error
-            )
-            for field, error in resource_error.items()
-        })
+        errors.update(
+            {
+                f"Field '{field}' in the resource '{pkg_dict['resources'][i]['name']}'": (
+                    error
+                )
+                for field, error in resource_error.items()
+            }
+        )
     if errors:
         raise ValidationError(errors)
 
@@ -293,14 +300,16 @@ def datavic_list_incomplete_resources(context, data_dict):
         package_ids = set()
         for resource in q:
             package_ids.add(resource.package_id)
-            results.append({
-                "id": resource.id,
-                "missing_fields": [
-                    field
-                    for field in required_fields
-                    if not getattr(resource, field)
-                ],
-            })
+            results.append(
+                {
+                    "id": resource.id,
+                    "missing_fields": [
+                        field
+                        for field in required_fields
+                        if not getattr(resource, field)
+                    ],
+                }
+            )
         num_packages = len(package_ids)
 
     return {
@@ -308,3 +317,34 @@ def datavic_list_incomplete_resources(context, data_dict):
         "num_packages": num_packages,
         "results": results,
     }
+
+
+@validate(vic_schema.delwp_data_request_schema)
+def send_delwp_data_request(context, data_dict):
+    """Send a notification to admin about a new data request"""
+    mailer = get_mailer()
+
+    data_dict.update(
+        {
+            "site_title": toolkit.config.get("ckan.site_title"),
+            "site_url": toolkit.config.get("ckan.site_url"),
+        }
+    )
+
+    try:
+        mailer.mail_recipients(
+            "Data request",
+            [toolkit.config["ckanext.datavicmain.data_request.contact_point"]],
+            body=toolkit.render(
+                "mailcraft/emails/request_delwp_data/body.txt",
+                data_dict,
+            ),
+            body_html=toolkit.render(
+                "mailcraft/emails/request_delwp_data/body.html",
+                data_dict,
+            ),
+        )
+    except MailerException:
+        return {"success": False}
+
+    return {"success": True}

@@ -1,0 +1,63 @@
+{% import 'macros/form.html' as form %}
+
+{% set user = g.userobj %}
+<section id="data-request-form" class="data-request-form">
+    <h3>{{ _('Data Request Form') }}</h3>
+
+    <p>To access the data, complete the form below. This is sent directly to the DEECA data custodian who will action your request.</p>
+    <form class="form form-horizontal" action="{{ h.url_for('datavic_dataset.delwp_request_data', package_id=pkg.id) }}" method="POST">
+        <div class="form-controls">
+            <div class="form-group">
+                {% set name = data.name or user.fullname if user.fullname else user.name %}
+
+                <label for="username">{{ _('Name') }} <span class="required">(Required)</span></label>
+                <input type="text" id="field-username" name="username" class="form-control" required="1" value="{{ name }}">
+            </div>
+
+
+            <div class="form-group">
+                {% set email = data.email if data else user.email %}
+
+                <label for="email">{{ _('Email') }} <span class="required">({{ _("Required") }})</span></label>
+                <input type="email" id="field-email" name="email" class="form-control" required="1" value="{{ email }}">
+            </div>
+
+            <div class="form-group">
+                {% set user_orgs = h.get_user_organizations(g.userobj.name) %}
+                {% set org_name = data.organisation if data else ("" if user_orgs | length > 1 else user_orgs[0].title) %}
+                <label for="organisation">{{ _('Organisation') }} <span class="required">({{ _("Required") }})</span></label>
+                <input type="text" id="field-organisation" name="organisation" class="form-control" required="1" value="{{ org_name }}">
+            </div>
+
+            <div class="form-group">
+                <label for="message">{{ _('Details of your request') }} <span class="required">({{ _("Required") }})</span></label>
+                <p>Please include the reason for your request, time period of interest, file format/s you are seeking and any other relevant details.</p>
+                <textarea type="text" id="field-message" name="message" class="form-control" required="1" cols="30" rows="10">{{ data.message if data }}</textarea>
+            </div>
+        </div>
+
+        <div class="privacy-statement">
+            <p>The Department of Premier and Cabinet collects the information that you provide with this enquiry form. We use the information you provide to respond to your enquiry. You can request access to, and corrections of, any personal information provided in this form. Requests for access or correction should be sent to <a href="mailto:contact@dpc.vic.gov.au?subject=Contact%20data.vic%20regarding%20privacy%20and%20personal%20information%20submitted%20in%20the%20enquiry%20form" target="" data-print-url="mailto:contact@dpc.vic.gov.au?subject=Contact%20data.vic%20regarding%20privacy%20and%20personal%20information%20submitted%20in%20the%20enquiry%20form" class="rpl-link rpl-text-link"><span class="rpl-link__inner"><span class="rpl-text-label"><span>contact@dpc.vic.gov.au</span></span></span></a>.</p>
+
+            <p>The Department is using the services of CKAN to administer this form. The information that you provide is emailed directly to the maintainer of this dataset.</p>
+
+            <p>For more information on the Department’s handling of any personal information, please refer to the <a href="https://www.vic.gov.au/privacy-vicgovau" target="" data-print-url="https://www.vic.gov.au/privacy-vicgovau" class="rpl-link rpl-text-link"><span class="rpl-link__inner"><span class="rpl-text-label"><span><span>vic.gov.au Privacy</span> <span class="rpl-text-icon__group"> Statement</span></span></span></span></a>.</p>
+
+            <p>If you do not provide all or part of the information requested, we may not be able to contact you about your enquiry. Please <a href="mailto:contact@dpc.vic.gov.au?subject=Contacting%20data.vic" target="" data-print-url="mailto:contact@dpc.vic.gov.au?subject=Contacting%20data.vic" class="rpl-link rpl-text-link"><span class="rpl-link__inner"><span class="rpl-text-label"><span>email us</span></span></span></a> if you want to use an alternative mechanism to the online form.</p>
+
+            <div class="form-group">
+                <label class="rpl-checkbox" for="terms" data-module="datavic-checkbox">
+                    <input type="checkbox" id="field-terms" name="terms" value="yes" required/>
+                    <span class="rpl-checkbox__box">
+                        {% snippet 'snippets/svg/checkbox-tick.svg', hide=1 %}
+                    </span>
+                    <span class="rpl-checkbox__inline-label">{{ _('I have read and understand how Department of Premier and Cabinet stores information.') }}</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <input type="submit" class="btn-primary" value="{{ _('Submit') }}" />
+        </div>
+    </form>
+</section>

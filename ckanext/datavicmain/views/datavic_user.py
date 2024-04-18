@@ -1,6 +1,5 @@
 import logging
 import six
-import ckan.lib.mailer as mailer
 import ckan.plugins.toolkit as toolkit
 import ckan.logic as logic
 import ckan.model as model
@@ -17,6 +16,8 @@ from flask.views import MethodView
 from ckan.common import _, g, request
 from ckan import authz
 
+from ckanext.mailcraft.utils import get_mailer
+from ckanext.mailcraft.exception import MailerException
 
 NotFound = toolkit.ObjectNotFound
 NotAuthorized = toolkit.NotAuthorized
@@ -36,7 +37,6 @@ tuplize_dict = logic.tuplize_dict
 parse_params = logic.parse_params
 clean_dict = logic.clean_dict
 
-_edit_form_to_db_schema = user._edit_form_to_db_schema
 _extra_template_variables = user._extra_template_variables
 edit_user_form = user.edit_user_form
 set_repoze_user = user.set_repoze_user
@@ -101,7 +101,7 @@ class DataVicRequestResetView(user.RequestResetView):
                     return h.redirect_to("/user/reset")
                 else:
                     mailer.send_reset_link(user_obj)
-            except mailer.MailerException as e:
+            except MailerException as e:
                 h.flash_error(
                     _(
                         "Error sending the email. Try again later "
@@ -203,11 +203,15 @@ class DataVicUserEditView(user.EditView):
         if not context["save"]:
             return self.get(id)
 
-        if id in (g.userobj.id, g.userobj.name):
-            current_user = True
-        else:
-            current_user = False
-        old_username = g.userobj.name
+        current_user = id in (
+            (
+                ""
+                if toolkit.current_user.is_anonymous
+                else toolkit.current_user.id
+            ),
+            toolkit.current_user.name,
+        )
+        old_username = toolkit.current_user.name
 
         try:
             data_dict = clean_dict(unflatten(tuplize_dict(parse_params(request.form))))
