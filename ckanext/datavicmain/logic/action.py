@@ -1,13 +1,13 @@
 import logging
 from typing import Any
 
+import ckanapi
 from sqlalchemy import or_
 
 import ckan.lib.plugins as lib_plugins
 import ckan.plugins.toolkit as toolkit
-import ckanapi
-import ckanext.datavic_iar_theme.helpers as theme_helpers
 from ckan import model
+from ckan.common import g
 from ckan.lib.dictization import model_dictize, model_save
 from ckan.lib.navl.validators import not_empty
 from ckan.logic import schema as ckan_schema, validate
@@ -18,6 +18,7 @@ from ckan.types.logic import ActionResult
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
 
+import ckanext.datavic_iar_theme.helpers as theme_helpers
 from ckanext.datavicmain import helpers
 from ckanext.datavicmain.logic import schema as vic_schema
 
@@ -331,9 +332,13 @@ def send_delwp_data_request(context, data_dict):
         }
     )
 
+    pkg_title = data_dict["__extras"]["package_title"]
+    user = g.userobj.fullname or g.user
+    subject = f"Data request via VPS Data Directory - {pkg_title} requested by {user}"
+
     try:
         mailer.mail_recipients(
-            "Data request",
+            subject,
             [toolkit.config["ckanext.datavicmain.data_request.contact_point"]],
             body=toolkit.render(
                 "mailcraft/emails/request_delwp_data/body.txt",
