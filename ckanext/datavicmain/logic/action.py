@@ -16,6 +16,10 @@ from ckanext.datavicmain import const, helpers, jobs, utils
 from ckanext.datavicmain.helpers import user_is_registering
 
 from ckan.common import g
+from ckan.model import State
+from ckan.lib.dictization import model_dictize, model_save
+from ckan.logic import schema as ckan_schema, validate
+from ckan.lib.navl.validators import not_empty # noqa
 
 from ckanext.datavicmain.logic import schema as vic_schema
 from ckanext.datavicmain.logic.schema import custom_user_create_schema
