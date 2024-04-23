@@ -46,7 +46,7 @@ _new_user_form = user.new_user_form
 log = logging.getLogger(__name__)
 
 datavicuser = Blueprint("datavicuser", __name__)
-
+mailer = get_mailer()
 
 class DataVicRequestResetView(user.RequestResetView):
     def _prepare(self):
