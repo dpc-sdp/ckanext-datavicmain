@@ -6,7 +6,7 @@ import inspect
 import logging
 import json
 import base64
-from typing import Any
+from typing import Any, Optional
 
 from urllib.parse import urlsplit, urljoin
 
@@ -326,3 +326,16 @@ def datavic_org_uploads_allowed(org_id: str) -> bool:
         return False
 
     return flake["data"].get(org.id, False)
+
+
+def get_group(group: Optional[str] = None,
+              include_datasets: bool = False) -> dict[str, Any]:
+    if group is None:
+        return {}
+    try:
+        return toolkit.get_action("group_show")(
+            {},
+            {"id": group, "include_datasets": include_datasets}
+        )
+    except (toolkit.NotFound, toolkit.ValidationError, toolkit.NotAuthorized):
+        return {}
