@@ -15,3 +15,14 @@
     {% endblock %}
   </div>
 {% endblock %}
+
+{% block content_primary_nav %}
+  {{ h.build_nav_icon(group_type + '.read', h.humanize_entity_type('package', dataset_type, 'content tab') or _('Datasets'), id=group_dict.name, icon='sitemap') }}
+  {{ h.build_nav_icon(group_type + '.about', _('About'), id=group_dict.name, icon='info-circle') }}
+
+  {% set is_admin = h.has_user_capacity(group_dict.name, g.userobj.id, 'admin') %}
+  {% set is_editor = h.has_user_capacity(group_dict.name, g.userobj.id, 'editor') %}
+  {% if g.userobj.sysadmin or is_admin or is_editor %}
+    {{ h.build_nav_icon('activity.organization_activity', _('Activity Stream'), id=group_dict.name, offset=0, icon='clock') }}
+  {% endif %}
+{% endblock %}

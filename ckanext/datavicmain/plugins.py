@@ -253,6 +253,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
             "get_user_organizations": helpers.get_user_organizations,
             "get_group": helpers.get_group,
+            "has_user_capacity": helpers.has_user_capacity,
         }
 
     ## IConfigurer interface ##
