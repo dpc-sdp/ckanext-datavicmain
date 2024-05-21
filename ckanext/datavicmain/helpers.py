@@ -339,3 +339,33 @@ def get_group(group: Optional[str] = None,
         )
     except (toolkit.NotFound, toolkit.ValidationError, toolkit.NotAuthorized):
         return {}
+
+
+def has_user_capacity(
+    org_id: str,
+    current_user_id: str, 
+    capacity: Optional[str] = None) -> bool:
+    """Check if the current user has an appropriate capacity in the certain organization
+
+    Args:
+        org_id (str): the id or name of the organization
+        current_user_id (str): the id or name of the user
+        capacity (str): restrict the members returned to those with a given capacity,
+                        e.g. 'member', 'editor', 'admin', 'public', 'private'
+                        (optional, default: None)
+
+    Returns:
+        bool: True for success, False otherwise
+    """
+    try:
+        members = toolkit.get_action("member_list")(
+            {},
+            {"id": org_id, "object_type": "user", "capacity": capacity}
+        )
+        members_id = [member[0] for member in members]
+        if current_user_id in members_id:
+            return True
+    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
+        return False
+
+    return False
