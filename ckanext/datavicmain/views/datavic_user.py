@@ -200,7 +200,8 @@ class DataVicUserEditView(user.EditView):
 
     def post(self, id=None):
         context, id = self._prepare(id)
-        if not context["save"]:
+
+        if not context[u'save']:
             return self.get(id)
 
         current_user = id in (
@@ -214,9 +215,12 @@ class DataVicUserEditView(user.EditView):
         old_username = toolkit.current_user.name
 
         try:
-            data_dict = clean_dict(unflatten(tuplize_dict(parse_params(request.form))))
-            data_dict.update(
-                clean_dict(unflatten(tuplize_dict(parse_params(request.files))))
+            data_dict = clean_dict(
+                unflatten(
+                    tuplize_dict(parse_params(request.form))))
+            data_dict.update(clean_dict(
+                unflatten(
+                    tuplize_dict(parse_params(request.files))))
             )
 
         except DataError:
@@ -225,16 +229,29 @@ class DataVicUserEditView(user.EditView):
 
         context["message"] = data_dict.get("log_message", "")
         data_dict["id"] = id
-        email_changed = data_dict["email"] != g.userobj.email
+        email_changed = data_dict["email"] != toolkit.current_user.email
 
-        if (data_dict["password1"] and data_dict["password2"]) or email_changed:
-            identity = {"login": g.user, "password": data_dict["old_password"]}
-            auth_user = authenticator.ckan_authenticator(identity)
-            auth_username = auth_user.name if auth_user else ""
-            if auth_username != toolkit.current_user.name:
-                errors = {"oldpassword": [_("Password entered was incorrect")]}
-                error_summary = {_("Old Password"): _("incorrect password")}
-                return self.get(id, data_dict, errors, error_summary)
+        if (data_dict["password1"]
+                and data_dict["password2"]) or email_changed:
+
+            # CUSTOM CODE to allow updating user pass for sysadmin without a sys pass
+            self_update = data_dict["name"] == toolkit.current_user.name
+            is_sysadmin = False if toolkit.current_user.is_anonymous else toolkit.current_user.sysadmin  # type: ignore
+
+            if not is_sysadmin or self_update:
+                identity = {
+                    "login": toolkit.current_user.name,
+                    "password": data_dict["old_password"]
+                }
+                auth_user = authenticator.ckan_authenticator(identity)
+                auth_username = auth_user.name if auth_user else ""
+
+                if auth_username != toolkit.current_user.name:
+                    errors = {
+                        "oldpassword": [_("Password entered was incorrect")]
+                    }
+                    error_summary = {_("Old Password"): _("incorrect password")}
+                    return self.get(id, data_dict, errors, error_summary)
 
         try:
             user = get_action("user_update")(context, data_dict)
