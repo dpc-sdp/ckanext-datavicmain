@@ -196,76 +196,55 @@ class DataVicUserEditView(user.EditView):
 
     def post(self, id=None):
         context, id = self._prepare(id)
-
-        if not context[u'save']:
+        if not context["save"]:
             return self.get(id)
 
-        current_user = id in (
-            (
-                ""
-                if toolkit.current_user.is_anonymous
-                else toolkit.current_user.id
-            ),
-            toolkit.current_user.name,
-        )
-        old_username = toolkit.current_user.name
+        if id in (g.userobj.id, g.userobj.name):
+            current_user = True
+        else:
+            current_user = False
+        old_username = g.userobj.name
 
         try:
-            data_dict = clean_dict(
-                unflatten(
-                    tuplize_dict(parse_params(request.form))))
-            data_dict.update(clean_dict(
-                unflatten(
-                    tuplize_dict(parse_params(request.files))))
+            data_dict = clean_dict(unflatten(tuplize_dict(parse_params(request.form))))
+            data_dict.update(
+                clean_dict(unflatten(tuplize_dict(parse_params(request.files))))
             )
 
         except DataError:
-            abort(400, _(u'Integrity Error'))
-        data_dict.setdefault(u'activity_streams_email_notifications', False)
+            abort(400, _("Integrity Error"))
+        data_dict.setdefault("activity_streams_email_notifications", False)
 
-        context[u'message'] = data_dict.get(u'log_message', u'')
-        data_dict[u'id'] = id
-        email_changed = data_dict[u'email'] != toolkit.current_user.email
+        context["message"] = data_dict.get("log_message", "")
+        data_dict["id"] = id
+        email_changed = data_dict["email"] != g.userobj.email
 
-        if (data_dict[u'password1']
-                and data_dict[u'password2']) or email_changed:
-
-            # CUSTOM CODE to allow updating user pass for sysadmin without a sys pass
-            self_update = data_dict["name"] == toolkit.current_user.name
-            is_sysadmin = False if toolkit.current_user.is_anonymous else toolkit.current_user.sysadmin  # type: ignore
-
-            if not is_sysadmin or self_update:
-                identity = {
-                    u'login': toolkit.current_user.name,
-                    u'password': data_dict[u'old_password']
-                }
-                auth_user = authenticator.ckan_authenticator(identity)
-                auth_username = auth_user.name if auth_user else ''
-
-                if auth_username != toolkit.current_user.name:
-                    errors = {
-                        u'oldpassword': [_(u'Password entered was incorrect')]
-                    }
-                    error_summary = {_(u'Old Password'): _(u'incorrect password')}
-                    return self.get(id, data_dict, errors, error_summary)
+        if (data_dict["password1"] and data_dict["password2"]) or email_changed:
+            identity = {"login": g.user, "password": data_dict["old_password"]}
+            auth_user = authenticator.ckan_authenticator(identity)
+            auth_username = auth_user.name if auth_user else ""
+            if auth_username != toolkit.current_user.name:
+                errors = {"oldpassword": [_("Password entered was incorrect")]}
+                error_summary = {_("Old Password"): _("incorrect password")}
+                return self.get(id, data_dict, errors, error_summary)
 
         try:
-            user = get_action(u'user_update')(context, data_dict)
+            user = get_action("user_update")(context, data_dict)
         except NotAuthorized:
-            abort(403, _(u'Unauthorized to edit user %s') % id)
+            abort(403, _("Unauthorized to edit user %s") % id)
         except NotFound:
-            abort(404, _(u'User not found'))
+            abort(404, _("User not found"))
         except ValidationError as e:
             errors = e.error_dict
             error_summary = e.error_summary
             return self.get(id, data_dict, errors, error_summary)
 
-        h.flash_success(_(u'Profile updated'))
-        resp = h.redirect_to(u'user.read', id=user[u'name'])
-        if current_user and data_dict[u'name'] != old_username:
+        h.flash_success(_("Profile updated"))
+        resp = h.redirect_to("user.read", id=user["name"])
+        if current_user and data_dict["name"] != old_username:
             # Changing currently logged in user's name.
             # Update repoze.who cookie to match
-            set_repoze_user(data_dict[u'name'], resp)
+            set_repoze_user(data_dict["name"], resp)
         return resp
 
     def get(self, id=None, data=None, errors=None, error_summary=None):
