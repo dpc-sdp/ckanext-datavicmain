@@ -62,6 +62,7 @@ def release_date(pkg_dict):
 @toolkit.blanket.auth_functions
 @toolkit.blanket.actions
 @toolkit.blanket.validators
+@toolkit.blanket.config_declarations
 class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
     overrides the default dataset form
@@ -238,6 +239,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'get_digital_twin_resources': helpers.get_digital_twin_resources,
             'url_for_dtv_config': helpers.url_for_dtv_config,
             "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
+            "get_user_organizations": helpers.get_user_organizations,
+            "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
         }
 
     ## IConfigurer interface ##
