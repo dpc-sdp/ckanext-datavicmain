@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import csv
 import datetime
 import logging
@@ -7,7 +8,7 @@ import csv
 import openpyxl
 import mimetypes
 
-from os import path
+from os import path, stat
 from typing import Any
 from sqlalchemy.orm import Query
 from itertools import groupby
@@ -19,12 +20,12 @@ import tqdm
 import ckan.logic.validators as validators
 import ckan.model as model
 import ckan.plugins.toolkit as tk
-import click
-import tqdm
+
 from ckan.lib.munge import munge_title_to_name
+from ckan.lib.search import rebuild
+from ckan.lib.uploader import get_resource_uploader
 from ckan.model import Resource, ResourceView
 from ckan.types import Context
-from sqlalchemy.orm import Query
 
 from ckanext.harvest.model import HarvestObject, HarvestSource
 
@@ -549,3 +550,27 @@ def _suggest_file_format(url: str | None) -> str:
 
     mimetype, _ = mimetypes.guess_type(url)
     return validators.clean_format(mimetype) if mimetype else "unknown"
+
+
+@maintain.command()
+def recalculate_resource_size():
+    """Update file size for uploaded resources"""
+
+    packages = set()
+    q = model.Session.query(model.Resource).filter_by(url_type="upload")
+
+    with click.progressbar(q, length=q.count()) as bar:
+        for resource in bar:
+            resource_path = get_resource_uploader({}).get_path(resource.id)
+            if not path.exists(resource_path):
+                tk.error_shout(f"Resource does not exist with id: {resource.id}")
+                continue
+            size = stat(resource_path).st_size
+            updated_size = tk.h.localized_filesize(size)
+            extras = copy.deepcopy(resource.extras or {})
+            extras["filesize"] = updated_size
+            resource.extras = extras
+            packages.add(resource.package_id)
+
+    model.Session.commit()
+    rebuild(package_ids=packages)
