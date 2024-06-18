@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import pkgutil
 import inspect
@@ -341,3 +342,26 @@ def datavic_get_dtv_url() -> str:
         url = url + "/"
 
     return url
+
+
+def localized_filesize(size_bytes: int) -> str:
+    """Returns a localized unicode representation of a number in bytes, MB
+    etc.
+
+    It's  similar  to  CKAN's  original `localised_filesize`,  but  uses  MB/KB
+    instead of MiB/KiB.  Additionally, it rounds up to 1.0KB  any value that is
+    smaller than 1000.
+    """
+
+    if size_bytes < 0:
+        return ""
+
+    if size_bytes == 0:
+        return "0 bytes"
+
+    size_name = ("bytes", "KB", "MB", "GB", "TB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(float(size_bytes) / p, 1)
+
+    return f"{s} {size_name[i]}"
