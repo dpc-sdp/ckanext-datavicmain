@@ -119,6 +119,9 @@ def resource_update(
     next_: Action, context: Context, data_dict: DataDict
 ) -> ActionResult.ResourceUpdate:
     try:
+        if not data_dict.get("filesize"):
+            resource = model.Resource.get(data_dict.get("id"))
+            data_dict["filesize"] = resource.size
         result = next_(context, data_dict)
         return result
     except ValidationError as e:
