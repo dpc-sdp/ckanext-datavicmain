@@ -625,3 +625,18 @@ def _get_date_created(pkg: dict[str, Any]) -> str:
     if min_release_date:
         return min_release_date
     return pkg.get("metadata_created", "")
+
+
+@maintain.command("make-datatables-view-prioritized")
+def make_datatables_view_prioritized():
+    """Check if there are resources that have recline_view and datatables_view and
+    reorder them so that datatables_view is first."""
+    resources = model.Session.query(Resource).all()
+    number_reordered = 0
+    for resource in tqdm.tqdm(resources):
+        result = tk.get_action("datavic_datatables_view_prioritize")(
+            {"ignore_auth": True}, {"resource_id": resource.id}
+        )
+        if result.get("updated"):
+            number_reordered += 1
+    click.secho(f"Reordered {number_reordered} resources", fg="green")

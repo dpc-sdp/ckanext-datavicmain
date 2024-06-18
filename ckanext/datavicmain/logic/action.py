@@ -16,7 +16,7 @@ from ckanext.datavicmain import const, helpers, jobs, utils
 from ckanext.datavicmain.helpers import user_is_registering
 
 from ckan.common import g
-from ckan.model import State
+from ckan.model import ResourceView, State
 from ckan.lib.dictization import model_dictize, model_save
 from ckan.logic import schema as ckan_schema, validate
 from ckan.lib.navl.validators import not_empty # noqa
@@ -25,6 +25,7 @@ from ckanext.datavicmain.logic import schema as vic_schema
 from ckanext.datavicmain.logic.schema import custom_user_create_schema
 from ckanext.mailcraft.exception import MailerException
 from ckanext.mailcraft.utils import get_mailer
+from ckanext.datavicmain.logic import scheme
 from sqlalchemy import or_
 
 log = logging.getLogger(__name__)
@@ -341,3 +342,57 @@ def _hide_restricted_orgs(
         result.append(org)
 
     return result
+
+
+@validate(scheme.datatables_view_prioritize)
+def datavic_datatables_view_prioritize(
+    context: Context, data_dict: DataDict
+) -> ActionResult:
+    """Check if the datatables view is prioritized over the recline view.
+    If not, swap their order.
+    """
+    toolkit.check_access("vic_datatables_view_prioritize", context, data_dict)
+
+    resource_id = data_dict["resource_id"]
+    res_views = sorted(
+        model.Session.query(ResourceView)
+        .filter(ResourceView.resource_id == resource_id)
+        .all(),
+        key=lambda x: x.order,
+    )
+    datatables_views = _filter_views(res_views, "datatables_view")
+    recline_views = _filter_views(res_views, "recline_view")
+
+    if not (
+        datatables_views
+        and recline_views
+        and datatables_views[0].order > recline_views[0].order
+    ):
+        return {"updated": False}
+
+    datatables_views[0].order, recline_views[0].order = (
+        recline_views[0].order,
+        datatables_views[0].order,
+    )
+    order = [view.id for view in sorted(res_views, key=lambda x: x.order)]
+    toolkit.get_action("resource_view_reorder")(
+        {"ignore_auth": True}, {"id": resource_id, "order": order}
+    )
+    return {"updated": True}
+
+
+@toolkit.chained_action
+def resource_view_create(next_, context, data_dict):
+    result = next_(context, data_dict)
+    if data_dict["view_type"] == "datatables_view":
+        toolkit.get_action("datavic_datatables_view_prioritize")(
+            {"ignore_auth": True}, {"resource_id": data_dict["resource_id"]}
+        )
+    return result
+
+
+def _filter_views(
+    res_views: list[ResourceView], view_type: str
+) -> list[ResourceView]:
+    """Return a list of views with the given view type."""
+    return [view for view in res_views if view.view_type == view_type]

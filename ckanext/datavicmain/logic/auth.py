@@ -124,3 +124,7 @@ def organization_activity_list(next_auth, context, data_dict):
     if _has_user_capacity_in_org(data_dict["id"], allowed_roles):
         return next_auth(context, data_dict)
     return {"success": False}
+
+
+def vic_datatables_view_prioritize(context, data_dict):
+    return {"success": False}
