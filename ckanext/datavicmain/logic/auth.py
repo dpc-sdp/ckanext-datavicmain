@@ -89,3 +89,7 @@ def user_show(context: Context, data_dict: DataDict) -> AuthResult:
             return {"success": True}
 
     return {"success": False}
+
+
+def vic_datatables_view_prioritize(context, data_dict):
+    return {"success": False}

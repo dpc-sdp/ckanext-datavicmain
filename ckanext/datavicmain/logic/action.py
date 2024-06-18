@@ -1,28 +1,32 @@
+from __future__ import annotations
+
 import logging
 from typing import Any
 
 import ckan.lib.plugins as lib_plugins
-import ckan.plugins.toolkit as toolkit
+import ckan.model as model
+import ckan.plugins.toolkit as tk
 import ckanapi
 import ckanext.datavic_iar_theme.helpers as theme_helpers
-from ckan import model
-from ckan.lib.dictization import model_dictize, model_save, table_dictize
+from ckan.lib.dictization import model_dictize, model_save
 from ckan.lib.navl.validators import not_empty
 from ckan.logic import schema as ckan_schema
-from ckan.model import State
+from ckan.logic import validate
+from ckan.model import ResourceView, State
 from ckan.types import Action, Context, DataDict
 from ckan.types.logic import ActionResult
-from ckanext.datavicmain import helpers, jobs
+from ckanext.datavicmain import helpers
+from ckanext.datavicmain.logic import scheme
 from sqlalchemy import or_
 
-_check_access = toolkit.check_access
-config = toolkit.config
+_check_access = tk.check_access
+config = tk.config
 log = logging.getLogger(__name__)
 user_is_registering = helpers.user_is_registering
-ValidationError = toolkit.ValidationError
-get_action = toolkit.get_action
-_validate = toolkit.navl_validate
-_get_or_bust = toolkit.get_or_bust
+ValidationError = tk.ValidationError
+get_action = tk.get_action
+_validate = tk.navl_validate
+_get_or_bust = tk.get_or_bust
 
 CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS = (
     "ckanext.datavicmain.synchronized_organization_fields"
@@ -133,7 +137,7 @@ def user_create(context, data_dict):
             "new_account_requested",
             {
                 "user_name": user.name,
-                "user_url": toolkit.url_for(
+                "user_url": tk.url_for(
                     "user.read", id=user.name, qualified=True
                 ),
                 "site_title": config.get("ckan.site_title"),
@@ -145,7 +149,7 @@ def user_create(context, data_dict):
     return user_dict
 
 
-@toolkit.chained_action
+@tk.chained_action
 def organization_update(next_, context, data_dict):
     from ckanext.syndicate import utils
 
@@ -168,8 +172,8 @@ def organization_update(next_, context, data_dict):
 
         patch = {
             f: result[f]
-            for f in toolkit.aslist(
-                toolkit.config.get(
+            for f in tk.aslist(
+                tk.config.get(
                     CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
                     DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
                 )
@@ -180,7 +184,7 @@ def organization_update(next_, context, data_dict):
     return result
 
 
-@toolkit.chained_action
+@tk.chained_action
 def resource_update(
     next_: Action, context: Context, data_dict: DataDict
 ) -> ActionResult.ResourceUpdate:
@@ -191,7 +195,7 @@ def resource_update(
         _show_errors_in_sibling_resources(context, data_dict)
 
 
-@toolkit.chained_action
+@tk.chained_action
 def resource_create(
     next_: Action, context: Context, data_dict: DataDict
 ) -> ActionResult.ResourceCreate:
@@ -206,7 +210,7 @@ def _show_errors_in_sibling_resources(
     context: Context, data_dict: DataDict
 ) -> Any:
     """Retrieves and raises validation errors for resources within the same package."""
-    pkg_dict = toolkit.get_action("package_show")(
+    pkg_dict = tk.get_action("package_show")(
         context, {"id": data_dict["package_id"]}
     )
 
@@ -236,21 +240,21 @@ def _show_errors_in_sibling_resources(
         raise ValidationError(errors)
 
 
-@toolkit.side_effect_free
+@tk.side_effect_free
 def datavic_list_incomplete_resources(context, data_dict):
     """Retrieves a list of resources that are missing at least one required field."""
     try:
         pkg_type = data_dict.get("type", "dataset")
-        resource_schema = toolkit.h.scheming_get_dataset_schema(pkg_type)[
+        resource_schema = tk.h.scheming_get_dataset_schema(pkg_type)[
             "resource_fields"
         ]
     except TypeError:
-        raise toolkit.ValidationError(f"No schema for {pkg_type} package type")
+        raise tk.ValidationError(f"No schema for {pkg_type} package type")
 
     required_fields = [
         field["field_name"]
         for field in resource_schema
-        if toolkit.h.scheming_field_required(field)
+        if tk.h.scheming_field_required(field)
     ]
 
     missing_conditions = []
@@ -308,3 +312,57 @@ def datavic_list_incomplete_resources(context, data_dict):
         "num_packages": num_packages,
         "results": results,
     }
+
+
+@validate(scheme.datatables_view_prioritize)
+def datavic_datatables_view_prioritize(
+    context: Context, data_dict: DataDict
+) -> ActionResult:
+    """Check if the datatables view is prioritized over the recline view.
+    If not, swap their order.
+    """
+    tk.check_access("vic_datatables_view_prioritize", context, data_dict)
+
+    resource_id = data_dict["resource_id"]
+    res_views = sorted(
+        model.Session.query(ResourceView)
+        .filter(ResourceView.resource_id == resource_id)
+        .all(),
+        key=lambda x: x.order,
+    )
+    datatables_views = _filter_views(res_views, "datatables_view")
+    recline_views = _filter_views(res_views, "recline_view")
+
+    if not (
+        datatables_views
+        and recline_views
+        and datatables_views[0].order > recline_views[0].order
+    ):
+        return {"updated": False}
+
+    datatables_views[0].order, recline_views[0].order = (
+        recline_views[0].order,
+        datatables_views[0].order,
+    )
+    order = [view.id for view in sorted(res_views, key=lambda x: x.order)]
+    tk.get_action("resource_view_reorder")(
+        {"ignore_auth": True}, {"id": resource_id, "order": order}
+    )
+    return {"updated": True}
+
+
+@tk.chained_action
+def resource_view_create(next_, context, data_dict):
+    result = next_(context, data_dict)
+    if data_dict["view_type"] == "datatables_view":
+        tk.get_action("datavic_datatables_view_prioritize")(
+            {"ignore_auth": True}, {"resource_id": data_dict["resource_id"]}
+        )
+    return result
+
+
+def _filter_views(
+    res_views: list[ResourceView], view_type: str
+) -> list[ResourceView]:
+    """Return a list of views with the given view type."""
+    return [view for view in res_views if view.view_type == view_type]
