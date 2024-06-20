@@ -10,6 +10,7 @@ from flask import Blueprint
 from ckan.plugins import toolkit as tk
 from ckan.types import Response
 
+from ckanext.datavicmain_home import utils
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +21,12 @@ class HomeManage(MethodView):
     def get(self) -> str:
         return tk.render(
             "vic_home/manage.html",
-            extra_vars={"test": "hello world", "errors": {}, "data": {}},
+            extra_vars={
+                "test": "hello world",
+                "errors": {},
+                "data": {},
+                "schema": utils.get_config_schema(),
+            },
         )
 
     def post(self) -> Union[str, Response]:
@@ -32,4 +38,3 @@ class HomeManage(MethodView):
 datavic_home.add_url_rule(
     "/vic/home-manage", view_func=HomeManage.as_view("manage")
 )
-# datavic_home.manage

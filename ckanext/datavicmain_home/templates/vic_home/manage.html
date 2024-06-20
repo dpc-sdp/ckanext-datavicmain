@@ -34,9 +34,7 @@
                     <form method='post' action="" id="admin-config-form" enctype="multipart/form-data">
                         {{ h.csrf_input() }}
 
-                        {{ form.input('test', id='field-ckan-site-title', label=_('Site Title'), value=data.test, error=errors.test) }}
-
-                        {{ form.input('test2', id='field-ckan-main-css', label=_('Custom Stylesheet'), value=data.test2, error=errors.test2) }}
+                        {% snippet 'vic_home/render_fields.html', fields=schema.fields, data=data, errors=errors %}
 
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary" name="save">{{ _('Update') }}</button>
