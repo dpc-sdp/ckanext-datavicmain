@@ -1,0 +1,66 @@
+{% extends "admin/base.html" %}
+
+{% import 'macros/form.html' as form %}
+
+{% block primary %}
+    <div class="primary col-sm-9 col-xs-12">
+        {% block primary_content %}
+            {% block page_header %}
+                <header class="module-content page-header">
+                    {% if self.content_action() | trim %}
+                        <div class="content_action">
+                        {% block content_action %}
+                            {{ super() }}
+                        {% endblock %}
+                        </div>
+                    {% endif %}
+
+                    <ul class="nav nav-tabs">
+                        {% block content_primary_nav %}
+                            {{ super() }}
+                        {% endblock %}
+                    </ul>
+                </header>
+            {% endblock %}
+
+            <div class="module-content">
+                {% if self.page_primary_action() | trim %}
+                  <div class="page_primary_action">
+                    {% block page_primary_action %}{% endblock %}
+                  </div>
+                {% endif %}
+
+                {% block primary_content_inner %}
+                    <form method='post' action="" id="admin-config-form" enctype="multipart/form-data">
+                        {{ h.csrf_input() }}
+
+                        {{ form.input('test', id='field-ckan-site-title', label=_('Site Title'), value=data.test, error=errors.test) }}
+
+                        {{ form.input('test2', id='field-ckan-main-css', label=_('Custom Stylesheet'), value=data.test2, error=errors.test2) }}
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" name="save">{{ _('Update') }}</button>
+                        </div>
+                    </form>
+                {% endblock %}
+            </div>
+        {% endblock %}
+    </div>
+{% endblock %}
+
+{% block secondary %}
+    <aside class="secondary col-sm-3">
+        {% block secondary_content %}
+            <div class="module module-narrow module-shallow">
+                <h2 class="module-heading">
+                    <i class="fa fa-info-circle"></i>
+                    {{ _('Home page sections') }}
+                </h2>
+
+                <div class="module-content">
+                    <p>{{ _('You can manage the sections on the home page here.') }}</p>
+                </div>
+            </div>
+        {% endblock %}
+    </aside>
+{% endblock %}
