@@ -23,7 +23,7 @@ from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
 
 from . import utils, const
-from ckanext.datavicmain.config import get_dtv_url
+from ckanext.datavicmain.config import get_dtv_url, get_dtv_external_link
 
 config = toolkit.config
 request = toolkit.request
@@ -570,9 +570,12 @@ def add_curent_organisation(
     return avalable_organisations
 
 
-def datavic_get_dtv_url() -> str:
+def datavic_get_dtv_url(ext_link: bool = False) -> str:
     """Return a URL for DTV map preview"""
-    url = get_dtv_url()
+    if toolkit.asbool(ext_link):
+        url = get_dtv_external_link()
+    else:
+        url = get_dtv_url()
 
     if not url:
         return url
