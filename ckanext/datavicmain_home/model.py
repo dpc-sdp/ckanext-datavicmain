@@ -35,6 +35,7 @@ class HomeSectionItem(tk.BaseModel):
     url = Column(Text, nullable=True)
     state = Column(Text, nullable=False, default=State.active)
     section_type = Column(Text, nullable=False, default=SectionType.news)
+    weight = Column(Integer, nullable=False, default=0)
 
     def __repr__(self):
         return f"HomeSectionItem(title={self.title})"
@@ -74,5 +75,11 @@ class HomeSectionItem(tk.BaseModel):
         query: Query = model.Session.query(cls).filter(
             cls.section_type == section_type
         )
+
+        return query.all()
+
+    @classmethod
+    def all(cls) -> list[Self]:
+        query: Query = model.Session.query(cls)
 
         return query.all()

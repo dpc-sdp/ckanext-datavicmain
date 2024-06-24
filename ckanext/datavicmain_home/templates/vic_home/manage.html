@@ -1,64 +1,44 @@
-{% extends "admin/base.html" %}
+{% extends "vic_home/base.html" %}
 
-{% import 'macros/form.html' as form %}
+{% block primary_content_inner %}
+    <p>
+        <a href="{{ h.url_for('datavic_home.new') }}" class="btn btn-primary">{{ _("Add new item") }}</a>
+    </p>
 
-{% block primary %}
-    <div class="primary col-sm-9 col-xs-12">
-        {% block primary_content %}
-            {% block page_header %}
-                <header class="module-content page-header">
-                    {% if self.content_action() | trim %}
-                        <div class="content_action">
-                        {% block content_action %}
-                            {{ super() }}
-                        {% endblock %}
+    <table class="table table-header table-hover table-bordered">
+        <thead>
+            <tr>
+                <th>{{ _('Title') }}</th>
+                <th>{{ _('State') }}</th>
+                <th>{{ _('Type') }}</th>
+                <th>{{ _('Actions') }}</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for home_item in home_items %}
+            {{ home_item }}
+                <tr>
+                    <td>{{ home_item.title }}</td>
+                    <td>{{ home_item.state }}</td>
+                    <td>{{ home_item.section_type }}</td>
+                    <td>
+                        <div class="btn-group pull-right">
+                            <a class="btn btn-sm" href="{{ h.url_for('datavic_home.edit', item_id=home_item.id) }}" title="{{ _('Edit') }}">
+                                <i class="fa fa-wrench"></i>
+                            </a>
+
+                            <a class="btn btn-danger btn-sm" href="{{ h.url_for('datavic_home.delete', item_id=home_item.id) }}" data-module="confirm-action" data-module-content="{{ _('Are you sure you want to delete this item?') }}" title="{{ _('Delete') }}">
+                                <i class="fa fa-times"></i>
+                            </a>
                         </div>
-                    {% endif %}
-
-                    <ul class="nav nav-tabs">
-                        {% block content_primary_nav %}
-                            {{ super() }}
-                        {% endblock %}
-                    </ul>
-                </header>
-            {% endblock %}
-
-            <div class="module-content">
-                {% if self.page_primary_action() | trim %}
-                  <div class="page_primary_action">
-                    {% block page_primary_action %}{% endblock %}
-                  </div>
-                {% endif %}
-
-                {% block primary_content_inner %}
-                    <form method='post' action="" id="admin-config-form" enctype="multipart/form-data">
-                        {{ h.csrf_input() }}
-
-                        {% snippet 'vic_home/render_fields.html', fields=schema.fields, data=data, errors=errors %}
-
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary" name="save">{{ _('Update') }}</button>
-                        </div>
-                    </form>
-                {% endblock %}
-            </div>
-        {% endblock %}
-    </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 {% endblock %}
 
-{% block secondary %}
-    <aside class="secondary col-sm-3">
-        {% block secondary_content %}
-            <div class="module module-narrow module-shallow">
-                <h2 class="module-heading">
-                    <i class="fa fa-info-circle"></i>
-                    {{ _('Home page sections') }}
-                </h2>
-
-                <div class="module-content">
-                    <p>{{ _('You can manage the sections on the home page here.') }}</p>
-                </div>
-            </div>
-        {% endblock %}
-    </aside>
+{% block vic_info_content %}
+    <p>{{ _('You can manage the sections on the home page here.') }}</p>
 {% endblock %}

@@ -186,3 +186,18 @@ class TestGetItemsBySectionType:
         )
 
         assert not result
+
+
+@pytest.mark.usefixtures("with_plugins", "clean_db")
+class TestGetAllItems:
+    def test_get_all_items(self, home_section_item_factory):
+        home_section_item: HomeSectionData = home_section_item_factory()
+
+        result = call_action("get_all_section_items")
+
+        assert result[0]["id"] == home_section_item["id"]
+
+    def test_no_items(self):
+        result = call_action("get_all_section_items")
+
+        assert not result

@@ -22,7 +22,7 @@ def create_section_item(
     return {
         "title": [not_empty, unicode_safe],
         "description": [ignore_missing, unicode_safe],
-        "image_id": [ignore_missing, unicode_safe],
+        "upload": [ignore_missing],
         "url": [ignore_missing, url_validator],
         "state": [
             default(HomeSectionItem.State.active),
@@ -69,7 +69,7 @@ def update_section_item(
         "id": [not_empty, unicode_safe, home_section_item_exists],
         "title": [ignore_missing, unicode_safe],
         "description": [ignore_missing, unicode_safe],
-        "image_id": [ignore_missing, unicode_safe],
+        "upload": [ignore_missing],
         "url": [ignore_missing, url_validator],
         "state": [
             default(HomeSectionItem.State.active),

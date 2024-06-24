@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 
-def get_config_schema() -> dict[Any, Any] | None:
+def get_config_schema() -> dict[Any, Any]:
     from ckanext.scheming.plugins import _load_schemas, _expand_schemas
 
     schemas = _load_schemas(
@@ -11,5 +11,4 @@ def get_config_schema() -> dict[Any, Any] | None:
     )
     expanded_schemas = _expand_schemas(schemas)
 
-    if schema := expanded_schemas.get("datavicmain_home_manage"):
-        return schema
+    return expanded_schemas["datavicmain_home_item"]

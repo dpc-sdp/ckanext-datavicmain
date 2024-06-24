@@ -25,6 +25,12 @@ def create_section_item(
     """
     tk.check_access("manage_home_sections", context, data_dict)
 
+    if "upload" in data_dict:
+        upload = data_dict.pop("upload")
+
+        result = tk.get_action("files_file_create")(context, {"upload": upload})
+        data_dict["image_id"] = result["id"]
+
     item = HomeSectionItem(**data_dict)
 
     model.Session.add(item)
@@ -46,9 +52,17 @@ def delete_section_item(
 
     item = HomeSectionItem.get(data_dict["id"])
 
-    if item:
-        item.delete()
-        model.Session.commit()
+    if not item:
+        return
+
+    if item.image_id:
+        try:
+            tk.get_action("files_file_delete")(context, {"id": item.image_id})
+        except (tk.ValidationError, tk.ObjectNotFound):
+            pass
+
+    item.delete()
+    model.Session.commit()
 
 
 @validate(schema.update_section_item)
@@ -73,6 +87,18 @@ def update_section_item(
 
     if not item:
         raise tk.ValidationError("Section item not found")
+
+    if "upload" in data_dict:
+        if item.image_id:
+            try:
+                tk.get_action("files_file_delete")(context, {"id": item.image_id})
+            except (tk.ValidationError, tk.ObjectNotFound):
+                pass
+
+        upload = data_dict.pop("upload")
+
+        result = tk.get_action("files_file_create")(context, {"upload": upload})
+        data_dict["image_id"] = result["id"]
 
     for key, value in data_dict.items():
         setattr(item, key, value)
@@ -100,3 +126,38 @@ def get_section_items_by_section_type(
     items = HomeSectionItem.get_by_section(data_dict["section_type"])
 
     return [item.dictize({}) for item in items]
+
+@tk.side_effect_free
+def get_all_section_items(
+    context: types.Context, data_dict: types.DataDict
+) -> list[dict[str, Any]]:
+    """Get all section items.
+
+    Returns:
+        list[dict[str, Any]]: The section items.
+    """
+    tk.check_access("get_home_sections", context, data_dict)
+
+    items = HomeSectionItem.all()
+
+    return [item.dictize({}) for item in items]
+
+
+@tk.side_effect_free
+def get_section_item(context: types.Context, data_dict: types.DataDict) -> dict[str, Any]:
+    """Get a section item.
+
+    Args:
+        item_id (str): The id of the section item to get.
+
+    Returns:
+        dict[str, Any]: The section item.
+    """
+    tk.check_access("get_home_sections", context, data_dict)
+
+    item = HomeSectionItem.get(data_dict["id"])
+
+    if not item:
+        raise tk.ObjectNotFound("Section item not found")
+
+    return item.dictize({})

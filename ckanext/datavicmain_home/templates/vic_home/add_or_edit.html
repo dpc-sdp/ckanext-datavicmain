@@ -1,0 +1,20 @@
+{% extends "vic_home/base.html" %}
+
+{% block primary_content_inner %}
+    <form method="POST" enctype="multipart/form-data">
+        {{ h.csrf_input() }}
+
+
+        {{ data }}
+        {% snippet 'vic_home/render_fields.html', fields=schema.fields, data=data, errors=errors %}
+
+        <div class="form-actions">
+            <a href="{{ h.url_for('datavic_home.manage') }}" class="btn btn-secondary">{{ _('Cancel') }}</a>
+            <button type="submit" class="btn btn-primary" name="save">{{ _('Update/Create') }}</button>
+        </div>
+    </form>
+{% endblock %}
+
+{% block vic_info_content %}
+    <p>{{ _('Create a new entity to display on a home page') }}</p>
+{% endblock %}
