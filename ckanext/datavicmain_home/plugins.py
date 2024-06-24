@@ -12,4 +12,4 @@ class DatavicHomePlugin(p.SingletonPlugin):
     # IConfigurer
     def update_config(self, config_):
         tk.add_template_directory(config_, "templates")
-        tk.add_resource("webassets", "datavicmain_home")
+        tk.add_resource("assets", "vic_home")

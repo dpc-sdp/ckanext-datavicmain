@@ -4,8 +4,6 @@
     <form method="POST" enctype="multipart/form-data">
         {{ h.csrf_input() }}
 
-
-        {{ data }}
         {% snippet 'vic_home/render_fields.html', fields=schema.fields, data=data, errors=errors %}
 
         <div class="form-actions">

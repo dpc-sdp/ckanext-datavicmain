@@ -11,10 +11,20 @@ fields:
 
   - field_name: description
     label: Description
+    preset: markdown
 
-  - field_name: file
+  - field_name: image_id
     label: File
-    preset: resource_url_upload
+    validators: ignore_missing
+    form_snippet: vic_upload.html
+    form_attrs:
+      accept: image/png, image/gif, image/jpeg
+
+  - field_name: url
+    label: URL
+    validators: ignore_missing unicode_safe url_validator
+    form_snippet: vic_text.html
+    input_type: url
 
   - field_name: section_type
     label: Type
@@ -29,6 +39,7 @@ fields:
         label: Resource
     form_attrs:
       required: 1
+    help_text: The type of the item. Defines in which section of the home page the item will be displayed.
 
   - field_name: state
     label: State
@@ -41,9 +52,11 @@ fields:
         label: Inactive
     form_attrs:
       required: 1
+    help_text: The state of the item. Active items will be displayed on the home page.
 
   - field_name: weight
     label: Weight
     form_snippet: vic_text.html
-    input_type: numeric
+    input_type: number
     validators: default(0) int_validator
+    help_text: The weight of the item. Items with higher weights will be displayed first. Default is 0.

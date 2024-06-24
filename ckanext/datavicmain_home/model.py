@@ -36,6 +36,8 @@ class HomeSectionItem(tk.BaseModel):
     state = Column(Text, nullable=False, default=State.active)
     section_type = Column(Text, nullable=False, default=SectionType.news)
     weight = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    modified_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     def __repr__(self):
         return f"HomeSectionItem(title={self.title})"
@@ -47,7 +49,7 @@ class HomeSectionItem(tk.BaseModel):
         model.Session.add(item)
         model.Session.commit()
 
-        return v
+        return item
 
     def delete(self) -> None:
         model.Session().autoflush = False

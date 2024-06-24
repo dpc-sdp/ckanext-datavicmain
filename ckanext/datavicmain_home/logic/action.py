@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from typing import Any
 
 import ckan.types as types
@@ -103,6 +104,8 @@ def update_section_item(
     for key, value in data_dict.items():
         setattr(item, key, value)
 
+    item.modified_at = datetime.datetime.utcnow()
+
     model.Session.commit()
 
     return item.dictize({})
@@ -161,3 +164,24 @@ def get_section_item(context: types.Context, data_dict: types.DataDict) -> dict[
         raise tk.ObjectNotFound("Section item not found")
 
     return item.dictize({})
+
+
+def vic_home_remove_item_image(context, data_dict):
+    tk.check_access("manage_home_sections", context, data_dict)
+
+    image_id: str = tk.get_or_bust(tk.request.form, "item_id")
+
+    item = HomeSectionItem.get(image_id)
+
+    if not item or not item.image_id:
+        return {"success": True}
+
+    try:
+        tk.get_action("files_file_delete")({}, {"id": item.image_id})
+    except (tk.ValidationError, tk.ObjectNotFound):
+        pass
+    else:
+        item.image_id = None
+        model.Session.commit()
+
+    return {"success": True}

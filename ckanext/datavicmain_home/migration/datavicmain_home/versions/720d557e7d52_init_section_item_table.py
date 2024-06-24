@@ -28,6 +28,8 @@ def upgrade():
         sa.Column("state", sa.Text(), nullable=False),
         sa.Column("section_type", sa.Text(), nullable=False),
         sa.Column("weight", sa.Integer(), nullable=False),
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("modified_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
 

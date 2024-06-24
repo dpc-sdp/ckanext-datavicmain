@@ -5,7 +5,7 @@ import logging
 from typing import Union, Any
 
 from flask.views import MethodView
-from flask import Blueprint
+from flask import Blueprint, jsonify
 
 from ckan import types
 from ckan.plugins import toolkit as tk
@@ -94,7 +94,7 @@ class HomeItemCreate(HomeItemCreateOrUpdate):
 
         tk.get_action("create_section_item")({}, data)
 
-        tk.h.flash_success("Done")
+        tk.h.flash_success("The item has been created")
 
         return tk.redirect_to("datavic_home.manage")
 
@@ -116,6 +116,7 @@ class HomeItemEdit(HomeItemCreateOrUpdate):
                 "schema": utils.get_config_schema(),
             },
         )
+
     def post(self, item_id: str) -> Union[str, Response]:
         try:
             tk.get_action("get_section_item")({}, {"id": item_id})
@@ -144,9 +145,10 @@ class HomeItemEdit(HomeItemCreateOrUpdate):
 
         tk.get_action("update_section_item")({}, data)
 
-        tk.h.flash_success("Done")
+        tk.h.flash_success("The item has been updated")
 
         return tk.redirect_to("datavic_home.manage")
+
 
 class HomeItemDelete(MethodView):
     def post(self, item_id: str) -> Union[str, Response]:
@@ -157,7 +159,7 @@ class HomeItemDelete(MethodView):
 
         tk.get_action("delete_section_item")({}, {"id": item_id})
 
-        tk.h.flash_success("Done")
+        tk.h.flash_success("The item has been deleted")
 
         return tk.redirect_to("datavic_home.manage")
 
@@ -166,4 +168,6 @@ datavic_home.add_url_rule("/new", view_func=HomeItemCreate.as_view("new"))
 datavic_home.add_url_rule(
     "/edit/<item_id>", view_func=HomeItemEdit.as_view("edit")
 )
-datavic_home.add_url_rule("/delete/<item_id>", view_func=HomeItemDelete.as_view("delete"))
+datavic_home.add_url_rule(
+    "/delete/<item_id>", view_func=HomeItemDelete.as_view("delete")
+)

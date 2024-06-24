@@ -38,3 +38,9 @@
         {% endblock %}
     </aside>
 {% endblock %}
+
+{% block scripts %}
+    {% asset "vic_home/js-global" %}
+
+    {{ super() }}
+{% endblock %}
