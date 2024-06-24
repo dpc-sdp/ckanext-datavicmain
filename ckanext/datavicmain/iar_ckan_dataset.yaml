@@ -140,6 +140,19 @@ dataset_fields:
   display_group: General
   form_snippet: text.html
 
+- field_name: dtv_preview
+  label: Digital Twin Preview
+  display_snippet: null
+  required: true
+  preset: select
+  choices:
+    - value: true
+      label: "On"
+    - value: false
+      label: "Off"
+  validators: default(true) boolean_validator
+  output_validators: boolean_validator
+
   # Security fields
 
 - field_name: personal_information

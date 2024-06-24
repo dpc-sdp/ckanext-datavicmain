@@ -3,10 +3,20 @@ from __future__ import annotations
 import csv
 import datetime
 import logging
-from itertools import groupby
+import csv
+import openpyxl
+import mimetypes
+
 from os import path
 from typing import Any
+from sqlalchemy.orm import Query
+from itertools import groupby
+from urllib.parse import urlparse
 
+import click
+import tqdm
+
+import ckan.logic.validators as validators
 import ckan.model as model
 import ckan.plugins.toolkit as tk
 import click
@@ -17,6 +27,7 @@ from ckan.types import Context
 from ckanext.harvest.model import HarvestObject, HarvestSource
 from sqlalchemy.orm import Query
 
+
 log = logging.getLogger(__name__)
 
 IDX_ID = 0
@@ -24,6 +35,10 @@ IDX_NAME = 1
 IDX_TITLE = 2
 IDX_STATE = 3
 NAME_FIELD_LENGTH = 99
+
+XLSX_IDX_TITLE = 0
+XLSX_IDX_CURRENT_URL = 5
+XLSX_IDX_NEW_URL = 6
 
 
 @click.group()
@@ -582,3 +597,76 @@ def _get_date_created(pkg: dict[str, Any]) -> str:
     if min_release_date:
         return min_release_date
     return pkg.get("metadata_created", "")
+
+@maintain.command(u"update-broken-urls",
+                  short_help=u"Update resources with broken urls")
+def update_broken_urls():
+    """Change resources urls' protocols from http to https listed in XLSX file"""
+
+    file = path.join(
+        path.dirname(__file__), "data/DTF Content list bulk URL change 20231017.xlsx"
+    )
+    wb = openpyxl.load_workbook(file)
+    ws = wb.active
+
+    for row in ws.iter_rows(min_row=2):
+        title = row[XLSX_IDX_TITLE].value
+        url = row[XLSX_IDX_CURRENT_URL].value
+
+        resource = (
+            model.Session.query(model.Resource)
+            .filter(model.Resource.url == url)
+            .first()
+        )
+
+        if not resource:
+            click.secho(
+                f"Resource <{title}> with URL <{url}> does not exist",
+                fg="red"
+            )
+            continue
+
+        resource.url = row[XLSX_IDX_NEW_URL].value
+        click.secho(
+            f"URL of resource <{title}> has been updated to <{resource.url}>",
+            fg="green"
+        )
+
+        model.Session.commit()
+
+
+@maintain.command("ckan-resources-format-fix")
+def ckan_iar_resources_format_fix():
+    """Fix resources with empty format field."""
+
+    resources = (
+        model.Session.query(Resource).filter(model.Resource.format == "").all()
+    )
+
+    if not resources:
+        return click.secho("No resources with empty format", fg="green")
+
+    for resource in resources:
+        resource.format = _suggest_file_format(resource.url)
+
+        click.secho(
+            f"Resource '{resource.name}' changed format to: {resource.format}",
+            fg="green",
+        )
+    model.Session.commit()
+    click.secho(
+        f"All formats was corrected.",
+        fg="green",
+    )
+
+
+def _suggest_file_format(url: str | None) -> str:
+    if not url:
+        return "unknown"
+
+    parsed = urlparse(url)
+    if parsed.scheme and not parsed.path:
+        return "unknown"
+
+    mimetype, _ = mimetypes.guess_type(url)
+    return validators.clean_format(mimetype) if mimetype else "unknown"

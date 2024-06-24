@@ -18,7 +18,10 @@ import ckan.plugins.toolkit as toolkit
 import ckan.lib.mailer as mailer
 
 from ckanext.harvest.model import HarvestObject
+from ckanext.activity.model.activity import Activity
+
 from . import utils
+from ckanext.datavicmain.config import get_dtv_url
 
 config = toolkit.config
 request = toolkit.request
@@ -110,7 +113,7 @@ def set_private_activity(pkg_dict, context, activity_type):
     else:
         user_id = str('not logged in')
 
-    activity = pkg.activity_stream_item(activity_type, user_id)
+    activity = Activity.activity_stream_item(pkg, activity_type, user_id)
     session.add(activity)
     return pkg_dict
 
@@ -330,3 +333,16 @@ def datavic_org_uploads_allowed(org_id: str) -> bool:
 def datavic_max_image_size():
     """Return max size for image configurate for portal"""
     return toolkit.config["ckan.max_image_size"]
+
+
+def datavic_get_dtv_url() -> str:
+    """Return a URL for DTV map preview"""
+    url = get_dtv_url()
+
+    if not url:
+        return url
+
+    if not url.endswith("/"):
+        url = url + "/"
+
+    return url

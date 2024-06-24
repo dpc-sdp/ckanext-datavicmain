@@ -62,6 +62,7 @@ def release_date(pkg_dict):
 @toolkit.blanket.auth_functions
 @toolkit.blanket.actions
 @toolkit.blanket.validators
+@toolkit.blanket.config_declarations
 class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
     overrides the default dataset form
@@ -239,6 +240,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'url_for_dtv_config': helpers.url_for_dtv_config,
             "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
             "datavic_max_image_size": helpers.datavic_max_image_size,
+            "get_user_organizations": helpers.get_user_organizations,
+            "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
         }
 
     ## IConfigurer interface ##
@@ -272,7 +275,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     # IPackageController
 
-    def after_create(self, context, pkg_dict):
+    def after_dataset_create(self, context, pkg_dict):
         # Only add packages to groups when being created via the CKAN UI
         # (i.e. not during harvesting)
         if repr(toolkit.request) != '<LocalProxy unbound>' \
@@ -288,7 +291,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
                 helpers.set_private_activity(pkg_dict, context, str('new'))
         pass
 
-    def after_update(self, context, pkg_dict):
+    def after_dataset_update(self, context, pkg_dict):
         # Only add packages to groups when being updated via the CKAN UI
         # (i.e. not during harvesting)
         if repr(toolkit.request) != '<LocalProxy unbound>' \
