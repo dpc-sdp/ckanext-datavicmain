@@ -31,6 +31,7 @@ def upgrade():
         sa.Column("weight", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("modified_at", sa.DateTime(), nullable=False),
+        sa.Column("url_in_new_tab", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
 

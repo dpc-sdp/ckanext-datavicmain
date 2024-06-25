@@ -46,6 +46,15 @@ fields:
     classes:
       - control-full
 
+  - field_name: url_in_new_tab
+    label: New tab
+    form_snippet: vic_checkbox.html
+    help_text: If checked, the URL will be opened in a new tab.
+    classes:
+      - control-full
+    validators: boolean_validator
+    output_validators: convert_to_json_if_string
+
   - field_name: section_type
     label: Type
     preset: select

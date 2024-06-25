@@ -4,7 +4,6 @@ from typing import Any, Dict
 
 from ckan.logic.schema import validator_args
 
-from ckan.logic.validators import int_validator
 from ckanext.datavicmain_home.model import HomeSectionItem
 
 Schema = Dict[str, Any]
@@ -20,6 +19,7 @@ def create_section_item(
     ignore,
     url_validator,
     int_validator,
+    boolean_validator,
 ) -> Schema:
     return {
         "title": [not_empty, unicode_safe],
@@ -44,6 +44,7 @@ def create_section_item(
             ),
         ],
         "weight": [default(0), int_validator],
+        "url_in_new_tab": [default(False), boolean_validator],
         "__extras": [ignore],
     }
 
@@ -67,6 +68,8 @@ def update_section_item(
     ignore,
     default,
     url_validator,
+    int_validator,
+    boolean_validator,
     home_section_item_exists,
 ) -> Schema:
     return {
@@ -93,6 +96,7 @@ def update_section_item(
             ),
         ],
         "weight": [default(0), int_validator],
+        "url_in_new_tab": [default(False), boolean_validator],
         "__extras": [ignore],
     }
 

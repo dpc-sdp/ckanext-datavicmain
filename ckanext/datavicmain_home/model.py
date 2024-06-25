@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any
 
 from ckan import model
 from ckan.model.types import make_uuid
 from ckan.plugins import toolkit as tk
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text
-from sqlalchemy.orm import Query, relationship
+from sqlalchemy import Boolean, Column, DateTime, Integer, Text
+from sqlalchemy.orm import Query
 from typing_extensions import Self
 
 
@@ -39,6 +38,7 @@ class HomeSectionItem(tk.BaseModel):
     weight = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     modified_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    url_in_new_tab = Column(Boolean, nullable=False, default=False)
 
     def __repr__(self):
         return f"HomeSectionItem(title={self.title})"
@@ -69,6 +69,7 @@ class HomeSectionItem(tk.BaseModel):
             "weight": self.weight,
             "created_at": self.modified_at.isoformat(),
             "modified_at": self.modified_at.isoformat(),
+            "url_in_new_tab": self.url_in_new_tab,
         }
 
     @classmethod
