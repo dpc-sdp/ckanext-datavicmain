@@ -23,6 +23,7 @@ class HomeSectionData(TypedDict):
     weight: int
     created_at: str
     modified_at: str
+    url_in_new_tab: bool
 
 
 @pytest.mark.usefixtures("with_plugins", "clean_db")
@@ -40,6 +41,7 @@ class TestHomeSectionItemCreate:
         assert home_section_item["weight"] == 0
         assert home_section_item["created_at"]
         assert home_section_item["modified_at"]
+        assert home_section_item["url_in_new_tab"] == False
         assert (
             home_section_item["section_type"]
             == HomeSectionItem.SectionType.news
@@ -108,7 +110,8 @@ class TestHomeSectionItemUpdate:
             entity_url=new_url,
             state=new_state,
             section_type=new_section_type,
-            weight=new_weight
+            weight=new_weight,
+            url_in_new_tab=True,
         )
 
         assert result["title"] == new_title
@@ -119,6 +122,7 @@ class TestHomeSectionItemUpdate:
         assert result["state"] == new_state
         assert result["section_type"] == new_section_type
         assert result["weight"] == new_weight
+        assert result["url_in_new_tab"] == True
 
     def test_update_with_invalid_url(self, home_section_item_factory):
         home_section_item = home_section_item_factory()
