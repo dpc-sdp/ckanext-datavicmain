@@ -1,0 +1,97 @@
+scheming_version: 2
+schema_id: datavicmain_home_item
+about: A form for an item in the home page
+
+fields:
+  - field_name: title
+    label: Title
+    required: true
+    classes:
+      - control-full
+    form_attrs:
+      required: 1
+
+  - field_name: description
+    label: Description
+    form_snippet: textarea.html
+
+  - field_name: image_id
+    label: Image File
+    validators: ignore_missing
+    form_snippet: vic_upload.html
+    help_text: The image file. This will be displayed on the home page. Has a priority over the URL.
+    form_attrs:
+      accept: image/png, image/gif, image/jpeg
+    classes:
+      - control-full
+
+  - field_name: url
+    label: Image URL
+    validators: ignore_missing unicode_safe url_validator
+    form_snippet: vic_text.html
+    input_type: url
+    help_text: The URL of the image. This will be displayed on the home page.
+    classes:
+      - control-full
+
+  - field_name: entity_url
+    label: Item URL
+    validators: ignore_missing unicode_safe url_validator
+    form_snippet: vic_text.html
+    input_type: url
+    help_text: User will be redirected to this URL when clicking on the item.
+    required: true
+    form_attrs:
+      required: 1
+    classes:
+      - control-full
+
+  - field_name: url_in_new_tab
+    label: New tab
+    form_snippet: vic_checkbox.html
+    help_text: If checked, the URL will be opened in a new tab.
+    classes:
+      - control-full
+    validators: boolean_validator
+    output_validators: convert_to_json_if_string
+
+  - field_name: section_type
+    label: Type
+    preset: select
+    required: true
+    choices:
+      - value: news
+        label: News or Event
+      - value: data
+        label: Data Category
+      - value: resources
+        label: Resource
+    help_text: The type of the item. Defines in which section of the home page the item will be displayed.
+    form_attrs:
+      required: 1
+    classes:
+      - control-full
+
+  - field_name: state
+    label: State
+    preset: select
+    required: true
+    choices:
+      - value: active
+        label: Active
+      - value: inactive
+        label: Inactive
+    help_text: The state of the item. Active items will be displayed on the home page.
+    form_attrs:
+      required: 1
+    classes:
+      - control-full
+
+  - field_name: weight
+    label: Weight
+    form_snippet: vic_text.html
+    input_type: number
+    validators: default(0) int_validator
+    help_text: The weight of the item. Items with higher weights will be displayed first. Default is 0.
+    classes:
+      - control-full

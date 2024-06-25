@@ -1,0 +1,14 @@
+js-global:
+  filter: rjsmin
+  output: ckanext-alias/%(version)s-vic-home.js
+  contents:
+    - js/vic-entity-file.js
+  extra:
+    preload:
+      - base/main
+
+css-global:
+  filter: rcssmin
+  output: ckanext-alias/%(version)s-vic-home.css
+  contents:
+    - css/styles.css
