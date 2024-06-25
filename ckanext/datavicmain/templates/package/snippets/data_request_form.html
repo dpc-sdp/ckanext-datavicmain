@@ -24,7 +24,7 @@
 
             <div class="form-group">
                 {% set user_orgs = h.get_user_organizations(g.userobj.name) %}
-                {% set org_name = data.organisation if data else ("" if user_orgs | length > 1 else user_orgs[0].title) %}
+                {% set org_name = data.organisation if data else (user_orgs[0].title if user_orgs else "") %}
                 <label for="organisation">{{ _('Organisation') }} <span class="required">({{ _("Required") }})</span></label>
                 <input type="text" id="field-organisation" name="organisation" class="form-control" required="1" value="{{ org_name }}">
             </div>

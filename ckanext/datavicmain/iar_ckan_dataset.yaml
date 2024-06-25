@@ -357,7 +357,7 @@ dataset_fields:
 
 - field_name: maintainer_email
   label: Email
-  form_placeholder: data.vic@salsadigital.com.au
+  form_placeholder: email
   validators: ignore_missing email_validator
   display_group: Custodian
   form_snippet: vic_custodian_autofill.html

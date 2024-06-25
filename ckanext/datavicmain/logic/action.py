@@ -3,25 +3,38 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import ckanapi
+from sqlalchemy import or_
+
 import ckan.lib.plugins as lib_plugins
 import ckan.model as model
 import ckan.plugins.toolkit as toolkit
+
 import ckan.types as types
 import ckanapi
-from ckan.lib.navl.validators import not_empty  # noqa
-from ckan.logic import validate
-from ckan.types import Action, Context, DataDict, ErrorDict
 from ckan.types.logic import ActionResult
-from ckanext.datavicmain import const, helpers, jobs, utils
 from ckanext.datavicmain.helpers import user_is_registering
 
-from ckan.common import g
-
-from ckanext.datavicmain.logic import schema as vic_schema
 from ckanext.datavicmain.logic.schema import custom_user_create_schema
 from ckanext.mailcraft.exception import MailerException
 from ckanext.mailcraft.utils import get_mailer
 from sqlalchemy import or_
+
+from ckan import model
+from ckan.common import g
+from ckan.lib.dictization import model_dictize, model_save
+from ckan.lib.navl.validators import not_empty
+from ckan.logic import schema as ckan_schema, validate
+from ckan.model import State
+from ckan.types import Action, Context, DataDict, ErrorDict
+from ckan.types.logic import ActionResult
+
+from ckanext.mailcraft.utils import get_mailer
+from ckanext.mailcraft.exception import MailerException
+
+import ckanext.datavic_iar_theme.helpers as theme_helpers
+from ckanext.datavicmain import const, helpers, jobs, utils
+from ckanext.datavicmain.logic import schema as vic_schema
 
 log = logging.getLogger(__name__)
 user_is_registering = helpers.user_is_registering
@@ -164,7 +177,6 @@ def _show_errors_in_sibling_resources(
             }
         )
 
-    errors.update(current_resource_errors)
 
     if errors:
         raise ValidationError(errors)
@@ -337,3 +349,38 @@ def _hide_restricted_orgs(
         result.append(org)
 
     return result
+
+
+@validate(vic_schema.delwp_data_request_schema)
+def send_delwp_data_request(context, data_dict):
+    """Send a notification to admin about a new data request"""
+    mailer = get_mailer()
+
+    data_dict.update(
+        {
+            "site_title": toolkit.config.get("ckan.site_title"),
+            "site_url": toolkit.config.get("ckan.site_url"),
+        }
+    )
+
+    pkg_title = data_dict["__extras"]["package_title"]
+    user = g.userobj.fullname or g.user
+    subject = f"Data request via VPS Data Directory - {pkg_title} requested by {user}"
+
+    try:
+        mailer.mail_recipients(
+            subject,
+            [toolkit.config["ckanext.datavicmain.data_request.contact_point"]],
+            body=toolkit.render(
+                "mailcraft/emails/request_delwp_data/body.txt",
+                data_dict,
+            ),
+            body_html=toolkit.render(
+                "mailcraft/emails/request_delwp_data/body.html",
+                data_dict,
+            ),
+        )
+    except MailerException:
+        return {"success": False}
+
+    return {"success": True}
