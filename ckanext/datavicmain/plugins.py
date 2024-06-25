@@ -258,6 +258,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "get_group": helpers.get_group,
             "has_user_capacity": helpers.has_user_capacity,
             "localized_filesize": helpers.localized_filesize,
+            "dtv_exceeds_max_size_limit": helpers.dtv_exceeds_max_size_limit,
         }
 
     ## IConfigurer interface ##
