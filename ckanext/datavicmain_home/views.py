@@ -5,7 +5,7 @@ import logging
 from typing import Union, Any
 
 from flask.views import MethodView
-from flask import Blueprint, jsonify
+from flask import Blueprint
 
 from ckan import types
 from ckan.plugins import toolkit as tk

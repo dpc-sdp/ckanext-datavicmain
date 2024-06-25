@@ -33,6 +33,7 @@ class HomeSectionItem(tk.BaseModel):
     description = Column(Text, nullable=True)
     image_id = Column(Text, nullable=True)
     url = Column(Text, nullable=True)
+    entity_url = Column(Text, nullable=False)
     state = Column(Text, nullable=False, default=State.active)
     section_type = Column(Text, nullable=False, default=SectionType.news)
     weight = Column(Integer, nullable=False, default=0)
@@ -62,8 +63,12 @@ class HomeSectionItem(tk.BaseModel):
             "description": self.description,
             "image_id": self.image_id,
             "url": self.url,
+            "entity_url": self.entity_url,
             "state": self.state,
             "section_type": self.section_type,
+            "weight": self.weight,
+            "created_at": self.created_at,
+            "modified_at": self.modified_at,
         }
 
     @classmethod

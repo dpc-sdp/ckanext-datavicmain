@@ -2,6 +2,10 @@
 
 {% import 'macros/form.html' as form %}
 
+{% block breadcrumb_content %}
+<li class="active">{{ h.nav_link(_('Manage home items'), named_route='datavic_home.manage') }}</li>
+{% endblock %}
+
 {% block primary %}
     <div class="primary col-sm-9 col-xs-12">
         {% block primary_content %}

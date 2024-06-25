@@ -6,6 +6,7 @@ import ckan.plugins.toolkit as tk
 @tk.blanket.auth_functions
 @tk.blanket.blueprints
 @tk.blanket.validators
+@tk.blanket.helpers
 class DatavicHomePlugin(p.SingletonPlugin):
     p.implements(p.IConfigurer)
 

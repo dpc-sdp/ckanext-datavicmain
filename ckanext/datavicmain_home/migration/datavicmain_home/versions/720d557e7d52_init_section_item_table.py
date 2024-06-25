@@ -25,6 +25,7 @@ def upgrade():
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("image_id", sa.Text(), nullable=True),
         sa.Column("url", sa.Text(), nullable=True),
+        sa.Column("entity_url", sa.Text(), nullable=False),
         sa.Column("state", sa.Text(), nullable=False),
         sa.Column("section_type", sa.Text(), nullable=False),
         sa.Column("weight", sa.Integer(), nullable=False),

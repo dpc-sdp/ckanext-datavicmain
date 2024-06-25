@@ -11,20 +11,32 @@ fields:
 
   - field_name: description
     label: Description
-    preset: markdown
+    form_snippet: textarea.html
 
   - field_name: image_id
-    label: File
+    label: Image File
     validators: ignore_missing
     form_snippet: vic_upload.html
+    help_text: The image file. This will be displayed on the home page. Has a priority over the URL.
     form_attrs:
       accept: image/png, image/gif, image/jpeg
 
   - field_name: url
-    label: URL
+    label: Image URL
     validators: ignore_missing unicode_safe url_validator
     form_snippet: vic_text.html
     input_type: url
+    help_text: The URL of the image. This will be displayed on the home page.
+
+  - field_name: entity_url
+    label: Item URL
+    validators: ignore_missing unicode_safe url_validator
+    form_snippet: vic_text.html
+    input_type: url
+    help_text: User will be redirected to this URL when clicking on the item.
+    required: true
+    form_attrs:
+      required: 1
 
   - field_name: section_type
     label: Type
@@ -37,9 +49,9 @@ fields:
         label: Data Category
       - value: resources
         label: Resource
+    help_text: The type of the item. Defines in which section of the home page the item will be displayed.
     form_attrs:
       required: 1
-    help_text: The type of the item. Defines in which section of the home page the item will be displayed.
 
   - field_name: state
     label: State
@@ -50,9 +62,9 @@ fields:
         label: Active
       - value: inactive
         label: Inactive
+    help_text: The state of the item. Active items will be displayed on the home page.
     form_attrs:
       required: 1
-    help_text: The state of the item. Active items will be displayed on the home page.
 
   - field_name: weight
     label: Weight
