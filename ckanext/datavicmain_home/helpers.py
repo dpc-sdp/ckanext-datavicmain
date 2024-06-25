@@ -15,8 +15,11 @@ def get_item_by_section_type(section_type: str) -> list[dict[str, Any]]:
         list[dict[str, Any]]: The section items.
     """
 
-    return [
-        item.dictize({})
-        for item in HomeSectionItem.get_by_section(section_type)
-        if item.state == HomeSectionItem.State.active
-    ]
+    return sorted(
+        [
+            item.dictize({})
+            for item in HomeSectionItem.get_by_section(section_type)
+            if item.state == HomeSectionItem.State.active
+        ],
+        key=lambda x: x["weight"],
+    )

@@ -67,8 +67,8 @@ class HomeSectionItem(tk.BaseModel):
             "state": self.state,
             "section_type": self.section_type,
             "weight": self.weight,
-            "created_at": self.created_at,
-            "modified_at": self.modified_at,
+            "created_at": self.modified_at.isoformat(),
+            "modified_at": self.modified_at.isoformat(),
         }
 
     @classmethod

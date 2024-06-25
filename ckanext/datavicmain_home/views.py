@@ -19,7 +19,7 @@ from ckanext.datavicmain_home import utils
 
 log = logging.getLogger(__name__)
 
-datavic_home = Blueprint("datavic_home", __name__, url_prefix="/vic/home")
+datavic_home = Blueprint("datavic_home", __name__, url_prefix="/vic-home")
 
 
 class HomeManage(MethodView):
