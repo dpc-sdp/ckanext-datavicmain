@@ -23,7 +23,7 @@ ckan.module("vic-entity-file", function ($, _) {
                 url: this.sandbox.client.url("/api/action/vic_home_remove_item_image"),
                 type: "POST",
                 data: {
-                    item_id: this.options.itemId
+                    id: this.options.itemId
                 },
                 success: function () {
                     $(".image-preview").children().remove();

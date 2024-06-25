@@ -4,7 +4,7 @@
     <label for="upload" class="form-label">{{ _("File") }}</label>
 
     {% if data.image_id %}
-        <div class="controls align-items-center d-flex" data-module="vic-entity-file" data-module-item-id="{{ data.id }}">
+        <div class="controls align-items-center d-flex mb-3" data-module="vic-entity-file" data-module-item-id="{{ data.id }}">
             {% set file_info = h.files_link_details(data.image_id) %}
 
             <div class="image-preview">
@@ -17,7 +17,7 @@
         </div>
     {% endif %}
 
-    <div class="controls mt-3">
+    <div class="controls">
         <input type="file" name="upload" id="file" accept="image/*">
 
         {%- if field.help_text -%}

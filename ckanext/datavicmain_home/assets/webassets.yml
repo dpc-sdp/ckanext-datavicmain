@@ -6,3 +6,9 @@ js-global:
   extra:
     preload:
       - base/main
+
+css-global:
+  filter: rcssmin
+  output: ckanext-alias/%(version)s-vic-home.css
+  contents:
+    - css/styles.css

@@ -19,7 +19,7 @@ def create_section_item(
     one_of,
     ignore,
     url_validator,
-    int_validator
+    int_validator,
 ) -> Schema:
     return {
         "title": [not_empty, unicode_safe],
@@ -75,15 +75,15 @@ def update_section_item(
         "description": [ignore_missing, unicode_safe],
         "upload": [ignore_missing],
         "url": [ignore_missing, url_validator],
-        "entity_url": [not_empty, url_validator],
+        "entity_url": [ignore_missing, url_validator],
         "state": [
-            default(HomeSectionItem.State.active),
+            ignore_missing,
             one_of(
                 [HomeSectionItem.State.active, HomeSectionItem.State.inactive]
             ),
         ],
         "section_type": [
-            default(HomeSectionItem.SectionType.news),
+            ignore_missing,
             one_of(
                 [
                     HomeSectionItem.SectionType.news,
@@ -114,5 +114,29 @@ def get_section_items_by_section_type(
                 ]
             ),
         ],
+        "__extras": [ignore],
+    }
+
+
+@validator_args
+def get_section_item(
+    not_empty,
+    ignore,
+    home_section_item_exists,
+) -> Schema:
+    return {
+        "id": [not_empty, home_section_item_exists],
+        "__extras": [ignore],
+    }
+
+
+@validator_args
+def vic_home_remove_item_image(
+    not_empty,
+    ignore,
+    home_section_item_exists,
+) -> Schema:
+    return {
+        "id": [not_empty, home_section_item_exists],
         "__extras": [ignore],
     }

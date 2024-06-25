@@ -29,7 +29,9 @@ def create_section_item(
     if "upload" in data_dict:
         upload = data_dict.pop("upload")
 
-        result = tk.get_action("files_file_create")(context, {"upload": upload})
+        result = tk.get_action("files_file_create")(
+            context, {"upload": upload}
+        )
         data_dict["image_id"] = result["id"]
 
     item = HomeSectionItem(**data_dict)
@@ -92,13 +94,17 @@ def update_section_item(
     if "upload" in data_dict:
         if item.image_id:
             try:
-                tk.get_action("files_file_delete")(context, {"id": item.image_id})
+                tk.get_action("files_file_delete")(
+                    context, {"id": item.image_id}
+                )
             except (tk.ValidationError, tk.ObjectNotFound):
                 pass
 
         upload = data_dict.pop("upload")
 
-        result = tk.get_action("files_file_create")(context, {"upload": upload})
+        result = tk.get_action("files_file_create")(
+            context, {"upload": upload}
+        )
         data_dict["image_id"] = result["id"]
 
     for key, value in data_dict.items():
@@ -130,6 +136,7 @@ def get_section_items_by_section_type(
 
     return [item.dictize({}) for item in items]
 
+
 @tk.side_effect_free
 def get_all_section_items(
     context: types.Context, data_dict: types.DataDict
@@ -147,7 +154,10 @@ def get_all_section_items(
 
 
 @tk.side_effect_free
-def get_section_item(context: types.Context, data_dict: types.DataDict) -> dict[str, Any]:
+@validate(schema.get_section_item)
+def get_section_item(
+    context: types.Context, data_dict: types.DataDict
+) -> dict[str, Any]:
     """Get a section item.
 
     Args:
@@ -166,12 +176,11 @@ def get_section_item(context: types.Context, data_dict: types.DataDict) -> dict[
     return item.dictize({})
 
 
+@validate(schema.vic_home_remove_item_image)
 def vic_home_remove_item_image(context, data_dict):
     tk.check_access("manage_home_sections", context, data_dict)
 
-    image_id: str = tk.get_or_bust(tk.request.form, "item_id")
-
-    item = HomeSectionItem.get(image_id)
+    item = HomeSectionItem.get(data_dict["id"])
 
     if not item or not item.image_id:
         return {"success": True}

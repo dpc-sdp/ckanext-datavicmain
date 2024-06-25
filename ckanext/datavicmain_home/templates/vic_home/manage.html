@@ -6,9 +6,18 @@
     </p>
 
     <table class="table table-header table-hover table-bordered">
+        <colgroup>
+            <col span="1" style="width: 20%;">
+            <col span="1" style="width: 50%;">
+            <col span="1" style="width: 10%;">
+            <col span="1" style="width: 10%;">
+            <col span="1" style="width: 10%;">
+         </colgroup>
+
         <thead>
             <tr>
                 <th>{{ _('Title') }}</th>
+                <th>{{ _('Description') }}</th>
                 <th>{{ _('State') }}</th>
                 <th>{{ _('Type') }}</th>
                 <th>{{ _('Actions') }}</th>
@@ -19,6 +28,7 @@
             {% for home_item in home_items %}
                 <tr>
                     <td>{{ home_item.title }}</td>
+                    <td>{{ home_item.description | truncate (70) }}</td>
                     <td>{{ home_item.state }}</td>
                     <td>{{ home_item.section_type }}</td>
                     <td>

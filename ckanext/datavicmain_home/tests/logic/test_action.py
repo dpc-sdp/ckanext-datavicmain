@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TypedDict
+from io import BytesIO
 
 import pytest
 
@@ -8,7 +9,7 @@ import ckan.plugins.toolkit as tk
 from ckan.tests.helpers import call_action
 
 from ckanext.datavicmain_home.model import HomeSectionItem
-
+from ckanext.datavicmain_home.tests.helpers import MockFileStorage, PNG_IMAGE
 
 class HomeSectionData(TypedDict):
     id: str
@@ -16,8 +17,12 @@ class HomeSectionData(TypedDict):
     description: str
     image_id: str
     url: str
+    entity_url: str
     state: str
     section_type: str
+    weight: int
+    created_at: str
+    modified_at: str
 
 
 @pytest.mark.usefixtures("with_plugins", "clean_db")
@@ -30,7 +35,11 @@ class TestHomeSectionItemCreate:
         assert home_section_item["description"]
         assert home_section_item["image_id"]
         assert home_section_item["url"]
+        assert home_section_item["entity_url"]
         assert home_section_item["state"] == HomeSectionItem.State.active
+        assert home_section_item["weight"] == 0
+        assert home_section_item["created_at"]
+        assert home_section_item["modified_at"]
         assert (
             home_section_item["section_type"]
             == HomeSectionItem.SectionType.news
@@ -84,28 +93,32 @@ class TestHomeSectionItemUpdate:
 
         new_title = "New title"
         new_description = "New description"
-        new_image_id = "new-image-id"
         new_url = "https://example.com"
         new_state = HomeSectionItem.State.inactive
         new_section_type = HomeSectionItem.SectionType.data
+        new_weight = 11
 
         result = call_action(
             "update_section_item",
             id=home_section_item["id"],
             title=new_title,
             description=new_description,
-            image_id=new_image_id,
+            upload=MockFileStorage(BytesIO(PNG_IMAGE), "image.png"),
             url=new_url,
+            entity_url=new_url,
             state=new_state,
             section_type=new_section_type,
+            weight=new_weight
         )
 
         assert result["title"] == new_title
         assert result["description"] == new_description
-        assert result["image_id"] == new_image_id
+        assert result["image_id"] != home_section_item["image_id"]
         assert result["url"] == new_url
+        assert result["entity_url"] == new_url
         assert result["state"] == new_state
         assert result["section_type"] == new_section_type
+        assert result["weight"] == new_weight
 
     def test_update_with_invalid_url(self, home_section_item_factory):
         home_section_item = home_section_item_factory()

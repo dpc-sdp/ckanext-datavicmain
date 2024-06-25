@@ -34,6 +34,12 @@
     </aside>
 {% endblock %}
 
+{% block styles %}
+    {% asset "vic_home/css-global" %}
+
+    {{ super() }}
+{% endblock %}
+
 {% block scripts %}
     {% asset "vic_home/js-global" %}
 
