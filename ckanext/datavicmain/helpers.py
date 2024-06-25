@@ -19,7 +19,7 @@ import ckan.lib.mailer as mailer
 
 from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
-from . import utils
+from . import utils, config as conf
 
 config = toolkit.config
 request = toolkit.request
@@ -339,3 +339,27 @@ def get_group(group: Optional[str] = None,
         )
     except (toolkit.NotFound, toolkit.ValidationError, toolkit.NotAuthorized):
         return {}
+
+
+def dtv_exceeds_max_size_limit(resource_id: str) -> bool:
+    """Check if DTV resource exceeds the maximum file size limit
+
+    Args:
+        resource_id (str): DTV resource id
+
+    Returns:
+        bool: return True if dtv resource exceeds maximum file size limit set
+            in ckan config "ckanext.datavicmain.dtv.max_size_limit",
+            otherwise - False  
+    """
+    try:
+        resource = toolkit.get_action("resource_show")({}, {"id": resource_id})
+    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
+        return True
+
+    limit = conf.get_dtv_max_size_limit()
+    filesize = resource.get("filesize")
+    if filesize and int(filesize) >= int(limit):
+        return True
+
+    return False
