@@ -7,8 +7,10 @@ import datetime
 import logging
 import csv
 import openpyxl
-from itertools import groupby
 import mimetypes
+import tqdm
+from itertools import groupby
+from urllib.parse import urlparse
 
 from os import path, stat
 from typing import Any
@@ -598,7 +600,6 @@ def _get_date_created(pkg: dict[str, Any]) -> str:
     return pkg.get("metadata_created", "")
 
 
-<<<<<<< HEAD
 @maintain.command(u"update-broken-urls",
                   short_help=u"Update resources with broken urls")
 def update_broken_urls():
@@ -671,7 +672,8 @@ def _suggest_file_format(url: str | None) -> str:
 
     mimetype, _ = mimetypes.guess_type(url)
     return validators.clean_format(mimetype) if mimetype else "unknown"
-=======
+
+
 @maintain.command("make-datatables-view-prioritized")
 def make_datatables_view_prioritized():
     """Check if there are resources that have recline_view and datatables_view and
@@ -685,8 +687,6 @@ def make_datatables_view_prioritized():
         if result.get("updated"):
             number_reordered += 1
     click.secho(f"Reordered {number_reordered} resources", fg="green")
-    mimetype, _ = mimetypes.guess_type(url)
-    return validators.clean_format(mimetype) if mimetype else "unknown"
 
 
 @maintain.command()
@@ -711,4 +711,3 @@ def recalculate_resource_size():
 
     model.Session.commit()
     rebuild(package_ids=packages)
->>>>>>> eaa26c60fe3faa4746f67061a8cb1398679046ad
