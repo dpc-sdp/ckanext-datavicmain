@@ -13,6 +13,8 @@ import ckan.model as model
 import ckan.plugins as p
 import ckan.plugins.toolkit as toolkit
 
+from ckan.types import Context
+
 from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.oidc_pkce.interfaces import IOidcPkce
 from ckanext.transmute.interfaces import ITransmute
@@ -69,6 +71,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
     p.implements(p.ITemplateHelpers)
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IPackageController, inherit=True)
+    p.implements(p.IResourceController, inherit=True)
     p.implements(p.IBlueprint)
     p.implements(p.IClick)
     p.implements(ISyndicate, inherit=True)
@@ -406,3 +409,11 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
 
     def get_transmutators(self):
         return get_transmutators()
+    
+    # IResourceController
+
+    def after_resource_create(
+            self, context: Context, resource: dict[str, Any]) -> None:
+        if not resource["filesize"]:
+            resource["filesize"] = resource["size"]
+            toolkit.get_action("resource_update")(context, resource)

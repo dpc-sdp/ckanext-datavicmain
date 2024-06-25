@@ -89,3 +89,42 @@ def user_show(context: Context, data_dict: DataDict) -> AuthResult:
             return {"success": True}
 
     return {"success": False}
+
+
+def _has_user_capacity_in_org(org_id: str, roles: list) -> bool:
+    """ Check if the current user has the necessary capacity in the certain
+        organization
+
+    Args:
+        org_id (str): id of the organization 
+        roles (list): list of necessary member roles in the organization
+
+    Returns:
+        bool: True if the current user has the necessary capacity in the certain
+        organization, False - otherwise
+    """
+    if authz.users_role_for_group_or_org(
+        group_id=org_id,
+        user_name=tk.current_user.name) in roles:
+        return True
+    return False
+
+
+@tk.chained_auth_function
+def package_activity_list(next_auth, context, data_dict):
+    allowed_roles = ["admin", "editor"]
+    if _has_user_capacity_in_org(context["package"].owner_org, allowed_roles):
+        return next_auth(context, data_dict)
+    return {"success": False}
+
+
+@tk.chained_auth_function
+def organization_activity_list(next_auth, context, data_dict):
+    allowed_roles = ["admin", "editor"]
+    if _has_user_capacity_in_org(data_dict["id"], allowed_roles):
+        return next_auth(context, data_dict)
+    return {"success": False}
+
+
+def vic_datatables_view_prioritize(context, data_dict):
+    return {"success": False}

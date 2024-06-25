@@ -1,13 +1,14 @@
 from __future__ import annotations
 from json import tool
 
+import math
 import os
 import pkgutil
 import inspect
 import logging
 import json
 import base64
-from typing import Any
+from typing import Any, Optional
 
 from urllib.parse import urlsplit, urljoin
 
@@ -22,7 +23,7 @@ from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
 
 from . import utils, const
-from ckanext.datavicmain.config import get_dtv_url
+from ckanext.datavicmain.config import get_dtv_url, get_dtv_external_link
 
 config = toolkit.config
 request = toolkit.request
@@ -569,9 +570,12 @@ def add_curent_organisation(
     return avalable_organisations
 
 
-def datavic_get_dtv_url() -> str:
+def datavic_get_dtv_url(ext_link: bool = False) -> str:
     """Return a URL for DTV map preview"""
-    url = get_dtv_url()
+    if toolkit.asbool(ext_link):
+        url = get_dtv_external_link()
+    else:
+        url = get_dtv_url()
 
     if not url:
         return url
@@ -580,3 +584,69 @@ def datavic_get_dtv_url() -> str:
         url = url + "/"
 
     return url
+
+
+def get_group(group: Optional[str] = None,
+              include_datasets: bool = False) -> dict[str, Any]:
+    if group is None:
+        return {}
+    try:
+        return toolkit.get_action("group_show")(
+            {},
+            {"id": group, "include_datasets": include_datasets}
+        )
+    except (toolkit.NotFound, toolkit.ValidationError, toolkit.NotAuthorized):
+        return {}
+
+
+def has_user_capacity(
+    org_id: str,
+    current_user_id: str, 
+    capacity: Optional[str] = None) -> bool:
+    """Check if the current user has an appropriate capacity in the certain organization
+
+    Args:
+        org_id (str): the id or name of the organization
+        current_user_id (str): the id or name of the user
+        capacity (str): restrict the members returned to those with a given capacity,
+                        e.g. 'member', 'editor', 'admin', 'public', 'private'
+                        (optional, default: None)
+
+    Returns:
+        bool: True for success, False otherwise
+    """
+    try:
+        members = toolkit.get_action("member_list")(
+            {},
+            {"id": org_id, "object_type": "user", "capacity": capacity}
+        )
+        members_id = [member[0] for member in members]
+        if current_user_id in members_id:
+            return True
+    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
+        return False
+
+    return False
+
+
+def localized_filesize(size_bytes: int) -> str:
+    """Returns a localized unicode representation of a number in bytes, MB
+    etc.
+
+    It's  similar  to  CKAN's  original `localised_filesize`,  but  uses  MB/KB
+    instead of MiB/KiB.  Additionally, it rounds up to 1.0KB  any value that is
+    smaller than 1000.
+    """
+
+    if size_bytes < 0:
+        return ""
+
+    if size_bytes == 0:
+        return "0 bytes"
+
+    size_name = ("bytes", "KB", "MB", "GB", "TB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(float(size_bytes) / p, 1)
+
+    return f"{s} {size_name[i]}"
