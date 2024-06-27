@@ -13,24 +13,26 @@ from ckanext.datavicmain import helpers, const
 @tk.auth_sysadmins_check
 @tk.auth_allow_anonymous_access
 def user_update(context, data_dict=None):
-    if tk.request and tk.get_endpoint() == ('user', 'perform_reset'):
+    if toolkit.request and toolkit.get_endpoint() == ("datavicuser", "perform_reset"):
         # Allow anonymous access to the user/reset path, i.e. password resets.
-        return {'success': True}
-    elif 'save' in context and context['save']:
-        if 'email' in tk.request.args:
-            schema = context.get('schema')
+        return {"success": True}
+    elif "save" in context and context["save"]:
+        if "email" in toolkit.request.args:
+            schema = context.get("schema")
 
-    return {'success': True}
+    return {"success": True}
 
 
 @tk.auth_allow_anonymous_access
 def user_reset(context, data_dict):
-    if helpers.is_user_account_pending_review(context.get('user', None)):
-        return {'success': False,
-                'msg': tk._('User %s not authorized to reset password') %
-                (str(context.get('user')))}
+    if helpers.is_user_account_pending_review(context.get("user", None)):
+        return {
+            "success": False,
+            "msg": _t("User %s not authorized to reset password")
+            % (str(context.get("user"))),
+        }
     else:
-        return {'success': True}
+        return {"success": True}
 
 
 @tk.chained_auth_function

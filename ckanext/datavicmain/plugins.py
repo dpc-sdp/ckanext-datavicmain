@@ -63,6 +63,7 @@ def release_date(pkg_dict):
 @toolkit.blanket.auth_functions
 @toolkit.blanket.actions
 @toolkit.blanket.validators
+@toolkit.blanket.config_declarations
 class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
     overrides the default dataset form
@@ -250,6 +251,9 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "datavic_org_has_unrestricted_child": helpers.datavic_org_has_unrestricted_child,
             "group_tree_parents": helpers.group_tree_parents,
             "add_curent_organisation": helpers.add_curent_organisation,
+            "datavic_max_image_size": helpers.datavic_max_image_size,
+            "get_user_organizations": helpers.get_user_organizations,
+            "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
         }
 
     ## IConfigurer interface ##
@@ -310,12 +314,42 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
                 helpers.set_private_activity(pkg_dict, context, str('changed'))
 
     def before_dataset_index(self, pkg_dict: dict[str, Any]) -> dict[str, Any]:
-        if pkg_dict.get('res_format'):
-            pkg_dict['res_format'] = [
-                format.upper().split('.')[-1] for format in pkg_dict['res_format']
+        if pkg_dict.get("res_format"):
+            pkg_dict["res_format"] = [
+                res_format.upper().split(".")[-1]
+                for res_format in pkg_dict["res_format"]
             ]
+
+        if pkg_dict.get("res_format") and self._is_all_api_format(pkg_dict):
+            pkg_dict.get("res_format").append("ALL_API")
         return pkg_dict
 
+    def _is_all_api_format(self, pkg_dict: dict[str, Any]) -> bool:
+        """Check if the dataset contains a resource in a format recognized as an API.
+        This involves determining if the format of the resource is CSV and if this resource exists in the datastore
+        or matches a format inside a predefined list.
+        """
+        for resource in toolkit.get_action("package_show")({"ignore_auth": True}, {"id": pkg_dict["id"]}).get(
+                "resources", []):
+            if resource["format"].upper() == "CSV" and resource["datastore_active"]:
+                return True
+
+        if [
+            res_format
+            for res_format in pkg_dict["res_format"]
+            if res_format
+            in [
+                "WMS",
+                "WFS",
+                "API",
+                "ARCGIS GEOSERVICES REST API",
+                "ESRI REST",
+                "GEOJSON",
+            ]
+        ]:
+            return True
+        return False
+    
     # IClick
     def get_commands(self):
         return cli.get_commands()

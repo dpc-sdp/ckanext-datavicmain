@@ -21,6 +21,7 @@ import ckan.lib.mailer as mailer
 from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
 from . import utils, const
+from ckanext.datavicmain.config import get_dtv_url
 
 config = toolkit.config
 request = toolkit.request
@@ -560,3 +561,21 @@ def add_curent_organisation(
         avalable_organisations.append(current_org)
 
     return avalable_organisations
+
+
+def datavic_max_image_size():
+    """Return max size for image configurate for portal"""
+    return toolkit.config["ckan.max_image_size"]
+
+
+def datavic_get_dtv_url() -> str:
+    """Return a URL for DTV map preview"""
+    url = get_dtv_url()
+
+    if not url:
+        return url
+
+    if not url.endswith("/"):
+        url = url + "/"
+
+    return url

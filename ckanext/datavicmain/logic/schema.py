@@ -4,6 +4,11 @@ import ckan.plugins.toolkit as tk
 import ckan.model as model
 from ckan.logic import schema as ckan_schema
 
+from __future__ import annotations
+
+from typing import Any
+
+from ckan.logic.schema import validator_args
 
 def custom_user_create_schema() -> Schema:
     schema = ckan_schema.user_new_form_schema()
@@ -32,3 +37,16 @@ def custom_user_create_schema() -> Schema:
     })
 
     return schema
+
+
+@validator_args
+def delwp_data_request_schema(
+    not_missing, unicode_safe, email_validator, package_id_or_name_exists
+) -> dict[str, list[Any]]:
+    return {
+        "username": [not_missing, unicode_safe],
+        "email": [not_missing, unicode_safe, email_validator],
+        "organisation": [not_missing, unicode_safe],
+        "message": [not_missing, unicode_safe],
+        "package_id": [not_missing, unicode_safe, package_id_or_name_exists],
+    }
