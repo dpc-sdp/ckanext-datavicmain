@@ -15,6 +15,7 @@ import ckan.plugins.toolkit as toolkit
 
 from ckan.types import Context
 
+from ckanext.datavic_harvester.harvesters.base import get_resource_size
 from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.oidc_pkce.interfaces import IOidcPkce
 from ckanext.transmute.interfaces import ITransmute
@@ -417,6 +418,9 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
 
     def after_resource_create(
             self, context: Context, resource: dict[str, Any]) -> None:
-        if not resource["filesize"]:
-            resource["filesize"] = resource["size"]
+        if not resource.get("filesize"):
+            if resource["url_type"] == "upload":
+                resource["filesize"] = resource["size"]
+            else:
+                resource["filesize"] = get_resource_size(resource["url"])
             toolkit.get_action("resource_update")(context, resource)

@@ -711,3 +711,21 @@ def recalculate_resource_size():
 
     model.Session.commit()
     rebuild(package_ids=packages)
+
+
+@maintain.command()
+def get_datasets_with_large_resources():
+    """Get resources with the size more than
+    'ckanext.datavic_harvester.max_content_length' config value
+    """
+
+    resources = model.Session.query(model.Resource).filter_by(size=-1)
+    
+    if not resources:
+        return click.secho("No largeresources found.", fg="green")
+
+    for resource in resources:
+        click.secho(
+            f"Dataset ID {resource.package_id} - resource {resource.name}",
+            fg="green",
+        )

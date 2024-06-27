@@ -39,6 +39,7 @@ from ckan.model import ResourceView, State
 from ckan.types import Action, Context, DataDict, ErrorDict
 from ckan.types.logic import ActionResult
 
+from ckanext.datavic_harvester.harvesters.base import get_resource_size
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
 
@@ -208,7 +209,11 @@ def resource_update(
     try:
         if not data_dict.get("filesize"):
             resource = model.Resource.get(data_dict.get("id"))
-            data_dict["filesize"] = resource.size
+            if data_dict["url_type"] == "upload":
+                data_dict["filesize"] = resource.size
+            else:
+                data_dict["filesize"] = get_resource_size(data_dict["url"])
+
         result = next_(context, data_dict)
         return result
     except ValidationError as e:
