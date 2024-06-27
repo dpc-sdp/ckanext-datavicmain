@@ -32,7 +32,7 @@
 
                                         <div class="card-body">
                                             <h5 class="card-title">
-                                                <a class="stretched-link" href="https://www.data.vic.gov.au/" {% if item.url_in_new_tab %}target="_blank"{% endif    %}>{{ item.title }}</a>
+                                                <a class="stretched-link" href="{{ item.entity_url }}" {% if item.url_in_new_tab %}target="_blank"{% endif    %}>{{ item.title }}</a>
                                             </h5>
                                             <p class="card-text">
                                                 {{ item.description }}
