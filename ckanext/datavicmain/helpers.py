@@ -570,6 +570,11 @@ def add_curent_organisation(
     return avalable_organisations
 
 
+def datavic_max_image_size():
+    """Return max size for image configurate for portal"""
+    return toolkit.config["ckan.max_image_size"]
+
+
 def datavic_get_dtv_url(ext_link: bool = False) -> str:
     """Return a URL for DTV map preview"""
     if toolkit.asbool(ext_link):

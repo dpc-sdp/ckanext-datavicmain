@@ -64,6 +64,7 @@ def release_date(pkg_dict):
 @toolkit.blanket.auth_functions
 @toolkit.blanket.actions
 @toolkit.blanket.validators
+@toolkit.blanket.config_declarations
 class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
     overrides the default dataset form
@@ -251,6 +252,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "datavic_restrict_hierarchy_tree": helpers.datavic_restrict_hierarchy_tree,
             "datavic_org_has_unrestricted_child": helpers.datavic_org_has_unrestricted_child,
             "group_tree_parents": helpers.group_tree_parents,
+            "add_curent_organisation": helpers.add_curent_organisation,
             "datavic_max_image_size": helpers.datavic_max_image_size,
             "add_curent_organisation": helpers.add_curent_organisation,
             "datavic_get_dtv_url": helpers.datavic_get_dtv_url,

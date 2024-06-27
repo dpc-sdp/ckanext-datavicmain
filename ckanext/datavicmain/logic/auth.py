@@ -35,26 +35,13 @@ def user_reset(context, data_dict):
 
 @tk.chained_auth_function
 def package_update(next_auth, context, data_dict):
-    if (
-        tk.request
-        and tk.get_endpoint()[0] in ["dataset", "package"]
-        and tk.get_endpoint()[1]
-        in ["read", "edit", "resource_read", "resource_edit"]
-    ):
+    if tk.request and tk.get_endpoint()[0] in ['dataset', 'package'] and tk.get_endpoint()[1] in ['read', 'edit', 'resource_read', 'resource_edit']:
         # Harvested dataset are not allowed to be updated, apart from sysadmins
-        package_id = (
-            data_dict.get("id")
-            if data_dict
-            else tk.g.pkg_dict.get("id")
-            if "pkg_dict" in tk.g
-            else None
-        )
+        package_id = data_dict.get('id') if data_dict else tk.g.pkg_dict.get('id') if 'pkg_dict' in tk.g else None
         if package_id and helpers.is_dataset_harvested(package_id):
-            return {
-                "success": False,
-                "msg": _t("User %s not authorized to edit this harvested package")
-                % (str(context.get("user"))),
-            }
+            return {'success': False,
+                    'msg': tk._('User %s not authorized to edit this harvested package') %
+                    (str(context.get('user')))}
 
     return next_auth(context, data_dict)
 

@@ -165,6 +165,11 @@ class TestDatavicUserCreate:
             },
         )
 
+class TestDatavicUserEndpoints:
+    def test_user_approve(self, app, user, sysadmin):
+        url = url_for("datavicuser.approve", id=user["id"])
+        env = {"Authorization": sysadmin["token"]}
+
         send_email_notification.assert_not_called()
 
         assert "Missing value" in response.body
@@ -184,6 +189,11 @@ class TestDatavicUserCreate:
                 "organisation_role": "member",
             },
         )
+        assert "User approved" in response
+
+    def test_user_approve_not_authorized(self, app, user):
+        url = url_for("datavicuser.approve", id=user["id"])
+        env = {"Authorization": user["token"]}
 
         send_email_notification.assert_called()
 
@@ -193,6 +203,11 @@ class TestDatavicUserCreate:
         joined_org = call_action(
             "organization_list_for_user", id=user_dict["id"]
         )[0]
+        assert "Unauthorized to activate user" in response
+
+    def test_user_deny(self, app, sysadmin, user):
+        url = url_for("datavicuser.deny", id=user["id"])
+        env = {"Authorization": sysadmin["token"]}
 
         assert joined_org
         assert joined_org["capacity"] == "member"
@@ -259,6 +274,11 @@ class TestDatavicUserCreate:
 @mock.patch("ckanext.datavicmain.utils.notify_about_org_join_request")
 class TestDatavicOrgRequestJoin:
     """Test that user is able to request to join into the org"""
+        assert "User Denied" in response
+
+    def test_user_deny_not_authorized(self, app, user):
+        url = url_for("datavicuser.deny", id=user["id"])
+        env = {"Authorization": user["token"]}
 
     def test_join(self, send_email_notification, app, user, organization):
         app.post(
@@ -417,3 +437,100 @@ class TestDatavicOrgRequestList:
         assert "No pending access requests" not in resp.body
         assert "Reject" in resp.body
         assert "Approve" in resp.body
+        assert "Unauthorized to reject user" in response
+
+
+@pytest.mark.usefixtures("clean_db", "with_plugins", "with_request_context")
+class TestDatavicUserUpdate:
+    def test_regular_user_update_wrong_old(self, app, user):
+        response = app.post(
+            url=url_for("datavicuser.edit"),
+            extra_environ={"Authorization": user["token"]},
+            status=200,
+            data={
+                "save": "",
+                "email": user["email"],
+                "name": user["name"],
+                "old_password": "wrong-old-pass",
+                "password1": "123",
+                "password2": "123",
+            },
+        )
+
+        assert "Old Password: incorrect password" in response
+
+    def test_regular_user_update_proper_old(self, app, user):
+        response = app.post(
+            url=url_for("datavicuser.edit"),
+            extra_environ={"Authorization": user["token"]},
+            status=200,
+            data={
+                "save": "",
+                "email": user["email"],
+                "name": user["name"],
+                "old_password": "correct123",
+                "password1": "new-pass-123",
+                "password2": "new-pass-123",
+            },
+        )
+
+        assert "Profile updated" in response
+
+    def test_sysadmin_do_not_need_old_for_other_users(
+        self, app, user, sysadmin
+    ):
+        response = app.post(
+            url=url_for("datavicuser.edit", id=user["name"]),
+            extra_environ={"Authorization": sysadmin["token"]},
+            data={
+                "save": "",
+                "email": user["email"],
+                "name": user["name"],
+                "password1": "new-pass-123",
+                "password2": "new-pass-123",
+            },
+        )
+        assert "Profile updated" in response
+
+    def test_sysadmin_need_old_for_themselves(self, app, sysadmin):
+        response = app.post(
+            url=url_for("datavicuser.edit", id=sysadmin["name"]),
+            extra_environ={"Authorization": sysadmin["token"]},
+            data={
+                "save": "",
+                "email": sysadmin["email"],
+                "name": sysadmin["name"],
+                "old_password": "wrong-old-pass",
+                "password1": "new-pass-123",
+                "password2": "new-pass-123",
+            },
+        )
+        assert "Old Password: incorrect password" in response
+
+    def test_sysadmin_update_with_old_pass(self, app, sysadmin):
+        response = app.post(
+            url=url_for("datavicuser.edit", id=sysadmin["name"]),
+            extra_environ={"Authorization": sysadmin["token"]},
+            data={
+                "save": "",
+                "email": sysadmin["email"],
+                "name": sysadmin["name"],
+                "old_password": "correct123",
+                "password1": "new-pass-123",
+                "password2": "new-pass-123",
+            },
+        )
+        assert "Profile updated" in response
+
+    def test_user_update_with_null_password(self, user):
+        user["password"] = None
+
+        with pytest.raises(tk.ValidationError):
+            call_action("user_update", **user)
+
+    def test_user_update_with_invalid_password(self, user):
+        for password in (False, -1, 23, 30.7):
+            user["password"] = password
+
+            with pytest.raises(tk.ValidationError):
+                call_action("user_update", **user)
