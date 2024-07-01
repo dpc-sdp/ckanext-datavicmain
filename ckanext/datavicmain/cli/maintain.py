@@ -714,18 +714,57 @@ def recalculate_resource_size():
 
 
 @maintain.command()
-def get_datasets_with_large_resources():
-    """Get resources with the size more than
-    'ckanext.datavic_harvester.max_content_length' config value
+@click.option(
+    "-e", "--empty", is_flag=True, help="Get resources with empty size"
+)
+@click.option(
+    "-l",
+    "--limit",
+    is_flag=True,
+    help="Get resources with size > max_content_length",
+)
+@click.option(
+    "-r",
+    "--restricted",
+    is_flag=True,
+    help="Get resources with restricted size autocalculation",
+)
+def get_resources_by_size(empty: bool, limit: bool, restricted: bool):
+    """
+    Get resources by file size.
+    Return all resources with not empty size by default
     """
 
-    resources = model.Session.query(model.Resource).filter_by(size=-1)
-    
+    resources = model.Session.query(model.Resource).filter_by(state="active")
+    click.secho(
+        f"Total number of resources is {resources.count()}",
+        fg="green",
+    )
+    if empty:
+        resources = resources.filter(model.Resource.size.is_(None))
+    elif limit:
+        resources = resources.filter_by(size=-1)
+    elif restricted:
+        resources = resources.filter_by(size=0)
+    else:
+        resources = resources.filter(model.Resource.size.isnot(None))
+
+    click.secho(
+        "Searching for resources...",
+        fg="green",
+    )
+
     if not resources:
-        return click.secho("No largeresources found.", fg="green")
+        return click.secho("No resources found.", fg="green")
 
     for resource in resources:
-        click.secho(
-            f"Dataset ID {resource.package_id} - resource {resource.name}",
-            fg="green",
-        )
+        if not empty:
+            click.secho(
+                f"Dataset ID {resource.package_id} - resource {resource.name}",
+                fg="green",
+            )
+
+    click.secho(
+        f"Found {resources.count()} resources...",
+        fg="green",
+    )
