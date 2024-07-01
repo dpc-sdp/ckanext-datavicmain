@@ -1,13 +1,12 @@
-# encoding: utf-8
 from __future__ import annotations
 
 import logging
-from typing import Union, Any
+from typing import Union, Any, cast
 
 from flask.views import MethodView
-from flask import Blueprint
+from flask import Blueprint, jsonify
 
-from ckan import types
+from ckan import types, model
 from ckan.plugins import toolkit as tk
 from ckan.types import Response
 from ckan.logic import parse_params
@@ -39,10 +38,11 @@ class HomeManage(MethodView):
 
 class HomeItemCreateOrUpdate(MethodView):
     def validate_data(
-        self, data: dict[str, Any], schema: dict[str, Any]
+        self,
+        data: dict[str, Any],
+        schema: dict[str, Any],
+        errors: types.FlattenErrorDict,
     ) -> tuple[dict[str, Any], types.FlattenErrorDict]:
-        errors: types.FlattenErrorDict = dict((key, []) for key in data)
-
         for field_name in data:
             field: dict[str, Any] | None = tk.h.scheming_field_by_name(
                 schema["fields"], field_name
@@ -57,7 +57,10 @@ class HomeItemCreateOrUpdate(MethodView):
             for validator in validators_from_string(
                 field["validators"], field, schema
             ):
-                convert(validator, field_name, data, errors, context={})
+                try:
+                    convert(validator, field_name, data, errors, context={})
+                except tk.StopOnError:
+                    return data, errors
 
         return data, errors
 
@@ -80,7 +83,8 @@ class HomeItemCreate(HomeItemCreateOrUpdate):
         if file := tk.request.files.get("upload"):
             data["upload"] = file
 
-        data, errors = self.validate_data(data, schema)
+        errors: types.FlattenErrorDict = dict((key, []) for key in data)
+        data, errors = self.validate_data(data, schema, errors)
 
         if any(list(errors.values())):
             return tk.render(
@@ -131,7 +135,8 @@ class HomeItemEdit(HomeItemCreateOrUpdate):
 
         data["id"] = item_id
 
-        data, errors = self.validate_data(data, schema)
+        errors: types.FlattenErrorDict = dict((key, []) for key in data)
+        data, errors = self.validate_data(data, schema, errors)
 
         if any(list(errors.values())):
             return tk.render(
@@ -163,6 +168,25 @@ class HomeItemDelete(MethodView):
 
         return tk.redirect_to("datavic_home.manage")
 
+
+def section_autocomplete() -> Response:
+    q = tk.request.args.get("incomplete", "")
+
+    if not q:
+        return jsonify({"ResultSet": {"Result": []}})
+
+    return jsonify(
+        {
+            "ResultSet": {
+                "Result": [
+                    {"Name": section}
+                    for section in tk.h.vic_home_get_sections()
+                ]
+            }
+        }
+    )
+
+
 datavic_home.add_url_rule("/manage", view_func=HomeManage.as_view("manage"))
 datavic_home.add_url_rule("/new", view_func=HomeItemCreate.as_view("new"))
 datavic_home.add_url_rule(
@@ -170,4 +194,7 @@ datavic_home.add_url_rule(
 )
 datavic_home.add_url_rule(
     "/delete/<item_id>", view_func=HomeItemDelete.as_view("delete")
+)
+datavic_home.add_url_rule(
+    "/section_autocomplete", view_func=section_autocomplete
 )

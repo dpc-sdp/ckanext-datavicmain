@@ -33,16 +33,7 @@ def create_section_item(
                 [HomeSectionItem.State.active, HomeSectionItem.State.inactive]
             ),
         ],
-        "section_type": [
-            default(HomeSectionItem.SectionType.news),
-            one_of(
-                [
-                    HomeSectionItem.SectionType.news,
-                    HomeSectionItem.SectionType.data,
-                    HomeSectionItem.SectionType.resources,
-                ]
-            ),
-        ],
+        "section_type": [not_empty, unicode_safe],
         "weight": [default(0), int_validator],
         "url_in_new_tab": [default(False), boolean_validator],
         "__extras": [ignore],
@@ -85,16 +76,7 @@ def update_section_item(
                 [HomeSectionItem.State.active, HomeSectionItem.State.inactive]
             ),
         ],
-        "section_type": [
-            ignore_missing,
-            one_of(
-                [
-                    HomeSectionItem.SectionType.news,
-                    HomeSectionItem.SectionType.data,
-                    HomeSectionItem.SectionType.resources,
-                ]
-            ),
-        ],
+        "section_type": [ignore_missing, unicode_safe],
         "weight": [default(0), int_validator],
         "url_in_new_tab": [default(False), boolean_validator],
         "__extras": [ignore],
@@ -104,20 +86,11 @@ def update_section_item(
 @validator_args
 def get_section_items_by_section_type(
     not_empty,
-    one_of,
+    unicode_safe,
     ignore,
 ) -> Schema:
     return {
-        "section_type": [
-            not_empty,
-            one_of(
-                [
-                    HomeSectionItem.SectionType.news,
-                    HomeSectionItem.SectionType.data,
-                    HomeSectionItem.SectionType.resources,
-                ]
-            ),
-        ],
+        "section_type": [not_empty, unicode_safe],
         "__extras": [ignore],
     }
 

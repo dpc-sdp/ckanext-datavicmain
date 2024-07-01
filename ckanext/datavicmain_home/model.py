@@ -22,9 +22,9 @@ class HomeSectionItem(tk.BaseModel):
         inactive = "inactive"
 
     class SectionType:
-        news = "news"
-        data = "data"
-        resources = "resources"
+        news = "Datavic news, events and updates"
+        data = "Browse by data category"
+        resources = "Resources"
 
     id = Column(Text, primary_key=True, default=make_uuid)
 
@@ -88,6 +88,18 @@ class HomeSectionItem(tk.BaseModel):
 
     @classmethod
     def all(cls) -> list[Self]:
-        query: Query = model.Session.query(cls)
+        query: Query = model.Session.query(cls).order_by(cls.weight)
 
         return query.all()
+
+    @classmethod
+    def get_all_section_types(cls) -> list[str]:
+        result = []
+
+        for item in cls.all():
+            if item.section_type in result:
+                continue
+
+            result.append(item.section_type)
+
+        return result

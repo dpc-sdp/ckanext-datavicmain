@@ -23,3 +23,13 @@ def get_item_by_section_type(section_type: str) -> list[dict[str, Any]]:
         ],
         key=lambda x: x["weight"],
     )
+
+
+def vic_home_get_sections() -> list[str]:
+    """Get all section types.
+
+    Returns:
+        list[str]: The section types.
+    """
+
+    return HomeSectionItem.get_all_section_types()
