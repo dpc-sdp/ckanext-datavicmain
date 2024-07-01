@@ -158,7 +158,7 @@ def organization_update(
         )
         toolkit.enqueue_job(jobs.reindex_organization, [org_dict["id"]])
 
-    return result
+    return org_dict
 
 
 @toolkit.chained_action
