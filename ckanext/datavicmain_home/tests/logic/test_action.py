@@ -11,6 +11,7 @@ from ckan.tests.helpers import call_action
 from ckanext.datavicmain_home.model import HomeSectionItem
 from ckanext.datavicmain_home.tests.helpers import MockFileStorage, PNG_IMAGE
 
+
 class HomeSectionData(TypedDict):
     id: str
     title: str
@@ -42,10 +43,7 @@ class TestHomeSectionItemCreate:
         assert home_section_item["created_at"]
         assert home_section_item["modified_at"]
         assert home_section_item["url_in_new_tab"] == False
-        assert (
-            home_section_item["section_type"]
-            == HomeSectionItem.SectionType.news
-        )
+        assert home_section_item["section_type"]
 
     def test_create_with_invalid_url(self, home_section_item_factory):
         with pytest.raises(tk.ValidationError):
@@ -54,10 +52,6 @@ class TestHomeSectionItemCreate:
     def test_create_with_invalid_state(self, home_section_item_factory):
         with pytest.raises(tk.ValidationError):
             home_section_item_factory(state="invalid-state")
-
-    def test_create_with_invalid_section_type(self, home_section_item_factory):
-        with pytest.raises(tk.ValidationError):
-            home_section_item_factory(section_type="invalid-section-type")
 
     def test_create_without_title(self, home_section_item_factory):
         with pytest.raises(tk.ValidationError):
@@ -144,16 +138,6 @@ class TestHomeSectionItemUpdate:
                 state="invalid-state",
             )
 
-    def test_update_with_invalid_section_type(self, home_section_item_factory):
-        home_section_item = home_section_item_factory()
-
-        with pytest.raises(tk.ValidationError):
-            call_action(
-                "update_section_item",
-                id=home_section_item["id"],
-                section_type="invalid-section-type",
-            )
-
     def test_update_without_title(self, home_section_item_factory):
         home_section_item = home_section_item_factory()
 
@@ -188,13 +172,6 @@ class TestGetItemsBySectionType:
         )
 
         assert result[0]["id"] == home_section_item["id"]
-
-    def test_get_items_by_invalid_section_type(self):
-        with pytest.raises(tk.ValidationError):
-            call_action(
-                "get_section_items_by_section_type",
-                section_type="invalid-section-type",
-            )
 
     def test_no_items(self):
         result = call_action(

@@ -57,7 +57,6 @@ fields:
 
   - field_name: section_type
     label: Type
-    preset: select
     required: true
     choices:
       - value: news
@@ -67,8 +66,11 @@ fields:
       - value: resources
         label: Resource
     help_text: The type of the item. Defines in which section of the home page the item will be displayed.
+    validators: not_empty unicode_safe
     form_attrs:
-      required: 1
+      data-module: "autocomplete"
+      data-module-source: "/vic-home/section_autocomplete?incomplete=?"
+      class: ""
     classes:
       - control-full
 
