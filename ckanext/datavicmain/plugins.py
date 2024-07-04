@@ -239,6 +239,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'url_for_dtv_config': helpers.url_for_dtv_config,
             "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
             "get_group": helpers.get_group,
+            "dtv_exceeds_max_size_limit": helpers.dtv_exceeds_max_size_limit,
         }
 
     ## IConfigurer interface ##
