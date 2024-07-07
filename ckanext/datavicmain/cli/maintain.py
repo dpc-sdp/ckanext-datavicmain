@@ -3,30 +3,23 @@ from __future__ import annotations
 import csv
 import datetime
 import logging
-import csv
-import openpyxl
 import mimetypes
-
+from itertools import groupby
 from os import path
 from typing import Any
-from sqlalchemy.orm import Query
-from itertools import groupby
 from urllib.parse import urlparse
-
-import click
-import tqdm
 
 import ckan.logic.validators as validators
 import ckan.model as model
 import ckan.plugins.toolkit as tk
 import click
+import openpyxl
 import tqdm
 from ckan.lib.munge import munge_title_to_name
 from ckan.model import Resource, ResourceView
 from ckan.types import Context
-from sqlalchemy.orm import Query
-
 from ckanext.harvest.model import HarvestObject, HarvestSource
+from sqlalchemy.orm import Query
 
 log = logging.getLogger(__name__)
 
@@ -477,13 +470,15 @@ def identify_resources_with_broken_recline():
         )
 
 
-@maintain.command(u"update-broken-urls",
-                  short_help=u"Update resources with broken urls")
+@maintain.command(
+    "update-broken-urls", short_help="Update resources with broken urls"
+)
 def update_broken_urls():
     """Change resources urls' protocols from http to https listed in XLSX file"""
 
     file = path.join(
-        path.dirname(__file__), "data/DTF Content list bulk URL change 20231017.xlsx"
+        path.dirname(__file__),
+        "data/DTF Content list bulk URL change 20231017.xlsx",
     )
     wb = openpyxl.load_workbook(file)
     ws = wb.active
@@ -500,15 +495,14 @@ def update_broken_urls():
 
         if not resource:
             click.secho(
-                f"Resource <{title}> with URL <{url}> does not exist",
-                fg="red"
+                f"Resource <{title}> with URL <{url}> does not exist", fg="red"
             )
             continue
 
         resource.url = row[XLSX_IDX_NEW_URL].value
         click.secho(
             f"URL of resource <{title}> has been updated to <{resource.url}>",
-            fg="green"
+            fg="green",
         )
 
         model.Session.commit()
@@ -549,3 +543,18 @@ def _suggest_file_format(url: str | None) -> str:
 
     mimetype, _ = mimetypes.guess_type(url)
     return validators.clean_format(mimetype) if mimetype else "unknown"
+
+
+@maintain.command("make-datatables-view-prioritized")
+def make_datatables_view_prioritized():
+    """Check if there are resources that have recline_view and datatables_view and
+    reorder them so that datatables_view is first."""
+    resources = model.Session.query(Resource).all()
+    number_reordered = 0
+    for resource in tqdm.tqdm(resources):
+        result = tk.get_action("datavic_datatables_view_prioritize")(
+            {"ignore_auth": True}, {"resource_id": resource.id}
+        )
+        if result.get("updated"):
+            number_reordered += 1
+    click.secho(f"Reordered {number_reordered} resources", fg="green")
