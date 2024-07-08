@@ -22,6 +22,10 @@ def prepare_package_for_odp(package_id, data_dict):
     ## Update resources
     for res in resources:
         res["package_id"] = data_dict["name"]
+
+        if "datastore_active" in res:
+            res["datastore_active"] = False
+
     data_dict.pop('resources')
     data_dict['resources'] = resources
 
