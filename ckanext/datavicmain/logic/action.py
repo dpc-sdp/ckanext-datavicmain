@@ -218,6 +218,10 @@ def resource_update(
         result = next_(context, data_dict)
         return result
     except ValidationError as e:
+        if "Virus checker" in e.error_dict:
+            # If the error is due to a virus check, return the error
+            raise e
+
         _show_errors_in_sibling_resources(context, data_dict, e.error_dict)
 
 
@@ -229,6 +233,10 @@ def resource_create(
         result = next_(context, data_dict)
         return result
     except ValidationError as e:
+        if "Virus checker" in e.error_dict:
+            # If the error is due to a virus check, return the error
+            raise e
+
         _show_errors_in_sibling_resources(context, data_dict, e.error_dict)
 
 
