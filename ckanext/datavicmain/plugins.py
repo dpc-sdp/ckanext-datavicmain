@@ -4,10 +4,10 @@ from __future__ import annotations
 import time
 import calendar
 import logging
-from typing import Any
-from six import text_type
-from typing import Any
+from typing import Any, Optional
 from datetime import datetime
+
+from flask import Response, session
 
 import ckan.authz as authz
 import ckan.model as model
@@ -358,3 +358,11 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     def get_transmutators(self):
         return get_transmutators()
+
+    # IAuthenticator
+
+    def login(self) -> Optional[Response]:
+        session.regenerate_id()
+
+    def logout(self) -> Optional[Response]:
+        session.regenerate_id()
