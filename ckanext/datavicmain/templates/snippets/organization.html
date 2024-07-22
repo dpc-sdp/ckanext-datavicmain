@@ -15,9 +15,7 @@ Example:
   <div class="module context-info">
     <section class="module-content">
       {% if organization.image_display_url %}
-        <a href="{{ url }}">
-          <img src="{{ organization.image_display_url }}" alt="{{ organization.name }}" class="pb-2"/>
-        </a>
+        <img src="{{ organization.image_display_url }}" alt="{{ organization.name }}" class="pb-2"/>
       {% endif %}
 
       <h1 class="heading p-0">{{ organization.title or organization.name }}</h1>
