@@ -263,6 +263,8 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "has_user_capacity": helpers.has_user_capacity,
             "localized_filesize": helpers.localized_filesize,
             "dtv_exceeds_max_size_limit": helpers.dtv_exceeds_max_size_limit,
+            "datavic_get_org_members": helpers.datavic_get_org_members,
+            "datavic_update_org_error_dict": helpers.datavic_update_org_error_dict,
         }
 
     ## IConfigurer interface ##
@@ -414,7 +416,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
 
     def get_transmutators(self):
         return get_transmutators()
-    
+
     # IResourceController
 
     def after_resource_create(

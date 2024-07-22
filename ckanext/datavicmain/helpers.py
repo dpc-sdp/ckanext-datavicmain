@@ -606,7 +606,7 @@ def get_group(group: Optional[str] = None,
 
 def has_user_capacity(
     org_id: str,
-    current_user_id: str, 
+    current_user_id: str,
     capacity: Optional[str] = None) -> bool:
     """Check if the current user has an appropriate capacity in the certain organization
 
@@ -666,7 +666,7 @@ def dtv_exceeds_max_size_limit(resource_id: str) -> bool:
     Returns:
         bool: return True if dtv resource exceeds maximum file size limit set
             in ckan config "ckanext.datavicmain.dtv.max_size_limit",
-            otherwise - False  
+            otherwise - False
     """
     try:
         resource = toolkit.get_action("resource_show")({}, {"id": resource_id})
@@ -679,3 +679,29 @@ def dtv_exceeds_max_size_limit(resource_id: str) -> bool:
         return True
 
     return False
+
+
+def datavic_get_org_members(org_id: str) -> list[dict[str, Any]]:
+    """Get organization members"""
+    return toolkit.get_action("member_list")(
+        {"user": toolkit.current_user.name},
+        {"id": org_id, "object_type": "user"},
+    )
+
+
+def datavic_update_org_error_dict(
+    error_dict: dict[str, Any],
+) -> dict[str, Any]:
+    """Internal CKAN logic makes a validation for resource file size. We want
+    to show it as an error on the Logo field."""
+    if "upload" not in error_dict:
+        return error_dict
+
+    error_dict["Logo"] = error_dict.pop("upload")
+
+    if error_dict["Logo"] == ["File upload too large"]:
+        error_dict["Logo"] = [(
+            f"File size is too large. Select an image which is no larger than {datavic_max_image_size()}MB."
+        )]
+
+    return error_dict
