@@ -242,6 +242,8 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             "datavic_max_image_size": helpers.datavic_max_image_size,
             "get_user_organizations": helpers.get_user_organizations,
             "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
+            "datavic_get_org_members": helpers.datavic_get_org_members,
+            "datavic_update_org_error_dict": helpers.datavic_update_org_error_dict,
         }
 
     ## IConfigurer interface ##

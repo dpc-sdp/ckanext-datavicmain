@@ -8,6 +8,8 @@
 {% block errors %}
   {%- if errors -%}
     {%- set schema = h.scheming_get_dataset_schema(dataset_type) -%}
+    {% set errors = h.datavic_update_org_error_dict(errors) %}
+
     {%- snippet 'scheming/snippets/errors.html',
       errors=errors, fields=schema.dataset_fields,
       entity_type='dataset', object_type=dataset_type -%}
