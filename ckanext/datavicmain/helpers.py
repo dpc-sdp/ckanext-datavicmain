@@ -348,14 +348,6 @@ def datavic_get_dtv_url() -> str:
     return url
 
 
-def datavic_get_org_members(org_id: str) -> list[dict[str, Any]]:
-    """Get organization members"""
-    return toolkit.get_action("member_list")(
-        {"user": toolkit.current_user.name},
-        {"id": org_id, "object_type": "user"},
-    )
-
-
 def datavic_update_org_error_dict(
     error_dict: dict[str, Any],
 ) -> dict[str, Any]:
