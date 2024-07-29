@@ -28,14 +28,12 @@ Example:
       {% else %}
         <p class="empty">{{ _('There is no description for this organization') }}</p>
       {% endif %}
-      {% if show_nums %}
+      {#% if show_nums %}
         <div class="nums">
           <dl>
-            <dt>{{ _('Members') }}</dt>
-            <dd>{{ h.datavic_get_org_members(organization.id) | length }}</dd>
           </dl>
         </div>
-      {% endif %}
+      {% endif %#}
     </section>
   </div>
 {% endwith %}
