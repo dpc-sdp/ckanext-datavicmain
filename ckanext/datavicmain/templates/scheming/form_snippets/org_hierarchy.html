@@ -1,0 +1,17 @@
+{% import 'macros/form.html' as form %}
+
+{% if allowable_parent_groups is not defined %}
+    {% set allowable_parent_groups = h.get_allowable_parent_groups(data.id) %}
+{% endif %}
+
+{% call form.input_block("field-parent", label=_("Parent")) %}
+    <select id="field-parent" name="groups__0__name" data-module="autocomplete">
+        {% set selected_parent = (data.get('groups') or [{'name': ''}])[0]['name'] %} {{ selected_parent }}
+
+        {% for group in allowable_parent_groups or h.get_allowable_parent_groups(data.id) %}
+            {% if h.check_access('package_create', {'owner_org': group.id}) %}
+                <option value="{{ group.name }}" {% if group.name == selected_parent %}selected="selected"{% endif %}>{{ group.title }}</option>
+            {% endif %}
+        {% endfor %}
+    </select>
+{% endcall  %}
