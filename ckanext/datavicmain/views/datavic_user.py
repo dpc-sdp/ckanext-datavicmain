@@ -1,5 +1,6 @@
 import logging
 import six
+
 import ckan.plugins.toolkit as toolkit
 import ckan.logic as logic
 import ckan.model as model
@@ -9,7 +10,6 @@ import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
 
 import ckanext.datavicmain.helpers as helpers
-
 
 from flask import Blueprint
 from flask.views import MethodView
@@ -513,6 +513,19 @@ class RegisterView(MethodView):
 _edit_view = DataVicUserEditView.as_view(str("edit"))
 
 
+@datavicuser.before_request
+def before_request() -> None:
+    recaptcha_actions = ["login", "register", "request_reset"]
+    controller, action = toolkit.get_endpoint()
+    if request.method == "POST" and action in recaptcha_actions:
+        try:
+            captcha.check_recaptcha(request)
+        except captcha.CaptchaError:
+            error_msg = _(u'Bad Captcha. Please try again.')
+            h.flash_error(error_msg)
+            return toolkit.redirect_to(toolkit.request.url)
+
+
 def register_datavicuser_plugin_rules(blueprint):
     blueprint.add_url_rule(
         "/user/reset", view_func=DataVicRequestResetView.as_view(str("request_reset"))
@@ -530,6 +543,7 @@ def register_datavicuser_plugin_rules(blueprint):
     blueprint.add_url_rule(
         "/user/register", view_func=RegisterView.as_view(str("register"))
     )
+    blueprint.add_url_rule("/user/login", view_func=user.login, methods=("GET", "POST"))
 
 
 register_datavicuser_plugin_rules(datavicuser)
