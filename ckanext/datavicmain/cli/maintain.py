@@ -24,6 +24,7 @@ import tqdm
 from ckan.lib.munge import munge_title_to_name
 from ckan.model import Resource, ResourceView
 from ckan.types import Context
+from ckanext.datavicmain.helpers import field_choices
 from ckanext.harvest.model import HarvestObject, HarvestSource
 from sqlalchemy.orm import Query
 
@@ -499,10 +500,9 @@ def handle_missing_mandatory_metadata(patch: bool):
     if not patch:
         return
 
-    try:
-        for dataset_name, missing_fields in tqdm.tqdm(
-            incomplete_datasets.items()
-        ):
+    for dataset_name, missing_fields in tqdm.tqdm(
+        incomplete_datasets.items()):
+        try:
             tk.get_action("package_patch")(
                 {"ignore_auth": True},
                 {
@@ -510,8 +510,8 @@ def handle_missing_mandatory_metadata(patch: bool):
                     **missing_fields,
                 },
             )
-    except (tk.ValidationError, tk.ObjectNotFound) as e:
-        click.secho(f"Error while patching the package {dataset_name}: {e}")
+        except (tk.ValidationError, tk.ObjectNotFound) as e:
+            click.secho(f"Error while patching the package {dataset_name}: {e}")
 
 
 def _search_incomplete_datasets() -> dict[str, dict[str, str]]:
@@ -552,6 +552,12 @@ def _search_in_batch(datasets: list[dict[str, Any]]) -> dict[str, dict[str, str]
             for field in _missing_value_fields
             if not dataset.get(field)
         }
+
+        update_frequency = dataset.get("update_frequency")
+        choices = [choice["value"] for choice in field_choices("update_frequency")]
+        if update_frequency and update_frequency not in choices:
+            missing_fields["update_frequency"] = "unknown"
+
         if missing_fields:
             incomplete_datasets[dataset["name"]] = missing_fields
     return incomplete_datasets
@@ -563,6 +569,7 @@ _missing_value_fields: list[str] = [
     "access",
     "personal_information",
     "protective_marking",
+    "category",
 ]
 
 
@@ -580,6 +587,8 @@ def _get_default_values_for_missing_fields(
         return "no"
     elif field == "protective_marking":
         return "official"
+    elif field == "category":
+        return _get_category(dataset)
 
 
 def _get_date_created(pkg: dict[str, Any]) -> str:
@@ -597,6 +606,16 @@ def _get_date_created(pkg: dict[str, Any]) -> str:
     if min_release_date:
         return min_release_date
     return pkg.get("metadata_created", "")
+
+
+def _get_category(pkg: dict[str, Any]) -> str:
+    """
+    For missing field 'category' set its value as group id related to this dataset
+    """
+    if groups := pkg.get("groups"):
+        return groups[0].get("id")
+    return
+
 
 @maintain.command(u"update-broken-urls",
                   short_help=u"Update resources with broken urls")
