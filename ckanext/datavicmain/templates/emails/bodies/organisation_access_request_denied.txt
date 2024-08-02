@@ -1,0 +1,12 @@
+Hi {{ username }},
+
+Your request to join "{{ org_name | safe }}" has been rejected.
+
+Please see the reason below:
+
+{{ reason | safe }}
+
+Please contact datavic@dpc.vic.gov.au if you wish to challenge the decision.
+
+Regards,
+Data.Vic Team
