@@ -1,14 +1,12 @@
+from __future__ import annotations
+
+from typing import Any
 from ckan.types import Schema
 
 import ckan.plugins.toolkit as tk
 import ckan.model as model
-from ckan.logic import schema as ckan_schema
-
-from __future__ import annotations
-
-from typing import Any
-
 from ckan.logic.schema import validator_args
+from ckan.logic import schema as ckan_schema
 
 def custom_user_create_schema() -> Schema:
     schema = ckan_schema.user_new_form_schema()
