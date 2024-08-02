@@ -6,7 +6,6 @@ from ckan.types import Schema
 import ckan.plugins.toolkit as tk
 import ckan.model as model
 from ckan.logic.schema import validator_args
-from ckan.types import Schema
 from ckan.logic import schema as ckan_schema
 
 @validator_args
