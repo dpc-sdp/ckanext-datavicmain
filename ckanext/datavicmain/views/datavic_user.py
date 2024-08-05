@@ -515,7 +515,7 @@ _edit_view = DataVicUserEditView.as_view(str("edit"))
 
 @datavicuser.before_request
 def before_request() -> None:
-    recaptcha_actions = ["login", "register", "request_reset"]
+    recaptcha_actions = ["login", "request_reset"]
     controller, action = toolkit.get_endpoint()
     if request.method == "POST" and action in recaptcha_actions:
         try:
