@@ -515,15 +515,18 @@ _edit_view = DataVicUserEditView.as_view(str("edit"))
 
 @datavicuser.before_request
 def before_request() -> None:
-    recaptcha_actions = ["login", "register", "request_reset"]
-    controller, action = toolkit.get_endpoint()
-    if request.method == "POST" and action in recaptcha_actions:
+    _, action = toolkit.get_endpoint()
+
+    if (
+        request.method == "POST"
+        and action in ["login", "register", "request_reset"]
+        and not config.get("debug")
+    ):
         try:
             captcha.check_recaptcha(request)
         except captcha.CaptchaError:
-            error_msg = _(u'Bad Captcha. Please try again.')
-            h.flash_error(error_msg)
-            return toolkit.redirect_to(toolkit.request.url)
+            h.flash_error(toolkit._(u'Bad Captcha. Please try again.'))
+            return h.redirect_to(request.url)
 
 
 def register_datavicuser_plugin_rules(blueprint):
