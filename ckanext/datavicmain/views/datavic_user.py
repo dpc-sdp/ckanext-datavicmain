@@ -14,7 +14,7 @@ import ckanext.datavicmain.helpers as helpers
 from flask import Blueprint
 from flask.views import MethodView
 from ckan.common import _, g, request
-from ckan import authz
+from ckan import authz, plugins
 
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
@@ -516,6 +516,10 @@ _edit_view = DataVicUserEditView.as_view(str("edit"))
 @datavicuser.before_request
 def before_request() -> None:
     _, action = toolkit.get_endpoint()
+
+    # Skip recaptcha check if 2FA is enabled, it will be checked with ckanext-auth
+    if plugins.plugin_loaded("auth") and toolkit.h.is_2fa_enabled():
+        return;
 
     if (
         request.method == "POST"
