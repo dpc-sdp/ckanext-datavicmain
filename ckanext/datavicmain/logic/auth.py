@@ -70,7 +70,10 @@ def user_show(context: Context, data_dict: DataDict) -> AuthResult:
     if toolkit.request and toolkit.get_endpoint() == ("datavicuser", "perform_reset"):
         return {"success": True}
     user_id = authz.get_user_id_for_username(data_dict.get("id"))
-    is_myself = toolkit.current_user.name == data_dict.get("id")
+    is_myself = data_dict.get("id") in (
+        toolkit.current_user.name,
+        toolkit.current_user.id,
+    )
     is_sysadmin = authz.is_sysadmin(toolkit.current_user.name)
 
     if is_sysadmin or is_myself:
