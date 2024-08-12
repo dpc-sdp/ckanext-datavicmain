@@ -57,7 +57,10 @@ def user_show(context: Context, data_dict: DataDict) -> AuthResult:
     ):
         return {"success": True}
     user_id = authz.get_user_id_for_username(data_dict.get("id"))
-    is_myself = tk.current_user.name == data_dict.get("id")
+    is_myself = data_dict.get("id") in (
+        tk.current_user.name,
+        tk.current_user.id,
+    )
     is_sysadmin = authz.is_sysadmin(tk.current_user.name)
 
     if is_sysadmin or is_myself:
@@ -83,7 +86,7 @@ def _has_user_capacity_in_org(org_id: str, roles: list) -> bool:
         organization
 
     Args:
-        org_id (str): id of the organization 
+        org_id (str): id of the organization
         roles (list): list of necessary member roles in the organization
 
     Returns:
