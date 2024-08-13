@@ -1,7 +1,5 @@
 import ckan.plugins.toolkit as tk
 
-from ckanext.alias.utils import parse_alias_field
-from ckanext.alias.config import get_alias_fieldname
 
 def prepare_package_for_odp(package_id, data_dict):
     _extract_extras(data_dict)
