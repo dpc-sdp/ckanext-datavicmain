@@ -389,7 +389,7 @@ def approve(id):
         user = tk.get_action("user_update")({"ignore_auth": True}, old_data)
 
         # Send new account approved email to user
-        helpers.send_email(
+        toolkit.h.datavic_send_email(
             [user.get("email", "")],
             "new_account_approved",
             {
@@ -428,7 +428,7 @@ def deny(id):
         tk.get_action("user_delete")({}, data_dict)
 
         # Send account requested denied email
-        helpers.send_email(
+        toolkit.h.datavic_send_email(
             [user.get("email", "")],
             "new_account_denied",
             {

@@ -109,6 +109,10 @@ def send_email(user_emails, email_type, extra_vars):
     body = toolkit.render(
         "emails/bodies/{0}.txt".format(email_type), extra_vars
     )
+    body_html = toolkit.render(
+        "emails/bodies/{0}.html".format(email_type), extra_vars
+    )
+
     for user_email in user_emails:
         try:
             log.debug(
@@ -120,6 +124,7 @@ def send_email(user_emails, email_type, extra_vars):
                 "recipient_email": user_email,
                 "subject": subject,
                 "body": body,
+                "body_html": body_html,
             }
             mailer.mail_recipient(**mail_dict)
         except mailer.MailerException as ex:
@@ -245,8 +250,8 @@ def get_user_organizations(username):
 
 def user_org_can_upload(pkg_id):
     user = toolkit.g.user
-    context = {"user": user}
     org_name = None
+
     if pkg_id is None:
         request_path = urlsplit(request.url)
         if request_path.path is not None:
@@ -256,7 +261,7 @@ def user_org_can_upload(pkg_id):
 
     if pkg_id is not None:
         dataset = toolkit.get_action("package_show")(
-            context, {"name_or_id": pkg_id}
+            {"user": user}, {"name_or_id": pkg_id}
         )
         org_name = dataset.get("organization").get("name")
 
@@ -430,6 +435,9 @@ def datavic_org_has_unrestricted_child(org_id: str) -> bool:
 
     for child_org in child_orgs:
         org_object = model.Group.get(child_org[0])
+
+        if not org_object:
+            continue
 
         if (
             org_object.extras.get(

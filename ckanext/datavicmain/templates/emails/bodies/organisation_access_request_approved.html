@@ -1,0 +1,27 @@
+{#
+
+extra variables:
+- username: the name of the user
+- org_url: url to an organisation
+- org_name: title of the organisation
+
+#}
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Access request has been approved</title>
+</head>
+
+<body>
+    <p>Hi <b>{{ username }}</b>,</p>
+
+    <p>Your request to join <a href="{{ org_url }}">{{ org_name | safe }}</a> organisation has been approved.</p>
+
+    <p>Regards,</p>
+    <p>Data.Vic Team</p>
+</body>
+
+</html>

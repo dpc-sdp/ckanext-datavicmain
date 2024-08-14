@@ -1,0 +1,29 @@
+{#
+
+extra variables:
+- username: the name of the user
+- link: link to a member manage page
+- org_name: title of the organisation
+
+#}
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>New organisation access request</title>
+</head>
+
+<body>
+    <p>Dear {{ username }},</p>
+
+    <p>There is new organisation access request for {{ org_name | safe }} where you are one of administrators</p>
+
+    <p>The request can be processed on the following page: {{ link }}.</p>
+
+    <p>Regards,</p>
+    <p>Data.Vic Team</p>
+</body>
+
+</html>
