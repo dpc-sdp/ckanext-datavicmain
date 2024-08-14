@@ -52,7 +52,9 @@ def make_context():
 class JoinOrgRequestView(MethodView):
     def post(self, org_id: str) -> Response:
         if self.is_user_already_a_member(org_id, tk.current_user.name):
-            tk.h.flash_error(tk._("You are already a member of this organisation"))
+            tk.h.flash_error(
+                tk._("You are already a member of this organisation")
+            )
             return tk.redirect_to("organization.read", id=org_id)
 
         available_roles = [
@@ -66,7 +68,7 @@ class JoinOrgRequestView(MethodView):
                 "organisation_role": [
                     tk.get_validator("not_empty"),
                     tk.get_validator("unicode_safe"),
-                    tk.get_validator("one_of")(available_roles),
+                    tk.get_validator("one_of")(available_roles), # type: ignore
                 ]
             },
         )
@@ -75,17 +77,19 @@ class JoinOrgRequestView(MethodView):
             tk.h.flash_error(errors)
             return tk.redirect_to("organization.read", id=org_id)
 
-        vicmain_utils.store_user_org_join_request({
-            "name": tk.current_user.name,
-            "email": tk.current_user.email,
-            "organisation_id": org_id,
-            "organisation_role": data_dict["organisation_role"],
-        })
+        vicmain_utils.store_user_org_join_request(
+            {
+                "name": tk.current_user.name,
+                "email": tk.current_user.email,
+                "organisation_id": org_id,
+                "organisation_role": data_dict["organisation_role"],
+            }
+        )
 
         tk.h.flash_success(tk._("Request has been sent"))
         return tk.redirect_to("organization.read", id=org_id)
 
-    def is_user_already_a_member(self, org_id: str, user_id: str) -> list[str]:
+    def is_user_already_a_member(self, org_id: str, user_id: str) -> bool:
         user_orgs = tk.get_action("organization_list_for_user")(
             make_context(), {"id": user_id}
         )
@@ -101,7 +105,7 @@ class JoinOrgRequestListView(MethodView):
     def _before_request(self):
         restricted_pages()
 
-    def get(self, org_id: str) -> Response:
+    def get(self, org_id: str) -> str:
         self._before_request()
 
         try:
@@ -182,37 +186,51 @@ class ApproveRequestView(MethodView):
     def send_email_notification(
         self, org_id: str, data_dict: dict[str, Any]
     ) -> None:
+        organization = model.Group.get(org_id)
+
+        # should not happen, but just in case
+        if not organization:
+            return
+
         tk.h.datavic_send_email(
             [data_dict["email"]],
             "organisation_access_request_approved",
             {
                 "username": data_dict["username"],
-                "org_name": model.Group.get(org_id).title,
+                "org_name": organization.title,
+                "org_url": tk.h.url_for(
+                    "organization.read", id=org_id, _external=True
+                ),
             },
         )
 
     def get_payload_schema(self) -> types.Schema:
         """Create a schema to validate request payload"""
-        return {
-            "role": [
-                tk.get_validator("not_empty"),
-                tk.get_validator("unicode_safe"),
-                tk.get_validator("one_of")([
-                    role["value"]
-                    for role in tk.h.datavic_get_join_org_role_options()
-                ]),
-            ],
-            "username": [
-                tk.get_validator("not_empty"),
-                tk.get_validator("unicode_safe"),
-                tk.get_validator("user_id_or_name_exists"),
-            ],
-            "email": [
-                tk.get_validator("not_empty"),
-                tk.get_validator("unicode_safe"),
-                tk.get_validator("email_validator"),
-            ],
-        }
+        return cast(
+            types.Schema,
+            {
+                "role": [
+                    tk.get_validator("not_empty"),
+                    tk.get_validator("unicode_safe"),
+                    tk.get_validator("one_of")(
+                        [
+                            role["value"]
+                            for role in tk.h.datavic_get_join_org_role_options()
+                        ]
+                    ),  # type: ignore
+                ],
+                "username": [
+                    tk.get_validator("not_empty"),
+                    tk.get_validator("unicode_safe"),
+                    tk.get_validator("user_id_or_name_exists"),
+                ],
+                "email": [
+                    tk.get_validator("not_empty"),
+                    tk.get_validator("unicode_safe"),
+                    tk.get_validator("email_validator"),
+                ],
+            },
+        )
 
 
 class DenyRequestView(MethodView):
@@ -243,12 +261,21 @@ class DenyRequestView(MethodView):
     def send_email_notification(
         self, org_id: str, data_dict: dict[str, Any]
     ) -> None:
+        organization = model.Group.get(org_id)
+
+        # should not happen, but just in case
+        if not organization:
+            return
+
         tk.h.datavic_send_email(
             [data_dict["email"]],
             "organisation_access_request_denied",
             {
                 "username": data_dict["username"],
-                "org_name": model.Group.get(org_id).title,
+                "org_name": organization.title,
+                "org_url": tk.h.url_for(
+                    "organization.read", id=org_id, _external=True
+                ),
                 "reason": data_dict["reason"],
             },
         )

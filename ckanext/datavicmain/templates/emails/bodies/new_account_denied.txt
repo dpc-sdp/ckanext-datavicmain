@@ -1,4 +1,4 @@
-Hi {{ user_name }}, 
+Hi {{ user_name }},
 
 Your request for access to the {{ site_title }} has been declined. This service is only available to the Victorian Public Service.
 
