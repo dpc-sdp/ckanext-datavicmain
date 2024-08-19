@@ -22,6 +22,7 @@ from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
 
 import ckanext.datavicmain.helpers as helpers
+import ckanext.datavicmain.utils as utils
 
 log = logging.getLogger(__name__)
 
@@ -313,7 +314,15 @@ class DataVicUserEditView(user.EditView):
     def get(self, id=None, data=None, errors=None, error_summary=None):
         context, id = self._prepare(id)
         data_dict = {"id": id}
-        is_myself = tk.current_user.name == id
+        is_myself = id in (
+            (
+                ""
+                if tk.current_user.is_anonymous
+                else tk.current_user.id
+            ),
+            tk.current_user.name,
+        )
+
         is_sysadmin = tk.current_user.sysadmin
 
         if not any([is_sysadmin, is_myself]):
@@ -374,10 +383,9 @@ def me():
     )
 
 
-def approve(id):
-    username = id
+def approve(user_id: str):
     try:
-        data_dict = {"id": id}
+        data_dict = {"id": user_id}
 
         # Only sysadmins can activate a pending user
         tk.check_access("sysadmin", {})
@@ -389,7 +397,7 @@ def approve(id):
         user = tk.get_action("user_update")({"ignore_auth": True}, old_data)
 
         # Send new account approved email to user
-        toolkit.h.datavic_send_email(
+        tk.h.datavic_send_email(
             [user.get("email", "")],
             "new_account_approved",
             {
@@ -401,6 +409,17 @@ def approve(id):
         )
 
         tk.h.flash_success(tk._("User approved"))
+
+        if data := utils.UserPendingEditorFlake.get_pending_user(user["id"]):
+            utils.store_user_org_join_request(
+                {
+                    "name": data["name"],
+                    "email": data["email"],
+                    "organisation_id": data["organisation_id"],
+                    "organisation_role": "editor",
+                }
+            )
+            utils.UserPendingEditorFlake.remove_pending_user(user["id"])
 
         return tk.h.redirect_to("user.read", id=user["name"])
     except tk.NotAuthorized:
@@ -428,7 +447,7 @@ def deny(id):
         tk.get_action("user_delete")({}, data_dict)
 
         # Send account requested denied email
-        toolkit.h.datavic_send_email(
+        tk.h.datavic_send_email(
             [user.get("email", "")],
             "new_account_denied",
             {
@@ -439,6 +458,9 @@ def deny(id):
         )
 
         tk.h.flash_success(tk._("User Denied"))
+
+        if utils.UserPendingEditorFlake.get_pending_user(user["id"]):
+            utils.UserPendingEditorFlake.remove_pending_user(user["id"])
 
         return tk.h.redirect_to("user.read", id=user["name"])
     except tk.NotAuthorized:
@@ -603,7 +625,7 @@ def register_datavicuser_plugin_rules(blueprint):
     )
     blueprint.add_url_rule("/edit", view_func=_edit_view)
     blueprint.add_url_rule("/edit/<id>", view_func=_edit_view)
-    blueprint.add_url_rule("/user/activate/<id>", view_func=approve)
+    blueprint.add_url_rule("/user/activate/<user_id>", view_func=approve)
     blueprint.add_url_rule("/user/deny/<id>", view_func=deny)
     blueprint.add_url_rule("/user/logged_in", view_func=logged_in)
     blueprint.add_url_rule("/user/me", view_func=me)

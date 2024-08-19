@@ -11,7 +11,6 @@ def clean_db(reset_db, migrate_db_for, with_plugins):
     reset_db()
 
     migrate_db_for("flakes")
-    migrate_db_for("mailcraft")
 
 
 @register

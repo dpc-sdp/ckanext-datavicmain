@@ -244,8 +244,6 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             'get_digital_twin_resources': helpers.get_digital_twin_resources,
             'url_for_dtv_config': helpers.url_for_dtv_config,
             "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
-            "datavic_get_registration_org_role_options": helpers.datavic_get_registration_org_role_options,
-            "datavic_get_join_org_role_options": helpers.datavic_get_join_org_role_options,
             "datavic_user_is_a_member_of_org": helpers.datavic_user_is_a_member_of_org,
             "datavic_is_pending_request_to_join_org": helpers.datavic_is_pending_request_to_join_org,
             "datavic_send_email": helpers.send_email,
@@ -265,6 +263,8 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "dtv_exceeds_max_size_limit": helpers.dtv_exceeds_max_size_limit,
             "datavic_get_org_members": helpers.datavic_get_org_members,
             "datavic_update_org_error_dict": helpers.datavic_update_org_error_dict,
+            "datavic_get_org_roles": helpers.datavic_get_org_roles,
+            "datavic_get_user_roles_in_org": helpers.datavic_get_user_roles_in_org
         }
 
     ## IConfigurer interface ##

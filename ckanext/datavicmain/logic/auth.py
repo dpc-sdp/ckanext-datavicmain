@@ -3,24 +3,7 @@ import ckan.plugins.toolkit as tk
 from ckan import authz
 from ckan.types import Context, DataDict, AuthResult
 
-from ckanext.datavicmain import helpers, const
-
-
-#   Need this decorator to force auth function to be checked for sysadmins aswell
-#   (ref.: ckan/default/src/ckan/ckan/logic/__init__.py)
-
-
-@tk.auth_sysadmins_check
-@tk.auth_allow_anonymous_access
-def user_update(context, data_dict=None):
-    if tk.request and tk.get_endpoint() == ('datavicuser', 'perform_reset'):
-        # Allow anonymous access to the user/reset path, i.e. password resets.
-        return {'success': True}
-    elif 'save' in context and context['save']:
-        if 'email' in tk.request.args:
-            schema = context.get('schema')
-
-    return {"success": True}
+from ckanext.datavicmain import helpers
 
 
 @tk.auth_allow_anonymous_access
@@ -56,6 +39,10 @@ def user_show(context: Context, data_dict: DataDict) -> AuthResult:
         tk.get_endpoint() == ("activity", "user_activity")
     ):
         return {"success": True}
+
+    if tk.current_user.is_anonymous:
+        return {"success": False}
+
     user_id = authz.get_user_id_for_username(data_dict.get("id"))
     is_myself = data_dict.get("id") in (
         tk.current_user.name,

@@ -6,7 +6,20 @@
     </div>
 
     <div class="custom-select">
-        {{ form.select("organisation_role", label=_("Role"), options=h.datavic_get_registration_org_role_options(), selected=data.organisation_role, error=errors.organisation_role, classes=["control-medium"]) }}
+        <div class="form-group mb-3">
+            <label class="form-label" for="organisation_role">{{ _("Role") }}</label>
+            <div>
+                <div>
+                    <input type="radio" name="organisation_role" id="org-role-member" value="member" {{ 'checked' if data.organisation_role == 'member' }} {{ 'checked' if not data.organisation_role}}>
+                    <label for="org-role-member" class="d-inline radio-no-colon">{{ _("Member - view all records published by this organisation") }}</label>
+                </div>
+
+                <div>
+                    <input type="radio" name="organisation_role" id="org-role-editor" value="editor" {{ 'checked' if data.organisation_role == 'editor' }}>
+                    <label for="org-role-editor" class="d-inline radio-no-colon">{{ _("Editor - create and edit records on behalf of this organisation, subject to Administrator approval") }}</label>
+                </div>
+            </div>
+        </div>
     </div>
 
     {% block required_core_fields %}
