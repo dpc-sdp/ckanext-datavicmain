@@ -1,8 +1,8 @@
 Dear {{ username }},
 
-There is new organisation access request for {{ org_name }} where you are one of administrators
+I am requesting {{ role }} access for {{ org_name | safe }} in the VPS Data Directory.
 
-The request can be processed on the following page: {{ link }}.
+If you approve, please assign the {{ role }} role to my profile at: {{ link }}
 
-Regards,
-Data.Vic Team
+Kind regards,
+{{ requester }}

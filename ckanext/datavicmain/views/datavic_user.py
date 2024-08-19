@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-import six
 import ckan.plugins.toolkit as toolkit
 import ckan.logic as logic
 import ckan.model as model
@@ -9,7 +10,7 @@ import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
 
 import ckanext.datavicmain.helpers as helpers
-
+import ckanext.datavicmain.utils as utils
 
 from flask import Blueprint
 from flask.views import MethodView
@@ -187,16 +188,13 @@ class DataVicPerformResetView(user.PerformResetView):
             h.flash_error(_("Integrity Error"))
         except ValidationError as e:
             h.flash_error("%r" % e.error_dict)
-        except ValueError as ve:
-            h.flash_error(six.text_type(ve))
+        except ValueError as e:
+            h.flash_error(str(e))
 
 
 class DataVicUserEditView(user.EditView):
     def _prepare(self, id):
         return super()._prepare(id)
-
-    # def get(self,  id=None, data=None, errors=None, error_summary=None):
-    #     return super(DataVicUserEditView, self).get(id, data, errors, error_summary)
 
     def post(self, id=None):
         context, id = self._prepare(id)
@@ -275,7 +273,15 @@ class DataVicUserEditView(user.EditView):
     def get(self, id=None, data=None, errors=None, error_summary=None):
         context, id = self._prepare(id)
         data_dict = {"id": id}
-        is_myself = toolkit.current_user.name == id
+        is_myself = id in (
+            (
+                ""
+                if toolkit.current_user.is_anonymous
+                else toolkit.current_user.id
+            ),
+            toolkit.current_user.name,
+        )
+
         is_sysadmin = toolkit.current_user.sysadmin
 
         if not any([is_sysadmin, is_myself]):
@@ -331,16 +337,14 @@ def me():
     )
 
 
-def approve(id):
-    username = id
+def approve(user_id: str):
     try:
-        data_dict = {"id": id}
+        data_dict = {"id": user_id}
 
         # Only sysadmins can activate a pending user
         check_access("sysadmin", {})
 
         old_data = get_action("user_show")({}, data_dict)
-        username = old_data["name"]
 
         old_data["state"] = model.State.ACTIVE
         user = get_action("user_update")({"ignore_auth": True}, old_data)
@@ -359,6 +363,17 @@ def approve(id):
 
         h.flash_success(_("User approved"))
 
+        if data := utils.UserPendingEditorFlake.get_pending_user(user["id"]):
+            utils.store_user_org_join_request(
+                {
+                    "name": data["name"],
+                    "email": data["email"],
+                    "organisation_id": data["organisation_id"],
+                    "organisation_role": "editor",
+                }
+            )
+            utils.UserPendingEditorFlake.remove_pending_user(user["id"])
+
         return h.redirect_to("user.read", id=user["name"])
     except NotAuthorized:
         abort(403, _("Unauthorized to activate user."))
@@ -370,7 +385,7 @@ def approve(id):
         for field, summary in e.error_summary.items():
             h.flash_error(f"{field}: {summary}")
 
-    return h.redirect_to("user.read", id=username)
+    return h.redirect_to("user.read", id=old_data["name"])
 
 
 def deny(id):
@@ -396,6 +411,9 @@ def deny(id):
         )
 
         h.flash_success(_("User Denied"))
+
+        if utils.UserPendingEditorFlake.get_pending_user(user["id"]):
+            utils.UserPendingEditorFlake.remove_pending_user(user["id"])
 
         return h.redirect_to("user.read", id=user["name"])
     except NotAuthorized:
@@ -523,7 +541,7 @@ def register_datavicuser_plugin_rules(blueprint):
     )
     blueprint.add_url_rule("/edit", view_func=_edit_view)
     blueprint.add_url_rule("/edit/<id>", view_func=_edit_view)
-    blueprint.add_url_rule("/user/activate/<id>", view_func=approve)
+    blueprint.add_url_rule("/user/activate/<user_id>", view_func=approve)
     blueprint.add_url_rule("/user/deny/<id>", view_func=deny)
     blueprint.add_url_rule("/user/logged_in", view_func=logged_in)
     blueprint.add_url_rule("/user/me", view_func=me)

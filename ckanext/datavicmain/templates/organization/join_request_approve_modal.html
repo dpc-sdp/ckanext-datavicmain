@@ -1,5 +1,7 @@
 {% import "macros/form.html" as form %}
 
+{% set user_roles = h.datavic_get_user_roles_in_org(request.name, group_dict.id) %}
+
 <form method="POST" action="{{ h.url_for('datavic_org.approve_request', org_id=group_dict.name) }}">
     <div class="modal fade" id="approveJoinModal-{{ request.name }}" tabindex="-1" aria-labelledby="approveJoinModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -12,11 +14,36 @@
                 </div>
 
                 <div class="modal-body">
-                    <p>The user has requested the <b>{{ selected_option.text }}</b> role.</p>
+                    <p>{{ _("The user has requested the {} role".format(selected_option)) }}</p>
 
                     {{ form.hidden("email", value=request.email) }}
                     {{ form.hidden("username", value=request.name) }}
-                    {{ form.select("role", label=_("Role"), options=h.datavic_get_join_org_role_options(), classes=["control-medium"], attrs={"class": "form-control w-100", "required": 1}, is_required=True) }}
+
+                    <div class="form-group mb-3">
+                        <label class="form-label" for="role">{{ _("Role") }}</label>
+                        <div>
+                            {% if "member" not in user_roles %}
+                                <div>
+                                    <input type="radio" name="role" id="org-role-member" value="member" {{ 'checked' if selected_option == 'member' }} {{ 'checked' if not selected_option }}>
+                                    <label for="org-role-member" class="d-inline radio-no-colon">{{ _("Member - view all records published by this organisation") }}</label>
+                                </div>
+                            {% endif %}
+
+                            {% if "editor" not in user_roles %}
+                                <div>
+                                    <input type="radio" name="role" id="org-role-editor" value="editor" {{ 'checked' if selected_option == 'editor' }}>
+                                    <label for="org-role-editor" class="d-inline radio-no-colon">{{ _("Editor - create and edit records on behalf of this organisation, subject to Administrator approval") }}</label>
+                                </div>
+                            {% endif %}
+
+                            {% if "editor" in user_roles %}
+                                <div>
+                                    <input type="radio" name="role" id="org-role-admin" value="admin" {{ 'checked' if selected_option == 'admin' }}>
+                                    <label for="org-role-admin" class="d-inline radio-no-colon">{{ _("Administrator - create, edit and publish records, and administer users on behalf of this organisation") }}</label>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
 
                 <div class="modal-footer">

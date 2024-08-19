@@ -4,6 +4,8 @@ extra variables:
 - username: the name of the user
 - link: link to a member manage page
 - org_name: title of the organisation
+- requester: the name of the requester
+- role: the role requested
 
 #}
 
@@ -12,18 +14,18 @@ extra variables:
 
 <head>
     <meta charset="UTF-8">
-    <title>New organisation access request</title>
+    <title>Request for {{ role }} access - {{ org_name | safe }}</title>
 </head>
 
 <body>
     <p>Dear {{ username }},</p>
 
-    <p>There is new organisation access request for {{ org_name | safe }} where you are one of administrators</p>
+    <p>I am requesting {{ role }} access for {{ org_name | safe }} in the VPS Data Directory.</p>
 
-    <p>The request can be processed on the following page: {{ link }}.</p>
+    <p>If you approve, please assign the {{ role }} role to my profile at: {{ link }}</p>
 
-    <p>Regards,</p>
-    <p>Data.Vic Team</p>
+    <p>Kind regards,</p>
+    <p>{{ requester }}</p>
 </body>
 
 </html>

@@ -5,36 +5,7 @@
 {% block page_primary_action %}
     {{ super() }}
 
-    {% set user_is_member = h.datavic_user_is_a_member_of_org(g.userobj.name, group_dict.id) %}
-    {% set pending_request = h.datavic_is_pending_request_to_join_org(g.userobj.name, group_dict.id) %}
-
-    {% if not g.userobj.sysadmin and not user_is_member and not pending_request %}
-        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#requestOrgJoin">
-            {{ _("Request joining organisation") }}
-        </button>
+    {% if g.userobj %}
+        {% snippet "organization/join_org.html", group_dict=group_dict %}
     {% endif %}
-{% endblock %}
-
-{% block body_extras %}
-    <form method="POST" action="{{ h.url_for('datavic_org.request_join', org_id=group_dict.id) }}">
-        <div class="modal fade" id="requestOrgJoin" tabindex="-1" aria-labelledby="requestOrgJoin" aria-hidden="true">
-            <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="requestOrgJoin">{{ _("Request joining organisation") }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-
-                <div class="modal-body">
-                    {{ form.select("organisation_role", label=_("Role"), options=h.datavic_get_registration_org_role_options(), classes=["control-medium"], attrs={"class": "form-control w-100"}) }}
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary mx-3" data-bs-dismiss="modal">{{ _("Close") }}</button>
-                    <button type="submit" class="btn btn-primary">{{ _("Submit") }}</button>
-                </div>
-            </div>
-            </div>
-        </div>
-    </form>
 {% endblock %}

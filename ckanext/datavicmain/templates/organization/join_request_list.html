@@ -17,16 +17,12 @@
             <col style="width:20%">
         </colgroup>
 
-        {% set registration_roles = h.datavic_get_registration_org_role_options() %}
-
         <tbody>
             {% for request in data %}
-                {% set selected_option = registration_roles | selectattr('value', 'equalto', request.organisation_role) | first %}
-
                 <tr>
                     <th>{{ h.linked_user(request.name, 20) }} </th>
                     <th>
-                        {{ selected_option.text }}
+                        {{ request.organisation_role | title }}
                     </th>
                     <th>
                         <div class="d-flex justify-content-between gap-2">
@@ -41,7 +37,7 @@
                     </th>
                 </tr>
 
-                {% snippet 'organization/join_request_approve_modal.html', group_dict=group_dict, request=request, selected_option=selected_option %}
+                {% snippet 'organization/join_request_approve_modal.html', group_dict=group_dict, request=request, selected_option=request.organisation_role %}
                 {% snippet 'organization/join_request_deny_modal.html', group_dict=group_dict, request=request %}
             {% endfor %}
         </tbody>

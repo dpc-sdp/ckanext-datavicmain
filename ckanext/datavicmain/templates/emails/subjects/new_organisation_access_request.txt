@@ -1,1 +1,1 @@
-New organisation access request
+Request for {{ role }} access - {{ org_name }}
