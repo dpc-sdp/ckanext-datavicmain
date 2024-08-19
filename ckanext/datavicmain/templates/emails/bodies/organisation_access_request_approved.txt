@@ -1,7 +1,0 @@
-Hi {{ username }},
-
-Your request to join {{ org_name | safe }} organisation has been approved.
-URL to an organisation {{ org_url | safe }}.
-
-Regards,
-Data.Vic Team

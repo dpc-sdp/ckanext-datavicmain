@@ -242,7 +242,6 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
             "datavic_user_is_a_member_of_org": helpers.datavic_user_is_a_member_of_org,
             "datavic_is_pending_request_to_join_org": helpers.datavic_is_pending_request_to_join_org,
-            "datavic_send_email": helpers.send_email,
             "datavic_is_org_restricted": helpers.datavic_is_org_restricted,
             "datavic_org_has_restricted_parents": helpers.datavic_org_has_restricted_parents,
             "datavic_restrict_hierarchy_tree": helpers.datavic_restrict_hierarchy_tree,

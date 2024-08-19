@@ -7,21 +7,13 @@ extra variables:
 
 #}
 
-<!DOCTYPE html>
-<html>
+{% extends "mailcraft/emails/base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <title>Access request has been approved</title>
-</head>
-
-<body>
+{% block main_text %}
     <p>Hi <b>{{ username }}</b>,</p>
 
     <p>Your request to join <a href="{{ org_url }}">{{ org_name | safe }}</a> organisation has been approved.</p>
 
     <p>Regards,</p>
     <p>Data.Vic Team</p>
-</body>
-
-</html>
+{% endblock %}

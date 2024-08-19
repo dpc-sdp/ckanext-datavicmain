@@ -11,11 +11,15 @@ import ckan.types as types
 import ckan.plugins.toolkit as tk
 from ckan.logic import parse_params
 
+from ckanext.mailcraft.utils import get_mailer
+from ckanext.mailcraft.exception import MailerException
+
 import ckanext.datavicmain.utils as vicmain_utils
 
 log = logging.getLogger(__name__)
 
 bp = Blueprint("datavic_org", __name__, url_prefix="/organization")
+mailer = get_mailer()
 
 
 def restricted_pages() -> None:
@@ -190,17 +194,32 @@ class ApproveRequestView(MethodView):
         if not organization or not user:
             return
 
-        tk.h.datavic_send_email(
-            [data_dict["email"]],
-            "organisation_access_request_approved",
-            {
-                "username": user.display_name,
-                "org_name": organization.title,
-                "org_url": tk.h.url_for(
-                    "organization.read", id=org_id, _external=True
+        extra_vars = {
+            "username": user.display_name,
+            "org_name": organization.title,
+            "org_url": tk.h.url_for(
+                "organization.read", id=org_id, _external=True
+            ),
+            "site_url": tk.config["ckan.site_url"],
+            "site_title": tk.config["ckan.site_title"],
+        }
+
+        try:
+            mailer.mail_recipients(
+                tk._("Organisation access request approved"),
+                [data_dict["email"]],
+                body=tk.render(
+                    "mailcraft/emails/organisation_access_request_approved/body.txt",
+                    extra_vars,
                 ),
-            },
-        )
+                body_html=tk.render(
+                    "mailcraft/emails/organisation_access_request_approved/body.html",
+                    extra_vars,
+                ),
+            )
+        except MailerException:
+            log.error("Failed to send email notification")
+            pass
 
     def get_payload_schema(self) -> types.Schema:
         """Create a schema to validate request payload"""
@@ -261,18 +280,33 @@ class DenyRequestView(MethodView):
         if not organization or not user:
             return
 
-        tk.h.datavic_send_email(
-            [data_dict["email"]],
-            "organisation_access_request_denied",
-            {
-                "username": user.display_name,
-                "org_name": organization.title,
-                "org_url": tk.h.url_for(
-                    "organization.read", id=org_id, _external=True
+        extra_vars = {
+            "username": user.display_name,
+            "org_name": organization.title,
+            "org_url": tk.h.url_for(
+                "organization.read", id=org_id, _external=True
+            ),
+            "reason": data_dict["reason"],
+            "site_url": tk.config["ckan.site_url"],
+            "site_title": tk.config["ckan.site_title"],
+        }
+
+        try:
+            mailer.mail_recipients(
+                tk._("Organisation access request denied"),
+                [data_dict["email"]],
+                body=tk.render(
+                    "mailcraft/emails/organisation_access_request_denied/body.txt",
+                    extra_vars,
                 ),
-                "reason": data_dict["reason"],
-            },
-        )
+                body_html=tk.render(
+                    "mailcraft/emails/organisation_access_request_denied/body.html",
+                    extra_vars,
+                ),
+            )
+        except MailerException:
+            log.error("Failed to send email notification")
+            pass
 
     def get_payload_schema(self) -> types.Schema:
         """Create a schema to validate request payload"""

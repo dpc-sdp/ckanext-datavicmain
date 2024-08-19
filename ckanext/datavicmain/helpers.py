@@ -99,39 +99,6 @@ def is_user_account_pending_review(user_id):
     return user and user.is_pending() and user.reset_key is None
 
 
-def send_email(
-    user_emails, email_type, extra_vars, to: list[str] | None = None
-):
-    if not user_emails or len(user_emails) == 0:
-        return
-
-    subject = toolkit.render(
-        "emails/subjects/{0}.txt".format(email_type), extra_vars
-    )
-    body = toolkit.render(
-        "emails/bodies/{0}.txt".format(email_type), extra_vars
-    )
-    body_html = toolkit.render(
-        "emails/bodies/{0}.html".format(email_type), extra_vars
-    )
-
-    for user_email in user_emails:
-        try:
-            log.debug(
-                "Attempting to send {0} to: {1}".format(email_type, user_email)
-            )
-            mailer.mail_recipients(
-                subject, [user_email], body, body_html, to=to
-            )
-        except MailerException as ex:
-            log.error(
-                "Failed to send email {email_type} to {user_email}.".format(
-                    email_type=email_type, user_email=user_email
-                )
-            )
-            log.error("Error: {ex}".format(ex=ex))
-
-
 def set_private_activity(pkg_dict, context, activity_type):
     pkg = model.Package.get(pkg_dict["id"])
     user = context["user"]
