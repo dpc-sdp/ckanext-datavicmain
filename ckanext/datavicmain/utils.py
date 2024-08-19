@@ -8,6 +8,7 @@ import ckan.model as model
 import ckan.plugins.toolkit as tk
 
 from ckanext.mailcraft.utils import get_mailer
+from ckanext.mailcraft.mailer import MailerException
 
 import ckanext.datavicmain.const as const
 
@@ -163,21 +164,36 @@ def notify_about_pending_user(data_dict: dict[str, Any]) -> None:
             "No emails has been set to notify about new user request"
         )
 
-    tk.h.datavic_send_email(
-        emails,
-        "new_account_requested",
-        {
-            "user_name": data_dict["name"],
-            "user_url": tk.url_for(
-                "user.read", id=data_dict["name"], qualified=True
+    extra_vars = {
+        "user_name": data_dict["name"],
+        "user_url": tk.url_for(
+            "user.read", id=data_dict["name"], qualified=True
+        ),
+        "site_title": tk.config.get("ckan.site_title"),
+        "site_url": tk.config.get("ckan.site_url"),
+    }
+
+    try:
+        mailer.mail_recipients(
+            tk._("New account requested"),
+            emails,
+            body=tk.render(
+                "mailcraft/emails/new_account_requested/body.txt",
+                extra_vars,
             ),
-            "site_title": tk.config.get("ckan.site_title"),
-            "site_url": tk.config.get("ckan.site_url"),
-        },
-    )
+            body_html=tk.render(
+                "mailcraft/emails/new_account_requested/body.html",
+                extra_vars,
+            ),
+        )
+    except MailerException:
+        log.error("Failed to send email notification")
+        pass
 
 
-def notify_about_org_join_request(username: str, orgname: str, role: str) -> None:
+def notify_about_org_join_request(
+    username: str, orgname: str, role: str
+) -> None:
     requester = model.User.get(username)
 
     # should not happen, but just in case
@@ -199,20 +215,39 @@ def notify_about_org_join_request(username: str, orgname: str, role: str) -> Non
         if not org_admin or not org_admin.email:
             continue
 
-        tk.h.datavic_send_email(
-            [org_admin.email],
-            "new_organisation_access_request",
-            {
-                "username": org_admin.display_name,
-                "org_name": org_title,
-                "role": role,
-                "requester": requester.display_name,
-                "link": tk.h.url_for(
-                    "datavic_org.request_list", org_id=orgname, qualified=True
+        extra_vars = {
+            "username": org_admin.display_name,
+            "org_name": org_title,
+            "role": role,
+            "requester": requester.display_name,
+            "link": tk.h.url_for(
+                "datavic_org.request_list", org_id=orgname, qualified=True
+            ),
+            "site_url": tk.config["ckan.site_url"],
+            "site_title": tk.config["ckan.site_title"],
+        }
+
+        try:
+            mailer.mail_recipients(
+                tk._(f"Request for {role} access - {org_title}"),
+                [org_admin.email],
+                body=tk.render(
+                    "mailcraft/emails/new_organisation_access_request/body.txt",
+                    extra_vars,
                 ),
-            },
-            to=[admin.email for admin in recipients if admin and admin.email],
-        )
+                body_html=tk.render(
+                    "mailcraft/emails/new_organisation_access_request/body.html",
+                    extra_vars,
+                ),
+                to=[
+                    admin.email
+                    for admin in recipients
+                    if admin and admin.email
+                ],
+            )
+        except MailerException:
+            log.error("Failed to send email notification")
+            pass
 
 
 def user_has_org_access(org_id: str, user_id: str):

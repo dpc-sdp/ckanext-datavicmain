@@ -396,17 +396,29 @@ def approve(user_id: str):
         old_data["state"] = model.State.ACTIVE
         user = tk.get_action("user_update")({"ignore_auth": True}, old_data)
 
-        # Send new account approved email to user
-        tk.h.datavic_send_email(
-            [user.get("email", "")],
-            "new_account_approved",
-            {
-                "user_name": user.get("name", ""),
-                "login_url": tk.url_for("user.login", qualified=True),
-                "site_title": tk.config.get("ckan.site_title"),
-                "site_url": tk.config.get("ckan.site_url"),
-            },
-        )
+        extra_vars = {
+            "user_name": user.get("name", ""),
+            "login_url": tk.url_for("user.login", qualified=True),
+            "site_title": tk.config.get("ckan.site_title"),
+            "site_url": tk.config.get("ckan.site_url"),
+        }
+
+        try:
+            mailer.mail_recipients(
+                tk._("New account approved"),
+                [user.get("email", "")],
+                body=tk.render(
+                    "mailcraft/emails/new_account_approved/body.txt",
+                    extra_vars,
+                ),
+                body_html=tk.render(
+                    "mailcraft/emails/new_account_approved/body.html",
+                    extra_vars,
+                ),
+            )
+        except MailerException:
+            log.error("Failed to send email notification")
+            pass
 
         tk.h.flash_success(tk._("User approved"))
 
@@ -446,16 +458,28 @@ def deny(id):
         # Delete denied user
         tk.get_action("user_delete")({}, data_dict)
 
-        # Send account requested denied email
-        tk.h.datavic_send_email(
-            [user.get("email", "")],
-            "new_account_denied",
-            {
-                "user_name": user.get("name", ""),
-                "site_title": tk.config.get("ckan.site_title"),
-                "site_url": tk.config.get("ckan.site_url"),
-            },
-        )
+        extra_vars = {
+            "user_name": user.get("name", ""),
+            "site_title": tk.config.get("ckan.site_title"),
+            "site_url": tk.config.get("ckan.site_url"),
+        }
+
+        try:
+            mailer.mail_recipients(
+                tk._("New account denied"),
+                [user.get("email", "")],
+                body=tk.render(
+                    "mailcraft/emails/new_account_denied/body.txt",
+                    extra_vars,
+                ),
+                body_html=tk.render(
+                    "mailcraft/emails/new_account_denied/body.html",
+                    extra_vars,
+                ),
+            )
+        except MailerException:
+            log.error("Failed to send email notification")
+            pass
 
         tk.h.flash_success(tk._("User Denied"))
 
