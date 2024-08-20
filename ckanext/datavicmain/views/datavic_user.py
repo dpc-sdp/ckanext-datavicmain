@@ -15,7 +15,7 @@ import ckanext.datavicmain.utils as utils
 from flask import Blueprint
 from flask.views import MethodView
 from ckan.common import _, g, request
-from ckan import authz
+from ckan import authz, plugins
 
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
@@ -573,6 +573,26 @@ class RegisterView(MethodView):
 _edit_view = DataVicUserEditView.as_view(str("edit"))
 
 
+@datavicuser.before_request
+def before_request() -> None:
+    _, action = toolkit.get_endpoint()
+
+    # Skip recaptcha check if 2FA is enabled, it will be checked with ckanext-auth
+    if plugins.plugin_loaded("auth") and toolkit.h.is_2fa_enabled():
+        return;
+
+    if (
+        request.method == "POST"
+        and action in ["login", "register", "request_reset"]
+        and not config.get("debug")
+    ):
+        try:
+            captcha.check_recaptcha(request)
+        except captcha.CaptchaError:
+            h.flash_error(toolkit._(u'Bad Captcha. Please try again.'))
+            return h.redirect_to(request.url)
+
+
 def register_datavicuser_plugin_rules(blueprint):
     blueprint.add_url_rule(
         "/user/reset",
@@ -591,6 +611,7 @@ def register_datavicuser_plugin_rules(blueprint):
     blueprint.add_url_rule(
         "/user/register", view_func=RegisterView.as_view(str("register"))
     )
+    blueprint.add_url_rule("/user/login", view_func=user.login, methods=("GET", "POST"))
 
 
 register_datavicuser_plugin_rules(datavicuser)

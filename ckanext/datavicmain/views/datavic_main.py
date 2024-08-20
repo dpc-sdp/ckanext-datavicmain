@@ -210,6 +210,14 @@ def dtv_config(encoded: str, embedded: bool):
     })
 
 
+def session_extension():
+    """
+    It's used for current session timeout extending by making ajax request to
+    this view endpoint and updating session '_accessed_time' variable
+    """
+    return {}
+
+
 def register_datavicmain_plugin_rules(blueprint):
     blueprint.add_url_rule('/<package_type>/<package_id>/historical', view_func=historical)
     blueprint.add_url_rule('/dataset/purge/<id>', view_func=purge)
@@ -217,5 +225,6 @@ def register_datavicmain_plugin_rules(blueprint):
     blueprint.add_url_rule('/dtv_config/<encoded>/config.json', view_func=dtv_config, defaults={"embedded": False})
     blueprint.add_url_rule('/dtv_config/<encoded>/embedded/config.json', view_func=dtv_config, defaults={"embedded": True})
     blueprint.add_url_rule("/organization/edit/<id>/toggle-uploads", view_func=toggle_organization_uploads, methods=["POST"])
+    blueprint.add_url_rule('/ajax/session', view_func=session_extension)
 
 register_datavicmain_plugin_rules(datavicmain)

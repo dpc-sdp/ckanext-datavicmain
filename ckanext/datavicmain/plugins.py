@@ -4,8 +4,7 @@ from __future__ import annotations
 import time
 import calendar
 import logging
-from typing import Any
-from six import text_type
+
 from typing import Any
 from datetime import datetime
 
