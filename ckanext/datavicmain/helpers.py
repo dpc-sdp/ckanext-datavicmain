@@ -50,7 +50,7 @@ DEFAULT_DTV_FQ = [
 ]
 
 # Conditionally import the the workflow extension helpers if workflow extension enabled in .ini
-if plugins.plugin_loaded("workflow"):
+if "workflow" in toolkit.config.get('ckan.plugins', False):
     from ckanext.workflow import helpers as workflow_helpers
 
     workflow_enabled = True

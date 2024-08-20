@@ -50,7 +50,7 @@
             hx-get="{{ h.url_for('datavic_member.get_member_remove_modal', org_id=g.group_dict.id, user_id=user.id) }}"
             hx-target="#remove-member-modal .modal-content" hx-trigger="click"
             hx-indicator="#remove-member-spinner" data-bs-toggle="modal"
-            data-bs-target="#remove-member-modal" class="btn btn-danger btn-sm">
+            data-bs-target="#remove-member-modal" class="btn btn-danger btn-lg">
             {{ _('Delete') }}
         </button>
         <button class="btn btn-primary" type="submit" name="submit" >

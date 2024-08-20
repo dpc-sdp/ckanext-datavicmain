@@ -11,7 +11,7 @@ import ckan.model as model
 import ckan.logic as logic
 import ckan.plugins.toolkit as tk
 from ckan.lib.search import rebuild, commit
-
+from ckan.views.user import delete as core_delete
 
 log = logging.getLogger(__name__)
 datavic_member = Blueprint(
@@ -33,10 +33,10 @@ def get_member_remove_modal():
 
     try:
         assert tk.check_access(
-            "group_member_delete", make_context(), {"id": user_id}
+            "organization_member_create", make_context(), {"id": org_id}
         )
     except tk.NotAuthorized:
-        tk.abort(403, tk._("Unauthorized to delete group %s members") % "")
+        return tk.abort(403, tk._("Unauthorized to delete group members"))
 
     user_packages = get_user_packages_for_organisation(org_id, user_id)
     extra_vars = {
@@ -56,6 +56,27 @@ def get_member_remove_modal():
     )
 
 
+@datavic_member.route("/modal/remove-user", methods=["GET"])
+def get_user_remove_modal():
+    data_dict = logic.parse_params(tk.request.args)
+
+    user_id = tk.get_or_bust(data_dict, "user_id")
+    context = make_context()
+
+    try:
+        assert tk.check_access("user_delete", context, {"id": user_id})
+    except tk.NotAuthorized:
+        return tk.abort(403, tk._("Unauthorized to delete user"))
+
+    return tk.render(
+        "datavic_member/modal/remove_user_content.html",
+        extra_vars={
+            "user_orgs": get_user_orgs_with_packages(user_id),
+            "user_id": user_id,
+        },
+    )
+
+
 def make_context() -> types.Context:
     return cast(
         types.Context,
@@ -65,6 +86,23 @@ def make_context() -> types.Context:
             "user": tk.current_user.name,
         },
     )
+
+
+def get_user_orgs_with_packages(user_id: str) -> list[dict[str, Any]]:
+    context = make_context()
+    user_orgs = tk.get_action("organization_list_for_user")(
+        context, {"id": user_id, "permission": "create_dataset"}
+    )
+
+    orgs_with_packages = []
+
+    for org in user_orgs:
+        packages = get_user_packages_for_organisation(org["id"], user_id)
+
+        if packages:
+            orgs_with_packages.append(org)
+
+    return orgs_with_packages
 
 
 def get_user_packages_for_organisation(
@@ -144,13 +182,6 @@ def remove_member():
     context = make_context()
 
     try:
-        assert tk.check_access(
-            "group_member_delete", make_context(), {"id": user_id}
-        )
-    except tk.NotAuthorized:
-        tk.abort(403, tk._("Unauthorized to delete group %s members") % "")
-
-    try:
         tk.get_action("group_member_delete")(
             context, {"id": org_id, "user_id": user_id}
         )
@@ -178,6 +209,13 @@ def reassign_user_packages(
     if user.state != model.State.ACTIVE:
         raise tk.ValidationError("Target user is not active")
 
+    target_roles = tk.h.datavic_get_user_roles_in_org(target_user, org_id)
+
+    if not target_roles or target_roles == ["member"]:
+        raise tk.ValidationError(
+            "Target user is not an editor or admin of the organization"
+        )
+
     result = []
 
     for package in packages:
@@ -198,3 +236,19 @@ def reassign_user_packages(
     model.Session.commit()
 
     return result
+
+
+@datavic_member.route("/remove-user", methods=["POST"])
+def remove_user():
+    data_dict = logic.parse_params(tk.request.form)
+    user_id = tk.get_or_bust(data_dict, "user_id")
+
+    if get_user_orgs_with_packages(user_id):
+        return tk.abort(
+            400,
+            tk._(
+                "User still has packages in organisations. Please reassign them before deleting the user."
+            ),
+        )
+
+    return core_delete(user_id)
