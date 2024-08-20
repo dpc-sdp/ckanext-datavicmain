@@ -185,6 +185,7 @@ def _hide_restricted_orgs(
     return result
 
 
+@toolkit.chained_action
 def resource_update(
     next_: Action, context: Context, data_dict: DataDict
 ) -> ActionResult.ResourceUpdate:
