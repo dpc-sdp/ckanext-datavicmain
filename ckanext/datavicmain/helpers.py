@@ -330,6 +330,11 @@ def datavic_org_uploads_allowed(org_id: str) -> bool:
     return flake["data"].get(org.id, False)
 
 
+def datavic_max_image_size():
+    """Return max size for image configurate for portal"""
+    return toolkit.config["ckan.max_image_size"]
+
+
 def datavic_get_dtv_url() -> str:
     """Return a URL for DTV map preview"""
     url = get_dtv_url()
@@ -341,3 +346,22 @@ def datavic_get_dtv_url() -> str:
         url = url + "/"
 
     return url
+
+
+def datavic_update_org_error_dict(
+    error_dict: dict[str, Any],
+) -> dict[str, Any]:
+    """Internal CKAN logic makes a validation for resource file size. We want
+    to show it as an error on the Logo field."""
+    if error_dict.pop("upload", "") == ["File upload too large"]:
+        error_dict["Logo"] = [(
+            f"File size is too large. Select an image which is no larger than {datavic_max_image_size()}MB."
+        )]
+    elif "Unsupported upload type" in error_dict.pop("image_upload", [""])[0]:
+        error_dict["Logo"] = [(
+            "Image format is not supported. "
+            "Select an image in one of the following formats: "
+            "JPG, JPEG, GIF, PNG, BMP, SVG."
+        )]
+
+    return error_dict
