@@ -1,0 +1,8 @@
+Dear {{ username }},
+
+I am requesting {{ role }} access for {{ org_name }} in the VPS Data Directory.
+
+If you approve, please assign the {{ role }} role to my profile at: {{ link }}
+
+Kind regards,
+{{ requester }}

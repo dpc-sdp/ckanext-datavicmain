@@ -1,0 +1,48 @@
+{% extends "organization/edit_base.html" %}
+
+{% block primary_content_inner %}
+    {% if data %}
+    <table class="table table-bordered" style="display: block;overflow-x: auto;white-space: nowrap;">
+        <thead>
+            <tr>
+                <th>{{ _('User') }}</th>
+                <th>{{ _("Requested role") }}</th>
+                <th>{{ _("Actions") }}</th>
+            </tr>
+        </thead>
+
+        <colgroup>
+            <col style="width:40%">
+            <col style="width:40%">
+            <col style="width:20%">
+        </colgroup>
+
+        <tbody>
+            {% for request in data %}
+                <tr>
+                    <th>{{ h.linked_user(request.name, 20) }} </th>
+                    <th>
+                        {{ request.organisation_role | title }}
+                    </th>
+                    <th>
+                        <div class="d-flex justify-content-between gap-2">
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#denyJoinModal-{{ request.name }}">
+                                {{ _("Reject") }}
+                            </button>
+
+                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#approveJoinModal-{{ request.name }}">
+                                {{ _("Approve") }}
+                            </button>
+                        </div>
+                    </th>
+                </tr>
+
+                {% snippet 'organization/join_request_approve_modal.html', group_dict=group_dict, request=request, selected_option=request.organisation_role %}
+                {% snippet 'organization/join_request_deny_modal.html', group_dict=group_dict, request=request %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>{{ _("No pending access requests") }}</p>
+    {% endif %}
+{% endblock %}

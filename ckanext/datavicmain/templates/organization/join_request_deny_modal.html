@@ -1,0 +1,27 @@
+{% import "macros/form.html" as form %}
+
+<form method="POST" action="{{ h.url_for('datavic_org.deny_request', org_id=group_dict.name) }}">
+    <div class="modal fade" id="denyJoinModal-{{ request.name }}" tabindex="-1" aria-labelledby="denyJoinModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="denyJoinModalLabel">
+                        {{ _("Reject request") }}
+                    </h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    {{ form.hidden("email", value=request.email) }}
+                    {{ form.hidden("username", value=request.name) }}
+                    {{ form.textarea("reason", label=_("Reason"), classes=["control-medium"], attrs={"class": "form-control w-100", "required": 1}, is_required=True) }}
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary mx-3" data-bs-dismiss="modal">{{ _("Cancel") }}</button>
+                    <button type="submit" class="btn btn-primary">{{ _("Reject") }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
