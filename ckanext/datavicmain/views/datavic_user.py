@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+<<<<<<< HEAD
 from typing import Any, cast, Union
 
 from flask import Blueprint, Response
@@ -9,14 +10,28 @@ from flask.views import MethodView
 import ckan.plugins as plugins
 import ckan.types as types
 import ckan.plugins.toolkit as tk
+=======
+import ckan.plugins.toolkit as toolkit
+>>>>>>> origin/SXDEDPCXZIC-358_DATAVIC-737
 import ckan.logic as logic
 import ckan.model as model
 import ckan.lib.authenticator as authenticator
 import ckan.lib.captcha as captcha
 import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
+<<<<<<< HEAD
 from ckan import authz
 from ckan.lib import signals
+=======
+
+import ckanext.datavicmain.helpers as helpers
+import ckanext.datavicmain.utils as utils
+
+from flask import Blueprint
+from flask.views import MethodView
+from ckan.common import _, g, request
+from ckan import authz, plugins
+>>>>>>> origin/SXDEDPCXZIC-358_DATAVIC-737
 
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException

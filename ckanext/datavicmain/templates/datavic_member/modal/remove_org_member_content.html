@@ -1,0 +1,30 @@
+{% import 'macros/form.html' as form %}
+
+<div class="modal-header">
+    <h5 class="modal-title">{{ _("Please Confirm Action") }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body">
+    {% if user_packages and not members_options %}
+        <p>{{ _("You cannot delete this member because there are no other Editors/Admins to reassign the user's datasets to.") }}</p>
+    {% elif user_packages and members_options %}
+        <p>{{ _("You're deleting the member of an organisation. You have to reassign his datasets to another organisation member.") }}</p>
+
+        {{ form.select('new_member', id='new_member', label=_('User'), options=members_options, attrs={"data-module": "tom-select"}) }}
+    {% else %}
+        <p>{{ _("Are you sure you want to delete this member?") }}</p>
+    {% endif %}
+
+    {{ form.hidden('user_id', user_id) }}
+    {{ form.hidden('org_id', org_id) }}
+</div>
+
+<div class="modal-footer">
+    {% if user_packages and not members_options %}
+        <button type="button" class="btn btn-default" data-bs-dismiss="modal">{{ _("Close") }}</button>
+    {% else %}
+        <button type="button" class="btn btn-default" data-bs-dismiss="modal">{{ _("Cancel") }}</button>
+        <button type="submit" class="btn btn-primary">{{ _("Confirm") }}</button>
+    {% endif %}
+</div>

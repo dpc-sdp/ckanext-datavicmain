@@ -22,7 +22,6 @@ import ckan.plugins.toolkit as toolkit
 from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
 from ckanext.mailcraft.utils import get_mailer
-from ckanext.mailcraft.exception import MailerException
 
 from . import utils, const, config as conf
 from ckanext.datavicmain.config import get_dtv_url, get_dtv_external_link
@@ -52,7 +51,7 @@ DEFAULT_DTV_FQ = [
 ]
 
 # Conditionally import the the workflow extension helpers if workflow extension enabled in .ini
-if plugins.plugin_loaded("workflow"):
+if "workflow" in toolkit.config.get('ckan.plugins', False):
     from ckanext.workflow import helpers as workflow_helpers
 
     workflow_enabled = True
