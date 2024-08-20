@@ -2,7 +2,6 @@
 
 {% block content_primary_nav %}
   {{ h.build_nav_icon('dataset.read', _('Dataset'), id=pkg.name, icon=None) }}
-  {{ h.build_nav_icon('dataset.groups', _('Categories'), id=pkg.name, icon=None) }}
   {{ h.build_nav_icon('activity.package_activity', _('Activity Stream'), id=pkg.name, icon=None) }}
 
   {% if h.group_resources_by_temporal_range(pkg.resources) | length > 1 %}

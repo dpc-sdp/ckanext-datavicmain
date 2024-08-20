@@ -1,0 +1,15 @@
+{% trans %}
+Hi {{ username }},
+
+Your request to join {{ org_name }} has been rejected.
+URL to an organisation {{ org_url }}.
+
+Please see the reason below:
+
+{{ reason }}
+
+Please contact datavic@dpc.vic.gov.au if you wish to challenge the decision.
+
+Regards,
+Data.Vic Team
+{% endtrans %}

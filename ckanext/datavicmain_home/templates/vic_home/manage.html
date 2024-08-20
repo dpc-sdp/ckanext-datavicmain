@@ -1,0 +1,53 @@
+{% extends "vic_home/base.html" %}
+
+{% block primary_content_inner %}
+    <p>
+        <a href="{{ h.url_for('datavic_home.new') }}" class="btn btn-primary">{{ _("Add new item") }}</a>
+    </p>
+
+    <table class="table table-header table-hover table-bordered">
+        <colgroup>
+            <col span="1" style="width: 20%;">
+            <col span="1" style="width: 30%;">
+            <col span="1" style="width: 10%;">
+            <col span="1" style="width: 30%;">
+            <col span="1" style="width: 10%;">
+         </colgroup>
+
+        <thead>
+            <tr>
+                <th>{{ _('Title') }}</th>
+                <th>{{ _('Description') }}</th>
+                <th>{{ _('State') }}</th>
+                <th>{{ _('Type') }}</th>
+                <th>{{ _('Actions') }}</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for home_item in home_items %}
+                <tr>
+                    <td>{{ home_item.title }}</td>
+                    <td>{{ home_item.description | truncate (70) }}</td>
+                    <td>{{ home_item.state }}</td>
+                    <td>{{ home_item.section_type }}</td>
+                    <td>
+                        <div class="btn-group pull-right">
+                            <a class="btn btn-sm" href="{{ h.url_for('datavic_home.edit', item_id=home_item.id) }}" title="{{ _('Edit') }}">
+                                <i class="fa fa-wrench"></i>
+                            </a>
+
+                            <a class="btn btn-danger btn-sm" href="{{ h.url_for('datavic_home.delete', item_id=home_item.id) }}" data-module="confirm-action" data-module-content="{{ _('Are you sure you want to delete this item?') }}" title="{{ _('Delete') }}">
+                                <i class="fa fa-times"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block vic_info_content %}
+    <p>{{ _('You can manage the sections on the home page here.') }}</p>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% ckan_extends %}
+
+{% import "macros/form.html" as form %}
+
+{% block page_primary_action %}
+    {{ super() }}
+
+    {% if g.userobj %}
+        {% snippet "organization/join_org.html", group_dict=group_dict %}
+    {% endif %}
+{% endblock %}

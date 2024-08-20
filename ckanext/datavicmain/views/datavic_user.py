@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-import six
 import ckan.plugins.toolkit as toolkit
 import ckan.logic as logic
 import ckan.model as model
@@ -9,12 +10,12 @@ import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
 
 import ckanext.datavicmain.helpers as helpers
-
+import ckanext.datavicmain.utils as utils
 
 from flask import Blueprint
 from flask.views import MethodView
 from ckan.common import _, g, request
-from ckan import authz
+from ckan import authz, plugins
 
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
@@ -47,6 +48,7 @@ log = logging.getLogger(__name__)
 
 datavicuser = Blueprint("datavicuser", __name__)
 mailer = get_mailer()
+
 
 class DataVicRequestResetView(user.RequestResetView):
     def _prepare(self):
@@ -86,7 +88,9 @@ class DataVicRequestResetView(user.RequestResetView):
                     user_objs.append(context["user_obj"])
 
         if not user_objs:
-            log.info("User requested reset link for unknown user: {}".format(id))
+            log.info(
+                "User requested reset link for unknown user: {}".format(id)
+            )
 
         for user_obj in user_objs:
             log.info("Emailing reset link to user: {}".format(user_obj.name))
@@ -187,21 +191,18 @@ class DataVicPerformResetView(user.PerformResetView):
             h.flash_error(_("Integrity Error"))
         except ValidationError as e:
             h.flash_error("%r" % e.error_dict)
-        except ValueError as ve:
-            h.flash_error(six.text_type(ve))
+        except ValueError as e:
+            h.flash_error(str(e))
 
 
 class DataVicUserEditView(user.EditView):
     def _prepare(self, id):
         return super()._prepare(id)
 
-    # def get(self,  id=None, data=None, errors=None, error_summary=None):
-    #     return super(DataVicUserEditView, self).get(id, data, errors, error_summary)
-
     def post(self, id=None):
         context, id = self._prepare(id)
 
-        if not context[u'save']:
+        if not context["save"]:
             return self.get(id)
 
         current_user = id in (
@@ -216,11 +217,12 @@ class DataVicUserEditView(user.EditView):
 
         try:
             data_dict = clean_dict(
-                unflatten(
-                    tuplize_dict(parse_params(request.form))))
-            data_dict.update(clean_dict(
-                unflatten(
-                    tuplize_dict(parse_params(request.files))))
+                unflatten(tuplize_dict(parse_params(request.form)))
+            )
+            data_dict.update(
+                clean_dict(
+                    unflatten(tuplize_dict(parse_params(request.files)))
+                )
             )
 
         except DataError:
@@ -231,8 +233,9 @@ class DataVicUserEditView(user.EditView):
         data_dict["id"] = id
         email_changed = data_dict["email"] != toolkit.current_user.email
 
-        if (data_dict["password1"]
-                and data_dict["password2"]) or email_changed:
+        if (
+            data_dict["password1"] and data_dict["password2"]
+        ) or email_changed:
 
             # CUSTOM CODE to allow updating user pass for sysadmin without a sys pass
             self_update = data_dict["name"] == toolkit.current_user.name
@@ -241,7 +244,7 @@ class DataVicUserEditView(user.EditView):
             if not is_sysadmin or self_update:
                 identity = {
                     "login": toolkit.current_user.name,
-                    "password": data_dict["old_password"]
+                    "password": data_dict["old_password"],
                 }
                 auth_user = authenticator.ckan_authenticator(identity)
                 auth_username = auth_user.name if auth_user else ""
@@ -250,7 +253,9 @@ class DataVicUserEditView(user.EditView):
                     errors = {
                         "oldpassword": [_("Password entered was incorrect")]
                     }
-                    error_summary = {_("Old Password"): _("incorrect password")}
+                    error_summary = {
+                        _("Old Password"): _("incorrect password")
+                    }
                     return self.get(id, data_dict, errors, error_summary)
 
         try:
@@ -275,7 +280,15 @@ class DataVicUserEditView(user.EditView):
     def get(self, id=None, data=None, errors=None, error_summary=None):
         context, id = self._prepare(id)
         data_dict = {"id": id}
-        is_myself = toolkit.current_user.name == id
+        is_myself = id in (
+            (
+                ""
+                if toolkit.current_user.is_anonymous
+                else toolkit.current_user.id
+            ),
+            toolkit.current_user.name,
+        )
+
         is_sysadmin = toolkit.current_user.sysadmin
 
         if not any([is_sysadmin, is_myself]):
@@ -298,7 +311,8 @@ class DataVicUserEditView(user.EditView):
         vars = {"data": data, "errors": errors, "error_summary": error_summary}
 
         extra_vars = _extra_template_variables(
-            {"model": model, "session": model.Session, "user": g.user}, data_dict
+            {"model": model, "session": model.Session, "user": g.user},
+            data_dict,
         )
 
         extra_vars["show_email_notifications"] = asbool(
@@ -325,39 +339,62 @@ def logged_in():
 
 def me():
     return (
-        h.redirect_to(config.get("ckan.auth.route_after_login") or "dashboard.datasets")
+        h.redirect_to(
+            config.get("ckan.auth.route_after_login") or "dashboard.datasets"
+        )
         if h.check_access("package_create")
         else h.redirect_to("dataset.search")
     )
 
 
-def approve(id):
-    username = id
+def approve(user_id: str):
     try:
-        data_dict = {"id": id}
+        data_dict = {"id": user_id}
 
         # Only sysadmins can activate a pending user
         check_access("sysadmin", {})
 
         old_data = get_action("user_show")({}, data_dict)
-        username = old_data["name"]
 
         old_data["state"] = model.State.ACTIVE
         user = get_action("user_update")({"ignore_auth": True}, old_data)
 
-        # Send new account approved email to user
-        helpers.send_email(
-            [user.get("email", "")],
-            "new_account_approved",
-            {
-                "user_name": user.get("name", ""),
-                "login_url": toolkit.url_for("user.login", qualified=True),
-                "site_title": config.get("ckan.site_title"),
-                "site_url": config.get("ckan.site_url"),
-            },
-        )
+        extra_vars = {
+            "user_name": user.get("name", ""),
+            "login_url": toolkit.url_for("user.login", qualified=True),
+            "site_title": config.get("ckan.site_title"),
+            "site_url": config.get("ckan.site_url"),
+        }
+
+        try:
+            mailer.mail_recipients(
+                toolkit._("New account approved"),
+                [user.get("email", "")],
+                body=toolkit.render(
+                    "mailcraft/emails/new_account_approved/body.txt",
+                    extra_vars,
+                ),
+                body_html=toolkit.render(
+                    "mailcraft/emails/new_account_approved/body.html",
+                    extra_vars,
+                ),
+            )
+        except MailerException:
+            log.error("Failed to send email notification")
+            pass
 
         h.flash_success(_("User approved"))
+
+        if data := utils.UserPendingEditorFlake.get_pending_user(user["id"]):
+            utils.store_user_org_join_request(
+                {
+                    "name": data["name"],
+                    "email": data["email"],
+                    "organisation_id": data["organisation_id"],
+                    "organisation_role": "editor",
+                }
+            )
+            utils.UserPendingEditorFlake.remove_pending_user(user["id"])
 
         return h.redirect_to("user.read", id=user["name"])
     except NotAuthorized:
@@ -370,7 +407,7 @@ def approve(id):
         for field, summary in e.error_summary.items():
             h.flash_error(f"{field}: {summary}")
 
-    return h.redirect_to("user.read", id=username)
+    return h.redirect_to("user.read", id=old_data["name"])
 
 
 def deny(id):
@@ -384,18 +421,33 @@ def deny(id):
         # Delete denied user
         get_action("user_delete")({}, data_dict)
 
-        # Send account requested denied email
-        helpers.send_email(
-            [user.get("email", "")],
-            "new_account_denied",
-            {
-                "user_name": user.get("name", ""),
-                "site_title": config.get("ckan.site_title"),
-                "site_url": config.get("ckan.site_url"),
-            },
-        )
+        extra_vars = {
+            "user_name": user.get("name", ""),
+            "site_title": config.get("ckan.site_title"),
+            "site_url": config.get("ckan.site_url"),
+        }
+
+        try:
+            mailer.mail_recipients(
+                toolkit._("New account denied"),
+                [user.get("email", "")],
+                body=toolkit.render(
+                    "mailcraft/emails/new_account_denied/body.txt",
+                    extra_vars,
+                ),
+                body_html=toolkit.render(
+                    "mailcraft/emails/new_account_denied/body.html",
+                    extra_vars,
+                ),
+            )
+        except MailerException:
+            log.error("Failed to send email notification")
+            pass
 
         h.flash_success(_("User Denied"))
+
+        if utils.UserPendingEditorFlake.get_pending_user(user["id"]):
+            utils.UserPendingEditorFlake.remove_pending_user(user["id"])
 
         return h.redirect_to("user.read", id=user["name"])
     except NotAuthorized:
@@ -433,9 +485,13 @@ class RegisterView(MethodView):
     def post(self):
         context = self._prepare()
         try:
-            data_dict = clean_dict(unflatten(tuplize_dict(parse_params(request.form))))
+            data_dict = clean_dict(
+                unflatten(tuplize_dict(parse_params(request.form)))
+            )
             data_dict.update(
-                clean_dict(unflatten(tuplize_dict(parse_params(request.files))))
+                clean_dict(
+                    unflatten(tuplize_dict(parse_params(request.files)))
+                )
             )
 
         except DataError:
@@ -473,7 +529,9 @@ class RegisterView(MethodView):
             if authz.is_sysadmin(g.user):
                 # the sysadmin created a new user. We redirect him to the
                 # activity page for the newly created user
-                return h.redirect_to("activity.user_activity", id=data_dict["name"])
+                return h.redirect_to(
+                    "activity.user_activity", id=data_dict["name"]
+                )
             else:
                 return toolkit.render("user/logout_first.html")
 
@@ -481,7 +539,9 @@ class RegisterView(MethodView):
         if helpers.user_is_registering():
             # If user is registering, do not login them and redirect them to the home page
             h.flash_success(
-                toolkit._("Your requested account has been submitted for review")
+                toolkit._(
+                    "Your requested account has been submitted for review"
+                )
             )
             resp = h.redirect_to("home.index")
         else:
@@ -513,9 +573,30 @@ class RegisterView(MethodView):
 _edit_view = DataVicUserEditView.as_view(str("edit"))
 
 
+@datavicuser.before_request
+def before_request() -> None:
+    _, action = toolkit.get_endpoint()
+
+    # Skip recaptcha check if 2FA is enabled, it will be checked with ckanext-auth
+    if plugins.plugin_loaded("auth") and toolkit.h.is_2fa_enabled():
+        return;
+
+    if (
+        request.method == "POST"
+        and action in ["login", "register", "request_reset"]
+        and not config.get("debug")
+    ):
+        try:
+            captcha.check_recaptcha(request)
+        except captcha.CaptchaError:
+            h.flash_error(toolkit._(u'Bad Captcha. Please try again.'))
+            return h.redirect_to(request.url)
+
+
 def register_datavicuser_plugin_rules(blueprint):
     blueprint.add_url_rule(
-        "/user/reset", view_func=DataVicRequestResetView.as_view(str("request_reset"))
+        "/user/reset",
+        view_func=DataVicRequestResetView.as_view(str("request_reset")),
     )
     blueprint.add_url_rule(
         "/user/reset/<id>",
@@ -523,13 +604,14 @@ def register_datavicuser_plugin_rules(blueprint):
     )
     blueprint.add_url_rule("/edit", view_func=_edit_view)
     blueprint.add_url_rule("/edit/<id>", view_func=_edit_view)
-    blueprint.add_url_rule("/user/activate/<id>", view_func=approve)
+    blueprint.add_url_rule("/user/activate/<user_id>", view_func=approve)
     blueprint.add_url_rule("/user/deny/<id>", view_func=deny)
     blueprint.add_url_rule("/user/logged_in", view_func=logged_in)
     blueprint.add_url_rule("/user/me", view_func=me)
     blueprint.add_url_rule(
         "/user/register", view_func=RegisterView.as_view(str("register"))
     )
+    blueprint.add_url_rule("/user/login", view_func=user.login, methods=("GET", "POST"))
 
 
 register_datavicuser_plugin_rules(datavicuser)

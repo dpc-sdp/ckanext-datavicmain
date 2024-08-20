@@ -24,9 +24,10 @@ import tqdm
 from ckan.lib.munge import munge_title_to_name
 from ckan.model import Resource, ResourceView
 from ckan.types import Context
+from ckanext.datavicmain.helpers import field_choices
+from ckanext.harvest.model import HarvestObject, HarvestSource
 from sqlalchemy.orm import Query
 
-from ckanext.harvest.model import HarvestObject, HarvestSource
 
 log = logging.getLogger(__name__)
 
@@ -475,6 +476,145 @@ def identify_resources_with_broken_recline():
             f"Resource {res_url} has a table view but datastore is inactive",
             fg="green",
         )
+
+
+@maintain.command
+@click.option("--patch", "-p", is_flag=True, help="Patch missing fields.")
+def handle_missing_mandatory_metadata(patch: bool):
+    """Searches for datasets with missing mandatory metadata and optionally patches them with default values."""
+
+    if not (incomplete_datasets := _search_incomplete_datasets()):
+        click.secho("No incomplete datasets found.", fg="green")
+        return
+
+    click.secho(
+        f"Found {len(incomplete_datasets)} incomplete datasets.", fg="green"
+    )
+
+    for dataset_name, missing_fields in incomplete_datasets.items():
+        click.secho(
+            f"Dataset name: {dataset_name}. Missing fields with patch values:"
+            f" {missing_fields}."
+        )
+
+    if not patch:
+        return
+
+    for dataset_name, missing_fields in tqdm.tqdm(
+        incomplete_datasets.items()):
+        try:
+            tk.get_action("package_patch")(
+                {"ignore_auth": True},
+                {
+                    "id": dataset_name,
+                    **missing_fields,
+                },
+            )
+        except (tk.ValidationError, tk.ObjectNotFound) as e:
+            click.secho(f"Error while patching the package {dataset_name}: {e}")
+
+
+def _search_incomplete_datasets() -> dict[str, dict[str, str]]:
+    """Identifies datasets with missing fields, preparing patch values to complete them."""
+    incomplete_datasets = {}
+
+    max_rows = tk.config["ckan.search.rows_max"]
+    start = 0
+    has_datasets = True
+
+    while has_datasets:
+        result = tk.get_action("package_search")(
+            {"ignore_auth": True},
+            {
+                "rows": max_rows,
+                "start": start,
+                "include_private": True,
+            },
+        )
+
+        datasets: list[dict[str, Any]] = result["results"]
+        incomplete_datasets.update(_search_in_batch(datasets))
+
+        start += len(datasets)
+        has_datasets = start < result["count"]
+
+    return incomplete_datasets
+
+
+def _search_in_batch(datasets: list[dict[str, Any]]) -> dict[str, dict[str, str]]:
+    """Processes a batch of datasets to find and list those with missing fields,
+    providing default values for these fields.
+    """
+    incomplete_datasets = {}
+    for dataset in datasets:
+        missing_fields = {
+            field: _get_default_values_for_missing_fields(dataset, field)
+            for field in _missing_value_fields
+            if not dataset.get(field)
+        }
+
+        update_frequency = dataset.get("update_frequency")
+        choices = [choice["value"] for choice in field_choices("update_frequency")]
+        if update_frequency and update_frequency not in choices:
+            missing_fields["update_frequency"] = "unknown"
+
+        if missing_fields:
+            incomplete_datasets[dataset["name"]] = missing_fields
+    return incomplete_datasets
+
+
+_missing_value_fields: list[str] = [
+    "date_created_data_asset",
+    "update_frequency",
+    "access",
+    "personal_information",
+    "protective_marking",
+    "category",
+]
+
+
+def _get_default_values_for_missing_fields(
+    dataset: dict[str, Any], field: str
+) -> "str":
+    """Get values for missing fields"""
+    if field == "date_created_data_asset":
+        return _get_date_created(dataset)
+    elif field == "update_frequency":
+        return "unknown"
+    elif field == "access":
+        return "yes"
+    elif field == "personal_information":
+        return "no"
+    elif field == "protective_marking":
+        return "official"
+    elif field == "category":
+        return _get_category(dataset)
+
+
+def _get_date_created(pkg: dict[str, Any]) -> str:
+    """For 'date_created_data_asset' returns the oldest 'release_date' from the resources, or the 'metadata_created'
+    date if no 'release_date' are available.
+    """
+    min_release_date = min(
+        [
+            resource["release_date"]
+            for resource in pkg.get("resources", [])
+            if resource.get("release_date")
+        ],
+        default="",
+    )
+    if min_release_date:
+        return min_release_date
+    return pkg.get("metadata_created", "")
+
+
+def _get_category(pkg: dict[str, Any]) -> str:
+    """
+    For missing field 'category' set its value as group id related to this dataset
+    """
+    if groups := pkg.get("groups"):
+        return groups[0].get("id")
+    return
 
 
 @maintain.command(u"update-broken-urls",
