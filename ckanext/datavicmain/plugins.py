@@ -253,7 +253,9 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
             "datavic_update_org_error_dict": helpers.datavic_update_org_error_dict,
             "datavic_get_org_roles": helpers.datavic_get_org_roles,
-            "datavic_get_user_roles_in_org": helpers.datavic_get_user_roles_in_org
+            "datavic_get_user_roles_in_org": helpers.datavic_get_user_roles_in_org,
+            "get_group": helpers.get_group,
+            "dtv_exceeds_max_size_limit": helpers.dtv_exceeds_max_size_limit,
         }
 
     ## IConfigurer interface ##

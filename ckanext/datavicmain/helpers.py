@@ -7,7 +7,7 @@ import inspect
 import logging
 import json
 import base64
-from typing import Any
+from typing import Any, Optional
 
 from urllib.parse import urlsplit, urljoin
 
@@ -21,9 +21,8 @@ import ckan.plugins.toolkit as toolkit
 from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
 from ckanext.mailcraft.utils import get_mailer
-from ckanext.mailcraft.exception import MailerException
 
-from . import utils, const
+from . import utils, const, config as conf
 from ckanext.datavicmain.config import get_dtv_url, get_dtv_external_link
 
 mailer = get_mailer()
@@ -599,3 +598,40 @@ def datavic_update_org_error_dict(
         ]
 
     return error_dict
+
+
+def get_group(group: Optional[str] = None,
+              include_datasets: bool = False) -> dict[str, Any]:
+    if group is None:
+        return {}
+    try:
+        return toolkit.get_action("group_show")(
+            {},
+            {"id": group, "include_datasets": include_datasets}
+        )
+    except (toolkit.ObjectNotFound, toolkit.ValidationError, toolkit.NotAuthorized):
+        return {}
+
+
+def dtv_exceeds_max_size_limit(resource_id: str) -> bool:
+    """Check if DTV resource exceeds the maximum file size limit
+
+    Args:
+        resource_id (str): DTV resource id
+
+    Returns:
+        bool: return True if dtv resource exceeds maximum file size limit set
+            in ckan config "ckanext.datavicmain.dtv.max_size_limit",
+            otherwise - False
+    """
+    try:
+        resource = toolkit.get_action("resource_show")({}, {"id": resource_id})
+    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
+        return True
+
+    limit = conf.get_dtv_max_size_limit()
+    filesize = resource.get("filesize")
+    if filesize and int(filesize) >= int(limit):
+        return True
+
+    return False
