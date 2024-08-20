@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-<<<<<<< HEAD
 from typing import Any, cast, Union
 
 from flask import Blueprint, Response
@@ -10,28 +9,15 @@ from flask.views import MethodView
 import ckan.plugins as plugins
 import ckan.types as types
 import ckan.plugins.toolkit as tk
-=======
-import ckan.plugins.toolkit as toolkit
->>>>>>> origin/SXDEDPCXZIC-358_DATAVIC-737
 import ckan.logic as logic
 import ckan.model as model
 import ckan.lib.authenticator as authenticator
 import ckan.lib.captcha as captcha
 import ckan.views.user as user
+import ckan.lib.mailer as core_mailer
 import ckan.lib.navl.dictization_functions as dictization_functions
-<<<<<<< HEAD
 from ckan import authz
 from ckan.lib import signals
-=======
-
-import ckanext.datavicmain.helpers as helpers
-import ckanext.datavicmain.utils as utils
-
-from flask import Blueprint
-from flask.views import MethodView
-from ckan.common import _, g, request
-from ckan import authz, plugins
->>>>>>> origin/SXDEDPCXZIC-358_DATAVIC-737
 
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
@@ -115,7 +101,7 @@ class DataVicRequestResetView(user.RequestResetView):
                     )
                     return tk.h.redirect_to("/user/reset")
                 else:
-                    mailer.send_reset_link(user_obj)
+                    core_mailer.send_reset_link(user_obj)
             except MailerException as e:
                 tk.h.flash_error(
                     tk._(
@@ -166,7 +152,7 @@ class DataVicPerformResetView(user.PerformResetView):
 
         tk.g.reset_key = tk.request.args.get("key")
 
-        if not mailer.verify_reset_link(user_obj, tk.g.reset_key):
+        if not core_mailer.verify_reset_link(user_obj, tk.g.reset_key):
             tk.h.flash_error(tk._("Invalid reset key. Please try again."))
             tk.abort(403)
 
@@ -207,7 +193,7 @@ class DataVicPerformResetView(user.PerformResetView):
                     {"id": user_dict["id"], "state": model.State.ACTIVE},
                 )
 
-            mailer.create_reset_key(context["user_obj"])
+            core_mailer.create_reset_key(context["user_obj"])
             signals.perform_password_reset.send(
                 username, user=context["user_obj"]
             )
