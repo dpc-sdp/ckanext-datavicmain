@@ -14,7 +14,6 @@ import ckan.model as model
 import ckan.lib.authenticator as authenticator
 import ckan.lib.captcha as captcha
 import ckan.views.user as user
-import ckan.lib.mailer as core_mailer
 import ckan.lib.navl.dictization_functions as dictization_functions
 from ckan import authz
 from ckan.lib import signals
@@ -101,7 +100,7 @@ class DataVicRequestResetView(user.RequestResetView):
                     )
                     return tk.h.redirect_to("/user/reset")
                 else:
-                    core_mailer.send_reset_link(user_obj)
+                    mailer.send_reset_link(user_obj)
             except MailerException as e:
                 tk.h.flash_error(
                     tk._(
@@ -152,7 +151,7 @@ class DataVicPerformResetView(user.PerformResetView):
 
         tk.g.reset_key = tk.request.args.get("key")
 
-        if not core_mailer.verify_reset_link(user_obj, tk.g.reset_key):
+        if not mailer.verify_reset_link(user_obj, tk.g.reset_key):
             tk.h.flash_error(tk._("Invalid reset key. Please try again."))
             tk.abort(403)
 
@@ -193,7 +192,7 @@ class DataVicPerformResetView(user.PerformResetView):
                     {"id": user_dict["id"], "state": model.State.ACTIVE},
                 )
 
-            core_mailer.create_reset_key(context["user_obj"])
+            mailer.create_reset_key(context["user_obj"])
             signals.perform_password_reset.send(
                 username, user=context["user_obj"]
             )
