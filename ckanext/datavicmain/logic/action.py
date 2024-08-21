@@ -226,7 +226,7 @@ def _show_errors_in_sibling_resources(
         "package_update",
     )
 
-    resources_errors = errors.get("resources", [])
+    resources_errors = errors.pop("resources", [])
 
     for i, resource_error in enumerate(resources_errors):
         if not resource_error:
