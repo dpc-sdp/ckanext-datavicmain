@@ -7,10 +7,12 @@
     </button>
 {# if user doesn't have all the roles in the org, suggest requesting #}
 {% elif not g.userobj.sysadmin and user_roles and not pending_request %}
-    {% set request_text = _("Request Editor/Admin access") if user_roles | length == 1 else _("Request Admin access") %}
-    <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#requestOrgJoin">
-        {{ request_text }}
-    </button>
+    {% if "admin" not in user_roles %}
+        {% set request_text = _("Request Editor/Admin access") if user_roles | length == 1 else _("Request Admin access") %}
+        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#requestOrgJoin">
+            {{ request_text }}
+        </button>
+    {% endif %}
 {% endif %}
 
 {% if user_roles | length != 3 %}
