@@ -158,12 +158,13 @@ def get_new_member_options(
 ) -> list[dict[str, Any]]:
     return [
         {
-            "text": f"{member['user'].display_name} ({member['role']})",
+            "text": f"{member['user'].display_name} <{member['user'].email}> ({member['role']})",
             "value": member["user"].id,
         }
         for member in member_list
         if member["user"].id != current_user_id
         and member["user"].state == model.State.ACTIVE
+        and member["user"].email
     ]
 
 
