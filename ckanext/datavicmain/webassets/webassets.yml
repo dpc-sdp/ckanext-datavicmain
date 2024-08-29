@@ -47,3 +47,11 @@ datavicmain-session:
   output: ckanext-datavicmain/%(version)s_datavicmain-session.js
   contents:
     - datavicmain-session.js
+
+datavicmain-organization-visibility:
+  output: ckanext-datavicmain/%(version)s_datavicmain-organization-visibility.js
+  contents:
+    - datavicmain-organization-visibility.js
+  extra:
+    preload:
+      - base/main
