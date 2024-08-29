@@ -71,7 +71,7 @@ def after_syndication_listener(package_id, **kwargs):
         try:
             with open(file_path, 'rb') as file_data:
                 name = os.path.basename(org_res[0].url)
-                ckan.action.resource_update(
+                ckan.action.resource_patch(
                     id=res['id'],
                     upload=FlaskFileStorage(file_data, name, name),
                     url=org_res[0].url
