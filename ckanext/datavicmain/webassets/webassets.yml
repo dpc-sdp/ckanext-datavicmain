@@ -42,3 +42,11 @@ datavicmain-custodian-autofill:
   output: ckanext-datavicmain/%(version)s_datavicmain-custodian-autofill.js
   contents:
     - datavicmain-custodian-autofill.js
+
+datavicmain-organization-visibility:
+  output: ckanext-datavicmain/%(version)s_datavicmain-organization-visibility.js
+  contents:
+    - datavicmain-organization-visibility.js
+  extra:
+    preload:
+      - base/main

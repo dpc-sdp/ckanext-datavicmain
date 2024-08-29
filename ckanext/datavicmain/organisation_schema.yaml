@@ -36,7 +36,7 @@ fields:
     label: Visibility
     form_snippet: vic_org_visibility.html
     required: true
-    help_text: Restricted organisations will not be shown to users who are not members of organisations. Datasets of restricted organisations will be available to member only, regardless of their visibility/access status.
+    help_text: Restricted organisations, their datasets and their child organisations are only visible to members of that organisation.
     validators: default(unrestricted)
     choices:
     - value: unrestricted

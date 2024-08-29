@@ -7,17 +7,17 @@
 {% set options=[] %}
 {% set attrs = dict({"class": "form-control"}, **(field.get('form_attrs', {}))) %}
 
-{% if has_restricted_parent %}
+{% if g.view == "edit" or has_restricted_parent %}
     {% do attrs.update({"disabled": 1}) %}
 {% endif %}
 
 {% for c in h.scheming_field_choices(field) %}
-  {% if not form_restrict_choices_to or c.value in form_restrict_choices_to %}
-    {% do options.append({
-      'value': c.value|string,
-      'text': h.scheming_language_text(c.label)
-    }) %}
-  {% endif %}
+    {% if not form_restrict_choices_to or c.value in form_restrict_choices_to %}
+        {% do options.append({
+            'value': c.value|string,
+            'text': h.scheming_language_text(c.label)
+        }) %}
+    {% endif %}
 {% endfor %}
 
 {% set option_selected = data[field.field_name]|string if data[field.field_name] else None %}
@@ -43,7 +43,17 @@
 
         <div class="info-block">
             <i class="fa fa-info-circle"></i>
-            {{ _('The restriction will also be applied to all child organizations, if they exist.') }}
+            {{ _('The restriction will also be applied to all child organisations, if they exist.') }}
+        </div>
+
+        <div class="info-block restricted-parent">
+            <i class="fa fa-info-circle"></i>
+            {{ _('Only restricted option is available for an organisation with a restricted parent.') }}
+        </div>
+
+        <div class="info-block restricted-option">
+            <i class="fa fa-info-circle"></i>
+            {{ _('This organisation, and its datasets, are restricted because its parent organisation is restricted.') }}
         </div>
 
         {% if has_restricted_parent %}
