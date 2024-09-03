@@ -1,0 +1,12 @@
+{% extends "mailcraft/emails/base.html" %}
+
+{% block main_text %}
+    <p>Dear {{ username }},</p>
+
+    <p>I am requesting {{ role }} access for {{ org_name | safe }} in the VPS Data Directory.</p>
+
+    <p>If you approve, please assign the {{ role }} role to my profile at: <a href="{{ link }}">{{ link }}</a></p>
+
+    <p>Kind regards,</p>
+    <p>{{ requester }}</p>
+{% endblock %}

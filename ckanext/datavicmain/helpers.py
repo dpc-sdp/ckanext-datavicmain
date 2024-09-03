@@ -13,19 +13,20 @@ from urllib.parse import urlsplit, urljoin
 
 from flask import Blueprint
 
+import ckan.plugins as plugins
 import ckan.model as model
 import ckan.authz as authz
 import ckan.plugins.toolkit as toolkit
-import ckan.lib.mailer as mailer
 
 from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
+from ckanext.mailcraft.utils import get_mailer
+from ckanext.mailcraft.exception import MailerException
 
 from . import utils, const
 from ckanext.datavicmain.config import get_dtv_url, get_dtv_external_link
 
-config = toolkit.config
-request = toolkit.request
+mailer = get_mailer()
 log = logging.getLogger(__name__)
 WORKFLOW_STATUS_OPTIONS = [
     "draft",
@@ -50,7 +51,7 @@ DEFAULT_DTV_FQ = [
 ]
 
 # Conditionally import the the workflow extension helpers if workflow extension enabled in .ini
-if "workflow" in config.get("ckan.plugins", False):
+if plugins.plugin_loaded("workflow"):
     from ckanext.workflow import helpers as workflow_helpers
 
     workflow_enabled = True
@@ -96,38 +97,6 @@ def is_user_account_pending_review(user_id):
     # get_action('user_show') does not return the 'reset_key' so the only way to get this field is from the User model
     user = model.User.get(user_id)
     return user and user.is_pending() and user.reset_key is None
-
-
-def send_email(user_emails, email_type, extra_vars):
-    if not user_emails or len(user_emails) == 0:
-        return
-
-    subject = toolkit.render(
-        "emails/subjects/{0}.txt".format(email_type), extra_vars
-    )
-    body = toolkit.render(
-        "emails/bodies/{0}.txt".format(email_type), extra_vars
-    )
-    for user_email in user_emails:
-        try:
-            log.debug(
-                "Attempting to send {0} to: {1}".format(email_type, user_email)
-            )
-            # Attempt to send mail.
-            mail_dict = {
-                "recipient_name": user_email,
-                "recipient_email": user_email,
-                "subject": subject,
-                "body": body,
-            }
-            mailer.mail_recipient(**mail_dict)
-        except mailer.MailerException as ex:
-            log.error(
-                "Failed to send email {email_type} to {user_email}.".format(
-                    email_type=email_type, user_email=user_email
-                )
-            )
-            log.error("Error: {ex}".format(ex=ex))
 
 
 def set_private_activity(pkg_dict, context, activity_type):
@@ -198,10 +167,10 @@ def group_list(self):
 
 def workflow_status_options(current_workflow_status, owner_org):
     options = []
-    if "workflow" in config.get("ckan.plugins", False):
+
+    if plugins.plugin_loaded("workflow"):
         user = toolkit.g.user
 
-        # log1.debug("\n\n\n*** workflow_status_options | current_workflow_status: %s | owner_org: %s | user: %s ***\n\n\n", current_workflow_status, owner_org, user)
         for option in workflow_helpers.get_available_workflow_statuses(
             current_workflow_status, owner_org, user
         ):
@@ -244,10 +213,10 @@ def get_user_organizations(username):
 
 def user_org_can_upload(pkg_id):
     user = toolkit.g.user
-    context = {"user": user}
     org_name = None
+
     if pkg_id is None:
-        request_path = urlsplit(request.url)
+        request_path = urlsplit(toolkit.request.url)
         if request_path.path is not None:
             fragments = request_path.path.split("/")
             if fragments[1] == "dataset":
@@ -255,7 +224,7 @@ def user_org_can_upload(pkg_id):
 
     if pkg_id is not None:
         dataset = toolkit.get_action("package_show")(
-            context, {"name_or_id": pkg_id}
+            {"user": user}, {"name_or_id": pkg_id}
         )
         org_name = dataset.get("organization").get("name")
 
@@ -377,19 +346,8 @@ def datavic_org_uploads_allowed(org_id: str) -> bool:
     return flake["data"].get(org.id, False)
 
 
-def datavic_get_registration_org_role_options() -> list[dict[str, str]]:
-    return [
-        {"value": "editor", "text": toolkit._("Editor")},
-        {"value": "member", "text": toolkit._("Member")},
-        {"value": "not-sure", "text": toolkit._("I am not sure")},
-    ]
-
-
-def datavic_get_join_org_role_options() -> list[dict[str, str]]:
-    return [
-        {"value": "editor", "text": toolkit._("Editor")},
-        {"value": "member", "text": toolkit._("Member")},
-    ]
+def datavic_get_org_roles() -> list[str]:
+    return ["admin", "editor", "member"]
 
 
 def datavic_user_is_a_member_of_org(user_id: str, org_id: str) -> bool:
@@ -403,6 +361,38 @@ def datavic_user_is_a_member_of_org(user_id: str, org_id: str) -> bool:
             return True
 
     return False
+
+
+def datavic_get_user_roles_in_org(user_id: str, org_id: str) -> list[str]:
+    user = model.User.get(user_id)
+
+    if not user:
+        return []
+
+    user_orgs = user.get_groups("organization")
+    role = None
+
+    for organization in user_orgs:
+        if org_id not in [organization.id, organization.name]:
+            continue
+
+        members = organization.member_all
+
+        for member in members:
+            if member.table_name != "user":
+                continue
+
+            if member.table_id == user.id:
+                role = member.capacity
+
+    if not role:
+        return []
+
+    return {
+        "admin": ["admin", "editor", "member"],
+        "editor": ["editor", "member"],
+        "member": ["member"],
+    }[role]
 
 
 def datavic_is_pending_request_to_join_org(username: str, org_id: str) -> bool:
@@ -429,6 +419,9 @@ def datavic_org_has_unrestricted_child(org_id: str) -> bool:
 
     for child_org in child_orgs:
         org_object = model.Group.get(child_org[0])
+
+        if not org_object:
+            continue
 
         if (
             org_object.extras.get(
@@ -591,14 +584,18 @@ def datavic_update_org_error_dict(
     """Internal CKAN logic makes a validation for resource file size. We want
     to show it as an error on the Logo field."""
     if error_dict.pop("upload", "") == ["File upload too large"]:
-        error_dict["Logo"] = [(
-            f"File size is too large. Select an image which is no larger than {datavic_max_image_size()}MB."
-        )]
+        error_dict["Logo"] = [
+            (
+                f"File size is too large. Select an image which is no larger than {datavic_max_image_size()}MB."
+            )
+        ]
     elif "Unsupported upload type" in error_dict.pop("image_upload", [""])[0]:
-        error_dict["Logo"] = [(
-            "Image format is not supported. "
-            "Select an image in one of the following formats: "
-            "JPG, JPEG, GIF, PNG, BMP, SVG."
-        )]
+        error_dict["Logo"] = [
+            (
+                "Image format is not supported. "
+                "Select an image in one of the following formats: "
+                "JPG, JPEG, GIF, PNG, BMP, SVG."
+            )
+        ]
 
     return error_dict

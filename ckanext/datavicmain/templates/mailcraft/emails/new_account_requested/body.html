@@ -1,0 +1,7 @@
+{% extends "mailcraft/emails/base.html" %}
+
+{% block main_text %}
+    {% trans %}
+        <p>{{ user_name }} has requested an account for review <a href="{{ user_url }}">{{ user_url }}</a></p>
+    {% endtrans %}
+{% endblock %}

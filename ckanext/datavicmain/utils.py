@@ -1,15 +1,19 @@
 from __future__ import annotations
-from itertools import chain
 
+import logging
 from typing import Any, TypedDict
 
 import ckan.types as types
 import ckan.model as model
 import ckan.plugins.toolkit as tk
 
+from ckanext.mailcraft.utils import get_mailer
+from ckanext.mailcraft.mailer import MailerException
+
 import ckanext.datavicmain.const as const
 
-
+mailer = get_mailer()
+log = logging.getLogger(__name__)
 PENDING_USERS_FLAKE_NAME = "datavic:organization:join_request"
 
 
@@ -43,11 +47,16 @@ def new_pending_user(
 ) -> None:
     """Create an activity and a membership for a new pending user. Sends a
     notification emails to related admins"""
-    org_role = (
-        data_dict["organisation_role"]
-        if data_dict["organisation_role"] != "not-sure"
-        else "member"
-    )
+    if data_dict["organisation_role"] == "editor":
+        data_dict["organisation_role"] = "member"
+        UserPendingEditorFlake.store_pending_user(
+            UserPendingEditorFlake.PendingUserData(
+                id=data_dict["user_id"],
+                name=data_dict["name"],
+                email=data_dict["email"],
+                organisation_id=data_dict["organisation_id"],
+            )
+        )
 
     context["ignore_auth"] = True
 
@@ -66,7 +75,7 @@ def new_pending_user(
             "id": data_dict["organisation_id"],
             "object": data_dict["user_id"],
             "object_type": "user",
-            "capacity": org_role,
+            "capacity": data_dict["organisation_role"],
         },
     )
 
@@ -75,7 +84,7 @@ def new_pending_user(
 
 def store_user_org_join_request(
     user_data: dict[str, Any],
-) -> list[dict[str, Any]]:
+) -> list[OrgJoinRequest]:
     requests = get_pending_org_access_requests()
 
     for req in requests:
@@ -95,7 +104,9 @@ def store_user_org_join_request(
     )
 
     notify_about_org_join_request(
-        user_data["name"], user_data["organisation_id"]
+        user_data["name"],
+        user_data["organisation_id"],
+        user_data["organisation_role"],
     )
 
     tk.get_action("flakes_flake_override")(
@@ -141,26 +152,54 @@ def _create_empty_pending_users_flake():
 
 
 def notify_about_pending_user(data_dict: dict[str, Any]) -> None:
-    tk.h.datavic_send_email(
-        [
-            x.strip()
-            for x in tk.config.get(
-                "ckan.datavic.request_access_review_emails", []
-            ).split(",")
-        ],
-        "new_account_requested",
-        {
-            "user_name": data_dict["name"],
-            "user_url": tk.url_for(
-                "user.read", id=data_dict["name"], qualified=True
+    emails = [
+        x.strip()
+        for x in tk.config.get(
+            "ckan.datavic.request_access_review_emails", []
+        ).split(",")
+    ]
+
+    if not emails:
+        return log.info(
+            "No emails has been set to notify about new user request"
+        )
+
+    extra_vars = {
+        "user_name": data_dict["name"],
+        "user_url": tk.url_for(
+            "user.read", id=data_dict["name"], qualified=True
+        ),
+        "site_title": tk.config.get("ckan.site_title"),
+        "site_url": tk.config.get("ckan.site_url"),
+    }
+
+    try:
+        mailer.mail_recipients(
+            tk._("New account requested"),
+            emails,
+            body=tk.render(
+                "mailcraft/emails/new_account_requested/body.txt",
+                extra_vars,
             ),
-            "site_title": tk.config.get("ckan.site_title"),
-            "site_url": tk.config.get("ckan.site_url"),
-        },
-    )
+            body_html=tk.render(
+                "mailcraft/emails/new_account_requested/body.html",
+                extra_vars,
+            ),
+        )
+    except MailerException:
+        log.error("Failed to send email notification")
+        pass
 
 
-def notify_about_org_join_request(username: str, orgname: str) -> None:
+def notify_about_org_join_request(
+    username: str, orgname: str, role: str
+) -> None:
+    requester = model.User.get(username)
+
+    # should not happen, but just in case
+    if not requester:
+        return
+
     try:
         org_admins = tk.get_action("member_list")(
             {"ignore_auth": True}, {"id": orgname, "capacity": "admin"}
@@ -168,18 +207,47 @@ def notify_about_org_join_request(username: str, orgname: str) -> None:
     except tk.ObjectNotFound:
         return
 
-    recipients = [model.User.get(user[0]).email for user in org_admins]
+    recipients = [model.User.get(user[0]) for user in org_admins]
     org_title = model.Group.get(orgname).title
 
-    tk.h.datavic_send_email(
-        recipients,
-        "new_organisation_access_request",
-        {
-            "username": username,
+    for org_admin in recipients:
+        # should not happen, but just in case
+        if not org_admin or not org_admin.email:
+            continue
+
+        extra_vars = {
+            "username": org_admin.display_name,
             "org_name": org_title,
-            "link": tk.h.url_for("home.index", qualified=True),
-        },
-    )
+            "role": role,
+            "requester": requester.display_name,
+            "link": tk.h.url_for(
+                "datavic_org.request_list", org_id=orgname, qualified=True
+            ),
+            "site_url": tk.config["ckan.site_url"],
+            "site_title": tk.config["ckan.site_title"],
+        }
+
+        try:
+            mailer.mail_recipients(
+                tk._(f"Request for {role} access - {org_title}"),
+                [org_admin.email],
+                body=tk.render(
+                    "mailcraft/emails/new_organisation_access_request/body.txt",
+                    extra_vars,
+                ),
+                body_html=tk.render(
+                    "mailcraft/emails/new_organisation_access_request/body.html",
+                    extra_vars,
+                ),
+                to=[
+                    admin.email
+                    for admin in recipients
+                    if admin and admin.email
+                ],
+            )
+        except MailerException:
+            log.error("Failed to send email notification")
+            pass
 
 
 def user_has_org_access(org_id: str, user_id: str):
@@ -251,3 +319,88 @@ def get_extra_value(
             continue
 
         return extra["value"]
+
+
+class UserPendingEditorFlake:
+    flake_name = "datavic:registration:pending_editor"
+
+    class PendingUserData(TypedDict):
+        id: str
+        name: str
+        email: str
+        organisation_id: str
+
+    @classmethod
+    def get_pending_users(cls) -> dict[str, PendingUserData]:
+        cls.create_empty_flake_if_not_exist()
+
+        return tk.get_action("flakes_flake_lookup")(
+            {"ignore_auth": True},
+            {
+                "author_id": None,
+                "name": cls.flake_name,
+            },
+        )["data"]
+
+    @classmethod
+    def get_pending_user(cls, user_id: str) -> PendingUserData | None:
+        requests = cls.get_pending_users()
+
+        return requests.get(user_id)
+
+    @classmethod
+    def store_pending_user(cls, user_data: PendingUserData) -> None:
+        requests = cls.get_pending_users()
+        requests[user_data["id"]] = user_data
+
+        tk.get_action("flakes_flake_override")(
+            {"ignore_auth": True},
+            {
+                "author_id": None,
+                "name": cls.flake_name,
+                "data": requests,
+            },
+        )
+
+    @classmethod
+    def remove_pending_user(cls, user_id: str) -> bool:
+        requests = cls.get_pending_users()
+
+        if not requests:
+            return False
+
+        if not requests.get(user_id):
+            return False
+
+        del requests[user_id]
+
+        tk.get_action("flakes_flake_override")(
+            {"ignore_auth": True},
+            {
+                "author_id": None,
+                "name": cls.flake_name,
+                "data": requests,
+            },
+        )
+
+        return True
+
+    @classmethod
+    def create_empty_flake_if_not_exist(cls) -> dict[str, PendingUserData]:
+        try:
+            return tk.get_action("flakes_flake_lookup")(
+                {"ignore_auth": True},
+                {
+                    "author_id": None,
+                    "name": cls.flake_name,
+                },
+            )["data"]
+        except tk.ObjectNotFound:
+            return tk.get_action("flakes_flake_create")(
+                {"ignore_auth": True},
+                {
+                    "author_id": None,
+                    "name": cls.flake_name,
+                    "data": {},
+                },
+            )["data"]
