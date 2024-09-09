@@ -51,7 +51,7 @@ DEFAULT_DTV_FQ = [
 ]
 
 # Conditionally import the the workflow extension helpers if workflow extension enabled in .ini
-if "workflow" in toolkit.config.get('ckan.plugins', False):
+if "workflow" in toolkit.config.get("ckan.plugins", False):
     from ckanext.workflow import helpers as workflow_helpers
 
     workflow_enabled = True
@@ -168,7 +168,7 @@ def group_list(self):
 def workflow_status_options(current_workflow_status, owner_org):
     options = []
 
-    if plugins.plugin_loaded("workflow"):
+    if "workflow" in toolkit.config.get("ckan.plugins", False):
         user = toolkit.g.user
 
         for option in workflow_helpers.get_available_workflow_statuses(
