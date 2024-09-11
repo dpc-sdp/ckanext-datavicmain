@@ -217,9 +217,11 @@ def notify_about_org_join_request(
 
         extra_vars = {
             "username": org_admin.display_name,
+            "admin_fullname": org_admin.fullname,
             "org_name": org_title,
             "role": role,
             "requester": requester.display_name,
+            "requester_fullname": requester.fullname,
             "link": tk.h.url_for(
                 "datavic_org.request_list", org_id=orgname, qualified=True
             ),
