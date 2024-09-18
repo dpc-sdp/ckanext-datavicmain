@@ -14,6 +14,7 @@
                 <div class="modal-body">
                     {{ form.hidden("email", value=request.email) }}
                     {{ form.hidden("username", value=request.name) }}
+                    {{ form.hidden("role", value=request.organisation_role) }}
                     {{ form.textarea("reason", label=_("Reason"), classes=["control-medium"], attrs={"class": "form-control w-100", "required": 1}, is_required=True) }}
                 </div>
 

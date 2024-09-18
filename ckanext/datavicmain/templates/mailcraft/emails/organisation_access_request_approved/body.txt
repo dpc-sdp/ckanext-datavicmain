@@ -1,7 +1,7 @@
 {% trans %}
 Hi {{ username }},
 
-Your request to join {{ org_name }} organisation has been approved.
+Your request to become a {{ role }} of {{ org_name }} has been approved.
 URL to an organisation {{ org_url }}.
 
 Regards,

@@ -189,6 +189,7 @@ class ApproveRequestView(MethodView):
     ) -> None:
         organization = model.Group.get(org_id)
         user = model.User.get(data_dict["username"])
+        role = data_dict["role"]
 
         # should not happen, but just in case
         if not organization or not user:
@@ -196,6 +197,8 @@ class ApproveRequestView(MethodView):
 
         extra_vars = {
             "username": user.display_name,
+            "fullname": user.fullname,
+            "role": role,
             "org_name": organization.title,
             "org_url": tk.h.url_for(
                 "organization.read", id=org_id, _external=True
@@ -206,7 +209,7 @@ class ApproveRequestView(MethodView):
 
         try:
             mailer.mail_recipients(
-                tk._("Organisation access request approved"),
+                tk._(f"Request for {role.title()} - {organization.title} access approved"),
                 [data_dict["email"]],
                 body=tk.render(
                     "mailcraft/emails/organisation_access_request_approved/body.txt",
@@ -275,6 +278,7 @@ class DenyRequestView(MethodView):
     ) -> None:
         organization = model.Group.get(org_id)
         user = model.User.get(data_dict["username"])
+        role = data_dict["role"]
 
         # should not happen, but just in case
         if not organization or not user:
@@ -282,6 +286,8 @@ class DenyRequestView(MethodView):
 
         extra_vars = {
             "username": user.display_name,
+            "fullname": user.fullname,
+            "role": role,
             "org_name": organization.title,
             "org_url": tk.h.url_for(
                 "organization.read", id=org_id, _external=True
@@ -293,7 +299,7 @@ class DenyRequestView(MethodView):
 
         try:
             mailer.mail_recipients(
-                tk._("Organisation access request denied"),
+                tk._(f"Request for {role.title()} - {organization.title} access denied"),
                 [data_dict["email"]],
                 body=tk.render(
                     "mailcraft/emails/organisation_access_request_denied/body.txt",
@@ -310,22 +316,30 @@ class DenyRequestView(MethodView):
 
     def get_payload_schema(self) -> types.Schema:
         """Create a schema to validate request payload"""
-        return {
-            "username": [
-                tk.get_validator("not_empty"),
-                tk.get_validator("unicode_safe"),
-                tk.get_validator("user_id_or_name_exists"),
-            ],
-            "email": [
-                tk.get_validator("not_empty"),
-                tk.get_validator("unicode_safe"),
-                tk.get_validator("email_validator"),
-            ],
-            "reason": [
-                tk.get_validator("not_empty"),
-                tk.get_validator("unicode_safe"),
-            ],
-        }
+        return cast(
+            types.Schema,
+            {
+                "role": [
+                    tk.get_validator("not_empty"),
+                    tk.get_validator("unicode_safe"),
+                    tk.get_validator("one_of")(tk.h.datavic_get_org_roles()),  # type: ignore
+                ],
+                "username": [
+                    tk.get_validator("not_empty"),
+                    tk.get_validator("unicode_safe"),
+                    tk.get_validator("user_id_or_name_exists"),
+                ],
+                "email": [
+                    tk.get_validator("not_empty"),
+                    tk.get_validator("unicode_safe"),
+                    tk.get_validator("email_validator"),
+                ],
+                "reason": [
+                    tk.get_validator("not_empty"),
+                    tk.get_validator("unicode_safe"),
+                ],
+            },
+        )
 
 
 def register_plugin_rules(blueprint):

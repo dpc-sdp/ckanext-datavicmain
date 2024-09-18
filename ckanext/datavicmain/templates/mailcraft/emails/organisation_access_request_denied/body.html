@@ -2,6 +2,8 @@
 
 extra variables:
 - username: the name of the user
+- fullname: the full name of the user
+- role: pending role in organisation
 - org_url: url to an organisation
 - org_name: title of the organisation
 - reason: rejection reason
@@ -11,9 +13,9 @@ extra variables:
 {% extends "mailcraft/emails/base.html" %}
 
 {% block main_text %}
-    <p>Hi <b>{{ username }}</b>,</p>
+    <p>Hi <b>{{ fullname or username }}</b>,</p>
 
-    <p>Your request to join <a href="{{ org_url }}">{{ org_name | safe }}</a> has been rejected.</p>
+    <p>Your request to become a{% if role != "member" %}n{% endif %} {{ role | title }} of <a href="{{ org_url }}">{{ org_name | safe }}</a> has been denied.</p>
 
     <p>Please see the reason below:</p>
 
