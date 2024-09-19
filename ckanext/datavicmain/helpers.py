@@ -165,15 +165,36 @@ def group_list(self):
     return group_list
 
 
-def workflow_status_options(current_workflow_status, owner_org):
+def workflow_status_options(
+    current_workflow_status: str, owner_org: str, package_id: str
+) -> list[dict[str, Any]]:
+
     options = []
 
     if "workflow" in toolkit.config.get("ckan.plugins", False):
-        user = toolkit.g.user
+        user = toolkit.g.userobj
+        is_collaborator_editor = authz.user_is_collaborator_on_dataset(
+            user.id, package_id, "editor"
+        )
+        is_org_admin = (
+            authz.users_role_for_group_or_org(owner_org, user.name) == "admin"
+        )
 
-        for option in workflow_helpers.get_available_workflow_statuses(
-            current_workflow_status, owner_org, user
-        ):
+        if is_collaborator_editor and not is_org_admin:
+            settings = workflow_helpers.load_workflow_settings()
+            workflow_options = (
+                workflow_helpers.get_workflow_status_options_for_role(
+                    settings["roles"], "editor"
+                )
+            )
+        else:
+            workflow_options = (
+                workflow_helpers.get_available_workflow_statuses(
+                    current_workflow_status, owner_org, user.name
+                )
+            )
+
+        for option in workflow_options:
             options.append(
                 {
                     "value": option,
