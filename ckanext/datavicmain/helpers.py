@@ -558,7 +558,7 @@ def _group_tree_parents(id_, type_="organization"):
         return []
 
 
-def add_curent_organisation(
+def add_current_organisation(
     avalable_organisations: list[dict[str, Any]], current_org: dict[str, Any]
 ):
     """When user doesn't have an access to an organisation, it won't be included
