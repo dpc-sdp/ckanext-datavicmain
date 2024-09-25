@@ -253,7 +253,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "group_tree_parents": helpers.group_tree_parents,
             "add_current_organisation": helpers.add_current_organisation,
             "datavic_max_image_size": helpers.datavic_max_image_size,
-            "add_curent_organisation": helpers.add_curent_organisation,
+            "add_current_organisation": helpers.add_current_organisation,
             "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
             "get_user_organizations": helpers.get_user_organizations,
             "has_user_capacity": helpers.has_user_capacity,
