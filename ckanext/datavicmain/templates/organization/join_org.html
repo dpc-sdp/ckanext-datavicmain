@@ -58,6 +58,10 @@
                         <input type="radio" name="organisation_role" id="org-role-editor" value="editor">
                         <label for="org-role-editor" class="d-inline radio-no-colon">{{ _("Editor - create and edit records on behalf of this organisation, subject to Administrator approval") }}</label>
                     </div>
+                {% elif "editor" not in user_roles %}
+                    <input name="organisation_role" value="editor" hidden>
+                {% else %}
+                    <input name="organisation_role" value="admin" hidden>
                 {% endif %}
             </div>
 
