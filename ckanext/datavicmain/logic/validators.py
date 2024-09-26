@@ -135,3 +135,46 @@ def _get_mimetype_from_url(image_url: str) -> Optional[str]:
         return response.headers.get("Content-Type")
     except requests.RequestException as e:
         raise ValueError(f"Error fetching image: {e}")
+
+
+def datavic_visibility_validator(
+    key: types.FlattenKey,
+    data: types.FlattenDataDict,
+    errors: types.FlattenErrorDict,
+    context: types.Context,
+) -> Any:
+    """
+    Datasets owned by restricted organisations can only be made visible to 
+    members of the current organisation
+    """
+    value = data.get(key)
+    owner_org = data.get(("owner_org",))
+    is_restricted = tk.h.datavic_is_org_restricted(owner_org)
+    if is_restricted and value != "current":
+        errors[("organization_visibility",)].append(
+            """Incorrect value - datasets owned by restricted 
+            organisations can only be made visible to members of the current 
+            organisation"""
+        )
+        return
+
+
+def datavic_private_validator(
+    key: types.FlattenKey,
+    data: types.FlattenDataDict,
+    errors: types.FlattenErrorDict,
+    context: types.Context,
+) -> Any:
+    """
+    Datasets owned by restricted organisations are not suitable for 
+    public release
+    """
+    value = data.get(key)
+    owner_org = data.get(("owner_org",))
+    is_restricted = tk.h.datavic_is_org_restricted(owner_org)
+    if is_restricted and value is False:
+        errors[("private",)].append(
+            """Incorrect value - datasets owned by restricted organisations are 
+            not suitable for public release"""
+        )
+        return

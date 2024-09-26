@@ -322,10 +322,11 @@ dataset_fields:
       label: Family
     - value: all
       label: All
+  validators: datavic_visibility_validator
 
 - field_name: private
   label: Public release
-  validators: boolean_validator
+  validators: boolean_validator datavic_private_validator
   form_snippet: public_release.html # custom select_workflow
   display_group: Workflow
 
