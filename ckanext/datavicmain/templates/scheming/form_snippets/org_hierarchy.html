@@ -1,0 +1,24 @@
+{% import 'macros/form.html' as form %}
+
+{% if allowable_parent_groups is not defined %}
+    {% set allowable_parent_groups = h.get_allowable_parent_groups(data.id) %}
+{% endif %}
+{% asset "ckanext-datavicmain/datavicmain-organization-visibility" %}
+
+{% call form.input_block("field-parent", label=_("Parent")) %}
+    <select id="field-parent" name="groups__0__name" data-module="autocomplete datavicmain-organization-visibility">
+        {% set selected_parent = (data.get('groups') or [{'name': ''}])[0]['name'] %} {{ selected_parent }}
+        <option value="" {% if not selected_parent %} selected="selected" {% endif %}>
+            {{ _('None - top level') }}
+        </option>
+
+        {% for group in allowable_parent_groups or h.get_allowable_parent_groups(data.id) %}
+            {% if h.datavic_is_org_restricted(group.id) and not h.datavic_user_is_a_member_of_org(current_user.id, group.id) %}
+            {% else %}
+                <option {% if h.datavic_is_org_restricted(group.id) %}class="restricted"{% endif %} value="{{ group.name }}" {% if group.name == selected_parent %}selected="selected"{% endif %}>
+                    {{ group.title }}
+                </option>
+            {% endif %}
+        {% endfor %}
+    </select>
+{% endcall  %}
