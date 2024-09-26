@@ -112,8 +112,19 @@ def _has_user_capacity_in_org(org_id: str, roles: list) -> bool:
 
 @toolkit.chained_auth_function
 def package_activity_list(next_auth, context, data_dict):
+    pkg_dict = toolkit.get_action("package_show")(
+        context,
+        {"id": data_dict["id"]},
+    )
     allowed_roles = ["admin", "editor"]
-    if _has_user_capacity_in_org(context["package"].owner_org, allowed_roles):
+    is_user_collaborator = authz.user_is_collaborator_on_dataset(
+        toolkit.current_user.id, pkg_dict["id"], allowed_roles
+    )
+    has_user_capacity = _has_user_capacity_in_org(
+        pkg_dict["owner_org"], allowed_roles
+    )
+
+    if has_user_capacity or is_user_collaborator:
         return next_auth(context, data_dict)
     return {"success": False}
 
