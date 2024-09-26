@@ -89,13 +89,13 @@ def _has_user_capacity_in_org(org_id: str, roles: list) -> bool:
 
 @tk.chained_auth_function
 def package_activity_list(next_auth, context, data_dict):
-    pkg_dict = toolkit.get_action("package_show")(
+    pkg_dict = tk.get_action("package_show")(
         context,
         {"id": data_dict["id"]},
     )
     allowed_roles = ["admin", "editor"]
     is_user_collaborator = authz.user_is_collaborator_on_dataset(
-        toolkit.current_user.id, pkg_dict["id"], allowed_roles
+        tk.current_user.id, pkg_dict["id"], allowed_roles
     )
     has_user_capacity = _has_user_capacity_in_org(
         pkg_dict["owner_org"], allowed_roles
