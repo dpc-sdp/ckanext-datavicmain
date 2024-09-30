@@ -21,7 +21,6 @@ from ckanext.transmute.interfaces import ITransmute
 from ckanext.datavicmain import helpers, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.transmutators import get_transmutators
-from ckanext.datavicmain.syndication.organization import sync_organization
 
 
 config = toolkit.config
@@ -74,7 +73,6 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(p.IBlueprint)
     p.implements(p.IClick)
     p.implements(ISyndicate, inherit=True)
-    p.implements(p.IOrganizationController, inherit=True)
     p.implements(IOidcPkce, inherit=True)
     p.implements(ITransmute)
 
@@ -389,22 +387,3 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     def get_transmutators(self):
         return get_transmutators()
-
-    # IOrganizationController
-    def edit(self, entity: model.Group):
-        """Called after organization had been updated inside
-        organization_update.
-        We are using it to syndicate organization on update.
-        """
-
-        if not isinstance(entity, model.Group) or not entity.is_organization:
-            return
-
-        if not entity.packages():
-            return
-
-        toolkit.enqueue_job(
-            sync_organization,
-            [entity],
-            title="DataVic organization sync",
-        )
