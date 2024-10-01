@@ -14,6 +14,18 @@
 
         {% for group in allowable_parent_groups or h.get_allowable_parent_groups(data.id) %}
             {% if h.datavic_is_org_restricted(group.id) and not h.datavic_user_is_a_member_of_org(current_user.id, group.id) %}
+            {% elif data.visibility == "restricted" %}
+                {% if h.datavic_is_org_restricted(group.id) %}
+                    <option class="restricted" value="{{ group.name }}" {% if group.name == selected_parent %}selected="selected"{% endif %}>
+                        {{ group.title }}
+                    </option>
+                {% endif %}
+            {% elif data.visibility == "unrestricted" %}
+                {% if not h.datavic_is_org_restricted(group.id) %}
+                    <option value="{{ group.name }}" {% if group.name == selected_parent %}selected="selected"{% endif %}>
+                        {{ group.title }}
+                    </option>
+                {% endif %}
             {% else %}
                 <option {% if h.datavic_is_org_restricted(group.id) %}class="restricted"{% endif %} value="{{ group.name }}" {% if group.name == selected_parent %}selected="selected"{% endif %}>
                     {{ group.title }}
