@@ -262,6 +262,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "datavic_get_org_roles": helpers.datavic_get_org_roles,
             "datavic_get_user_roles_in_org": helpers.datavic_get_user_roles_in_org,
             "get_group": helpers.get_group,
+            "datavic_allowable_parent_orgs": helpers.datavic_allowable_parent_orgs,
         }
 
     ## IConfigurer interface ##

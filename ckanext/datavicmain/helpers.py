@@ -718,3 +718,15 @@ def datavic_update_org_error_dict(
         ]
 
     return error_dict
+
+
+def datavic_allowable_parent_orgs(org_id: str = None) -> list[dict[str, Any]]:
+    all_orgs = toolkit.h.get_allowable_parent_groups(org_id)
+    user_id = toolkit.current_user.id
+    orgs = []
+    for org in all_orgs:
+        if datavic_is_org_restricted(org.id) and \
+        not datavic_user_is_a_member_of_org(user_id, org.id):
+            continue
+        orgs.append(org)
+    return orgs
