@@ -16,13 +16,14 @@ this.ckan.module("datavicmain-organization-visibility", function ($) {
                 var orgName = $("#select2-chosen-1").text();
                 var topLevel = "None - top level";
 
-                if ($("#field-parent option:contains('" + orgName + "')").hasClass("restricted")) {
+                if ($("#field-visibility").attr("readonly")) {
+                } else if ($("#field-parent option:contains('" + orgName + "')").hasClass("restricted")) {
                     $("#select2-chosen-1").addClass("restricted");
                     $("#field-visibility option[value='unrestricted']").attr("selected", false);
                     $("#field-visibility option[value='restricted']").attr("selected", true);
                     $("#field-visibility option[value='unrestricted']").attr("disabled", true);
                     $("#field-visibility option[value='restricted']").attr("disabled", false);
-                } else if ($("#select2-chosen-1").text() == topLevel) {
+                } else if ($("#select2-chosen-1:contains('" +  topLevel + "')").length) {
                     $("#select2-chosen-1").removeClass("restricted");
                     $("#field-visibility option[value='unrestricted']").attr("disabled", false);
                     $("#field-visibility option[value='restricted']").attr("disabled", false);
