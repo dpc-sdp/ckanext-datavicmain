@@ -31,3 +31,15 @@ fields:
   - field_name: parent
     label: Parent
     form_snippet: org_hierarchy.html
+
+  - field_name: visibility
+    label: Visibility
+    form_snippet: vic_org_visibility.html
+    required: true
+    help_text: Restricted organisations, their datasets and their child organisations are only visible to members of that organisation.
+    validators: default(unrestricted)
+    choices:
+    - value: unrestricted
+      label: Unrestricted
+    - value: restricted
+      label: Restricted

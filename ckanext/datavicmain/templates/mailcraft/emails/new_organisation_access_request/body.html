@@ -1,0 +1,25 @@
+{#
+
+extra variables:
+- username: the name of the admin user
+- admin_fullname: the full name of the admin user
+- requester: the name of the requester
+- requester_fullname: the full name of the requester
+- role: the pending role in the organisation
+- org_name: the title of the organisation
+- link: the link to the request page on the protal
+
+#}
+
+{% extends "mailcraft/emails/base.html" %}
+
+{% block main_text %}
+    <p>Dear {{ admin_fullname or username }},</p>
+
+    <p>{{ requester_fullname or requester }} has requested {{ role }} access for {{ org_name | safe }} in the VPS Data Directory.</p>
+
+    <p><a href="{{ link }}">Click here to approve or deny this request.</a></p>
+
+    <p>Kind regards,</p>
+    <p>DataVic team</p>
+{% endblock %}

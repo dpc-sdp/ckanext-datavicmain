@@ -1,0 +1,76 @@
+{% set user_roles = h.datavic_get_user_roles_in_org(g.userobj.id, group_dict.id) %}
+{% set pending_request = h.datavic_is_pending_request_to_join_org(g.userobj.name, group_dict.id) %}
+
+{% if not g.userobj.sysadmin and not user_roles and not pending_request %}
+    <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#requestOrgJoin">
+        {{ _("Request to join") }}
+    </button>
+{# if user doesn't have all the roles in the org, suggest requesting #}
+{% elif not g.userobj.sysadmin and user_roles and not pending_request %}
+    {% if "admin" not in user_roles %}
+        {% set request_text = _("Request Editor access") if user_roles | length == 1 else _("Request Admin access") %}
+        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#requestOrgJoin">
+            {{ request_text }}
+        </button>
+    {% endif %}
+{% endif %}
+
+{% if user_roles | length != 3 %}
+<form method="POST" action="{{ h.url_for('datavic_org.request_join', org_id=group_dict.id) }}">
+    <div class="modal fade" id="requestOrgJoin" tabindex="-1" aria-labelledby="requestOrgJoin" aria-hidden="true">
+        <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="requestOrgJoin">
+                    {% if "member" not in user_roles %}
+                        {{ _("Request to join organisation: ") }}
+                    {% elif "editor" not in user_roles %}
+                        {{ _("Request Editor access for organisation: ") }}
+                    {% else %}
+                        {{ _("Request Admin access for organisation: ") }}
+                    {% endif %}
+                    {{ group_dict.title }}
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                {% if not user_roles %}
+                    <p>{{ _("Request to join if you require visibility of all records published by this organisation.") }}</p>
+                    <p>{{ _("Your request will be sent to the Administrator/s of this organisation for review.") }}</p>
+                {% elif user_roles == ["member"] %}
+                    <p>{{ _("As a current Member, you can view all records published by this organisation.") }}</p>
+                    <p>{{ _("Request Editor access to create and edit records on behalf of this organisation, subject to Administrator approval.") }}</p>
+                    <p>{{ _("Your request will be sent to the Administrator/s of this organisation for review.") }}</p>
+                {% elif user_roles == ["editor", "member"] %}
+                    <p>{{ _("As a current Editor, you can create and edit records on behalf of this organisation, subject to Administrator approval.") }}</p>
+                    <p>{{ _("Request Administrator access to create, edit and publish records, and administer users on behalf of this organisation.") }}</p>
+                    <p>{{ _("Your request will be sent to the Administrator/s of this organisation for review.") }}</p>
+                {% endif %}
+
+                {% if "member" not in user_roles %}
+                    <div>
+                        <input type="radio" name="organisation_role" id="org-role-member" value="member" checked>
+                        <label for="org-role-member" class="d-inline radio-no-colon">{{ _("Member - view all records published by this organisation") }}</label>
+                    </div>
+                    <div>
+                        <input type="radio" name="organisation_role" id="org-role-editor" value="editor">
+                        <label for="org-role-editor" class="d-inline radio-no-colon">{{ _("Editor - create and edit records on behalf of this organisation, subject to Administrator approval") }}</label>
+                    </div>
+                {% elif "editor" not in user_roles %}
+                    <input name="organisation_role" value="editor" hidden>
+                {% else %}
+                    <input name="organisation_role" value="admin" hidden>
+                {% endif %}
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary mx-3" data-bs-dismiss="modal">{{ _("Close") }}</button>
+                <button type="submit" class="btn btn-primary">{{ _("Submit") }}</button>
+            </div>
+        </div>
+        </div>
+    </div>
+</form>
+{% endif %}
