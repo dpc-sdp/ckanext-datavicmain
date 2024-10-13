@@ -12,14 +12,10 @@
             }
         },
         {
-            "preset_name": "vic_resource_url_upload",
+            "preset_name": "vic_dataset_organization",
             "values": {
-                "validators": "not_empty unicode_safe remove_whitespace",
-                "form_snippet": "upload.html",
-                "form_placeholder": "http://example.com/my-data.csv",
-                "upload_field": "upload",
-                "upload_clear": "clear_upload",
-                "upload_label": "File"
+              "validators": "datavic_owner_org_validator unicode_safe",
+              "form_snippet": "organization.html"
             }
         }
     ]
