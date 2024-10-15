@@ -546,12 +546,6 @@ class RegisterView(MethodView):
             tk.abort(400, tk._("Integrity Error"))
 
         context["message"] = data_dict.get("log_message", "")
-        try:
-            captcha.check_recaptcha(tk.request)
-        except captcha.CaptchaError:
-            error_msg = tk._("Bad Captcha. Please try again.")
-            tk.h.flash_error(error_msg)
-            return self.get(data_dict)
 
         try:
             tk.get_action("user_create")(context, data_dict)
@@ -589,7 +583,7 @@ class RegisterView(MethodView):
             tk.h.flash_success(
                 tk._("Your requested account has been submitted for review")
             )
-            resp = tk.h.redirect_to("home.index")
+            resp = tk.h.redirect_to("user.login")
         else:
             # log the user in programmatically
             resp = tk.h.redirect_to("user.me")
@@ -620,9 +614,13 @@ class RegisterView(MethodView):
 def before_request() -> None:
     _, action = tk.get_endpoint()
 
-    # Skip recaptcha check if 2FA is enabled, it will be checked with ckanext-auth
-    if plugins.plugin_loaded("auth") and tk.h.is_2fa_enabled():
-        return;
+    # Skip recaptcha check for login if 2FA is enabled, it will be checked with ckanext-auth
+    if (
+        action == "login"
+        and plugins.plugin_loaded("auth")
+        and tk.h.is_2fa_enabled()
+    ):
+        return
 
     if (
         tk.request.method == "POST"
@@ -656,7 +654,9 @@ def register_datavicuser_plugin_rules(blueprint):
     blueprint.add_url_rule(
         "/user/register", view_func=RegisterView.as_view(str("register"))
     )
-    blueprint.add_url_rule("/user/login", view_func=user.login, methods=("GET", "POST"))
+    blueprint.add_url_rule(
+        "/user/login", view_func=user.login, methods=("GET", "POST")
+    )
 
 
 register_datavicuser_plugin_rules(datavicuser)
