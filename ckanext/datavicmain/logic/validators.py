@@ -30,7 +30,7 @@ def datavic_tag_string(key, data, errors, context):
         ):
             tk.get_validator("not_empty")(key, data, errors, context)
             return
-            
+
     tk.get_validator("ignore_missing")(key, data, errors, context)
 
 
@@ -47,9 +47,7 @@ def datavic_owner_org_validator(
 
     if value is tk.missing or value is None:
         if not authz.check_config_permission("create_unowned_dataset"):
-            raise tk.Invalid(
-                tk._("An organization must be provided")
-            )
+            raise tk.Invalid(tk._("An organization must be provided"))
         data.pop(key, None)
         raise df.StopOnError
 
@@ -58,9 +56,7 @@ def datavic_owner_org_validator(
 
     if value == "":
         if not authz.check_config_permission("create_unowned_dataset"):
-            raise tk.Invalid(
-                tk._("An organization must be provided")
-            )
+            raise tk.Invalid(tk._("An organization must be provided"))
         return
 
     group = context["model"].Group.get(value)
@@ -120,7 +116,7 @@ def datavic_organization_upload(key, data, errors, context):
                 "JPG, JPEG, GIF, PNG, BMP, SVG."
             )
         )
-    
+
 
 
 def _is_valid_image_extension(mimetype: str) -> bool:
@@ -147,7 +143,7 @@ def datavic_visibility_validator(
     context: types.Context,
 ) -> Any:
     """
-    Datasets owned by restricted organisations can only be made visible to 
+    Datasets owned by restricted organisations can only be made visible to
     members of the current organisation
     """
     value = data.get(key)
@@ -155,8 +151,8 @@ def datavic_visibility_validator(
     is_restricted = tk.h.datavic_is_org_restricted(owner_org)
     if is_restricted and value != "current":
         errors[("organization_visibility",)].append(
-            """Incorrect value - datasets owned by restricted 
-            organisations can only be made visible to members of the current 
+            """Incorrect value - datasets owned by restricted
+            organisations can only be made visible to members of the current
             organisation"""
         )
         return
@@ -169,7 +165,7 @@ def datavic_private_validator(
     context: types.Context,
 ) -> Any:
     """
-    Datasets owned by restricted organisations are not suitable for 
+    Datasets owned by restricted organisations are not suitable for
     public release
     """
     value = data.get(key)
@@ -177,7 +173,27 @@ def datavic_private_validator(
     is_restricted = tk.h.datavic_is_org_restricted(owner_org)
     if is_restricted and value is False:
         errors[("private",)].append(
-            """Incorrect value - datasets owned by restricted organisations are 
+            """Incorrect value - datasets owned by restricted organisations are
             not suitable for public release"""
+        )
+        return
+
+
+def datavic_email_validator(
+    key: types.FlattenKey,
+    data: types.FlattenDataDict,
+    errors: types.FlattenErrorDict,
+    context: types.Context,
+) -> Any:
+    """
+    Validate that the email address is not already in use. It might be either
+    an existing user or a pending user.
+    """
+    model = context["model"]  # type: ignore
+    user = model.User.by_email(data[key])
+
+    if user and user.state in [model.State.ACTIVE, model.State.PENDING]:
+        errors[key].append(
+            "This email might be already in use. Please email datavic@dgs.vic.gov.au if you have any questions."
         )
         return

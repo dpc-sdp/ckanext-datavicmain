@@ -31,6 +31,8 @@ def custom_user_create_schema() -> Schema:
         ],
     }) # type: ignore
 
+    schema["email"].append(tk.get_validator("datavic_email_validator"))
+
     return schema
 
 

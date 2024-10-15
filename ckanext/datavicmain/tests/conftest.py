@@ -18,6 +18,7 @@ def clean_db(reset_db, migrate_db_for, with_plugins):
 class PackageFactory(factories.Dataset):
     access = "yes"
     category = factory.LazyFunction(lambda: factories.Group()["id"])
+    owner_org = factory.LazyFunction(lambda: factories.Organization()["id"])
     date_created_data_asset = factory.Faker("date")
     extract = factory.Faker("sentence")
     license_id = "notspecified"
