@@ -48,6 +48,7 @@ log = logging.getLogger(__name__)
 datavicuser = Blueprint("datavicuser", __name__)
 mailer = get_mailer()
 
+
 class DataVicRequestResetView(user.RequestResetView):
     def _prepare(self):
         return super()._prepare()
@@ -86,7 +87,9 @@ class DataVicRequestResetView(user.RequestResetView):
                     user_objs.append(context["user_obj"])
 
         if not user_objs:
-            log.info("User requested reset link for unknown user: {}".format(id))
+            log.info(
+                "User requested reset link for unknown user: {}".format(id)
+            )
 
         for user_obj in user_objs:
             log.info("Emailing reset link to user: {}".format(user_obj.name))
@@ -201,7 +204,7 @@ class DataVicUserEditView(user.EditView):
     def post(self, id=None):
         context, id = self._prepare(id)
 
-        if not context[u'save']:
+        if not context["save"]:
             return self.get(id)
 
         current_user = id in (
@@ -216,11 +219,12 @@ class DataVicUserEditView(user.EditView):
 
         try:
             data_dict = clean_dict(
-                unflatten(
-                    tuplize_dict(parse_params(request.form))))
-            data_dict.update(clean_dict(
-                unflatten(
-                    tuplize_dict(parse_params(request.files))))
+                unflatten(tuplize_dict(parse_params(request.form)))
+            )
+            data_dict.update(
+                clean_dict(
+                    unflatten(tuplize_dict(parse_params(request.files)))
+                )
             )
 
         except DataError:
@@ -231,8 +235,9 @@ class DataVicUserEditView(user.EditView):
         data_dict["id"] = id
         email_changed = data_dict["email"] != toolkit.current_user.email
 
-        if (data_dict["password1"]
-                and data_dict["password2"]) or email_changed:
+        if (
+            data_dict["password1"] and data_dict["password2"]
+        ) or email_changed:
 
             # CUSTOM CODE to allow updating user pass for sysadmin without a sys pass
             self_update = data_dict["name"] == toolkit.current_user.name
@@ -241,7 +246,7 @@ class DataVicUserEditView(user.EditView):
             if not is_sysadmin or self_update:
                 identity = {
                     "login": toolkit.current_user.name,
-                    "password": data_dict["old_password"]
+                    "password": data_dict["old_password"],
                 }
                 auth_user = authenticator.ckan_authenticator(identity)
                 auth_username = auth_user.name if auth_user else ""
@@ -250,7 +255,9 @@ class DataVicUserEditView(user.EditView):
                     errors = {
                         "oldpassword": [_("Password entered was incorrect")]
                     }
-                    error_summary = {_("Old Password"): _("incorrect password")}
+                    error_summary = {
+                        _("Old Password"): _("incorrect password")
+                    }
                     return self.get(id, data_dict, errors, error_summary)
 
         try:
@@ -298,7 +305,8 @@ class DataVicUserEditView(user.EditView):
         vars = {"data": data, "errors": errors, "error_summary": error_summary}
 
         extra_vars = _extra_template_variables(
-            {"model": model, "session": model.Session, "user": g.user}, data_dict
+            {"model": model, "session": model.Session, "user": g.user},
+            data_dict,
         )
 
         extra_vars["show_email_notifications"] = asbool(
@@ -325,7 +333,9 @@ def logged_in():
 
 def me():
     return (
-        h.redirect_to(config.get("ckan.auth.route_after_login") or "dashboard.datasets")
+        h.redirect_to(
+            config.get("ckan.auth.route_after_login") or "dashboard.datasets"
+        )
         if h.check_access("package_create")
         else h.redirect_to("dataset.search")
     )
@@ -433,21 +443,19 @@ class RegisterView(MethodView):
     def post(self):
         context = self._prepare()
         try:
-            data_dict = clean_dict(unflatten(tuplize_dict(parse_params(request.form))))
+            data_dict = clean_dict(
+                unflatten(tuplize_dict(parse_params(request.form)))
+            )
             data_dict.update(
-                clean_dict(unflatten(tuplize_dict(parse_params(request.files))))
+                clean_dict(
+                    unflatten(tuplize_dict(parse_params(request.files)))
+                )
             )
 
         except DataError:
             toolkit.abort(400, _("Integrity Error"))
 
         context["message"] = data_dict.get("log_message", "")
-        try:
-            captcha.check_recaptcha(request)
-        except captcha.CaptchaError:
-            error_msg = _("Bad Captcha. Please try again.")
-            h.flash_error(error_msg)
-            return self.get(data_dict)
 
         try:
             get_action("user_create")(context, data_dict)
@@ -473,7 +481,9 @@ class RegisterView(MethodView):
             if authz.is_sysadmin(g.user):
                 # the sysadmin created a new user. We redirect him to the
                 # activity page for the newly created user
-                return h.redirect_to("activity.user_activity", id=data_dict["name"])
+                return h.redirect_to(
+                    "activity.user_activity", id=data_dict["name"]
+                )
             else:
                 return toolkit.render("user/logout_first.html")
 
@@ -481,9 +491,11 @@ class RegisterView(MethodView):
         if helpers.user_is_registering():
             # If user is registering, do not login them and redirect them to the home page
             h.flash_success(
-                toolkit._("Your requested account has been submitted for review")
+                toolkit._(
+                    "Your requested account has been submitted for review"
+                )
             )
-            resp = h.redirect_to("home.index")
+            resp = h.redirect_to("user.login")
         else:
             # log the user in programmatically
             resp = h.redirect_to("user.me")
@@ -517,9 +529,13 @@ _edit_view = DataVicUserEditView.as_view(str("edit"))
 def before_request() -> None:
     _, action = toolkit.get_endpoint()
 
-    # Skip recaptcha check if 2FA is enabled, it will be checked with ckanext-auth
-    if plugins.plugin_loaded("auth") and toolkit.h.is_2fa_enabled():
-        return;
+    # Skip recaptcha check for login if 2FA is enabled, it will be checked with ckanext-auth
+    if (
+        action == "login"
+        and plugins.plugin_loaded("auth")
+        and toolkit.h.is_2fa_enabled()
+    ):
+        return
 
     if (
         request.method == "POST"
@@ -529,13 +545,14 @@ def before_request() -> None:
         try:
             captcha.check_recaptcha(request)
         except captcha.CaptchaError:
-            h.flash_error(toolkit._(u'Bad Captcha. Please try again.'))
+            h.flash_error(toolkit._("Bad Captcha. Please try again."))
             return h.redirect_to(request.url)
 
 
 def register_datavicuser_plugin_rules(blueprint):
     blueprint.add_url_rule(
-        "/user/reset", view_func=DataVicRequestResetView.as_view(str("request_reset"))
+        "/user/reset",
+        view_func=DataVicRequestResetView.as_view(str("request_reset")),
     )
     blueprint.add_url_rule(
         "/user/reset/<id>",
@@ -550,7 +567,9 @@ def register_datavicuser_plugin_rules(blueprint):
     blueprint.add_url_rule(
         "/user/register", view_func=RegisterView.as_view(str("register"))
     )
-    blueprint.add_url_rule("/user/login", view_func=user.login, methods=("GET", "POST"))
+    blueprint.add_url_rule(
+        "/user/login", view_func=user.login, methods=("GET", "POST")
+    )
 
 
 register_datavicuser_plugin_rules(datavicuser)
