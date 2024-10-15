@@ -188,10 +188,16 @@ def datavic_email_validator(
     an existing user or a pending user.
     """
     model = context["model"]  # type: ignore
-    user = model.User.by_email(data[key])
 
-    if user and user.state in [model.State.ACTIVE, model.State.PENDING]:
-        errors[key].append(
-            "This email might be already in use. Please email datavic@dgs.vic.gov.au if you have any questions."
-        )
-        return
+    existing_users = (
+        model.Session.query(model.User)
+        .filter(model.User.email.ilike(data[key]))
+        .all()
+    )
+
+    for user in existing_users:
+        if user and user.state in [model.State.ACTIVE, model.State.PENDING]:
+            errors[key].append(
+                "This email might be already in use. Please email datavic@dgs.vic.gov.au if you have any questions."
+            )
+            return
