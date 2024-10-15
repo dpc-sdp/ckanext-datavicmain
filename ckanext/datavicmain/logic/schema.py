@@ -8,6 +8,7 @@ import ckan.model as model
 from ckan.logic.schema import validator_args
 from ckan.logic import schema as ckan_schema
 
+
 def custom_user_create_schema() -> Schema:
     schema = ckan_schema.user_new_form_schema()
 
@@ -29,6 +30,8 @@ def custom_user_create_schema() -> Schema:
             tk.get_validator("one_of")(model.State.PENDING),
         ],
     }) # type: ignore
+
+    schema["email"].append(tk.get_validator("datavic_email_validator"))
 
     return schema
 
