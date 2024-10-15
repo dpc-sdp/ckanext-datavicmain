@@ -44,4 +44,5 @@ fields:
   - field_name: parent
     label: Parent
     form_snippet: org_hierarchy.html
+    validators: ignore_empty
     required: true
