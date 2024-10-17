@@ -22,7 +22,6 @@ from ckanext.datavicmain import helpers, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.transmutators import get_transmutators
 
-from ckanext.datavicmain.syndication.organization import sync_organization
 from ckanext.datavicmain.implementation import PermissionLabels
 
 
