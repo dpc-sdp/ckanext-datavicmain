@@ -4,39 +4,25 @@ this.ckan.module("datavicmain-organization-visibility", function ($) {
     return {
         options: {},
         initialize: function () {
-            var selectedOption = $("option[selected=selected]");
-
-            if (selectedOption.hasClass("restricted")) {
-                $(".select2-chosen").addClass("restricted");
+            if ($("#field-visibility").val() == "unrestricted") {
+                $("#field-parent option.restricted").addClass("hide");
+                $("#field-parent option:not('.restricted')").removeClass("hide");
             };
 
             $("#field-visibility[readonly=true]").find("option:not(:selected)").attr("disabled", true);
 
-            $("#field-parent").on('change', function (e) {
-                var orgName = $("#select2-chosen-1").text();
-                var topLevel = "None - top level";
-
-                if ($("#field-visibility").attr("readonly")) {
-                } else if ($("#field-parent option:contains('" + orgName + "')").hasClass("restricted")) {
-                    $("#select2-chosen-1").addClass("restricted");
-                    $("#field-visibility option[value='unrestricted']").attr("selected", false);
-                    $("#field-visibility option[value='restricted']").attr("selected", true);
-                    $("#field-visibility option[value='unrestricted']").attr("disabled", true);
-                    $("#field-visibility option[value='restricted']").attr("disabled", false);
-                } else if ($("#select2-chosen-1:contains('" +  topLevel + "')").length) {
-                    $("#select2-chosen-1").removeClass("restricted");
-                    $("#field-visibility option[value='unrestricted']").attr("disabled", false);
-                    $("#field-visibility option[value='restricted']").attr("disabled", false);
-                    $("#field-visibility option[value='restricted']").attr("selected", false);
-                    $("#field-visibility option[value='unrestricted']").attr("selected", true);
+            $("#field-visibility").on("change", function(e) {
+                $("#field-parent").val("");
+                $("#select2-chosen-1").text($("#field-parent option[value='']").text());
+                if ($(this).val() == "restricted") {
+                    $("#field-parent option:not('.restricted')").addClass("hide");
+                    $("#field-parent option.restricted").removeClass("hide");
+                    $("#field-parent option[value='']").removeClass("hide");
                 } else {
-                    $("#select2-chosen-1").removeClass("restricted");
-                    $("#field-visibility option[value='restricted']").attr("disabled", true);
-                    $("#field-visibility option[value='unrestricted']").attr("disabled", false);
-                    $("#field-visibility option[value='restricted']").attr("selected", false);
-                    $("#field-visibility option[value='unrestricted']").attr("selected", true);
-                }
+                    $("#field-parent option.restricted").addClass("hide");
+                    $("#field-parent option:not('.restricted')").removeClass("hide");
+                };
             });
         }
-    }
+    };
 })

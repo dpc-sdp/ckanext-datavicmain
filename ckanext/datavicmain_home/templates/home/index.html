@@ -1,0 +1,44 @@
+{% ckan_extends %}
+
+{% block vic_home_content %}
+    <section class="cards">
+        <div class="container">
+            {% for section_title in h.vic_home_get_sections() %}
+                {% set items = h.get_item_by_section_type(section_title) %}
+
+                {% if items %}
+                    <div class="section-type">
+                        <h2>{{ section_title }}</h2>
+
+                        <div class="row row-cols-1 row-cols-md-3 g-4">
+                            {% for item in items %}
+                                <div class="col">
+                                    <div class="card">
+                                        {% if item.image_id %}
+                                            {% set file_info = h.files_link_details(item.image_id) %}
+
+                                            {% if file_info %}
+                                                <img src="{{ file_info.href }}" loading="lazy" fetchpriority="auto" alt="Item image">
+                                            {% endif %}
+                                        {% elif item.url %}
+                                            <img src="{{ item.url }}" loading="lazy" fetchpriority="auto" alt="Item image">
+                                        {% endif %}
+
+                                        <div class="card-body">
+                                            <h5 class="card-title">
+                                                <a class="stretched-link" href="{{ item.entity_url }}" {% if item.url_in_new_tab %}target="_blank"{% endif    %}>{{ item.title }}</a>
+                                            </h5>
+                                            <p class="card-text">
+                                                {{ item.description }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+{% endblock %}

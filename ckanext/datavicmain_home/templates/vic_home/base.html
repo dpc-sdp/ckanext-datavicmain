@@ -1,0 +1,47 @@
+{% extends "admin/base.html" %}
+
+{% import 'macros/form.html' as form %}
+
+{% block breadcrumb_content %}
+<li class="active">{{ h.nav_link(_('Manage home items'), named_route='datavic_home.manage') }}</li>
+{% endblock %}
+
+{% block primary %}
+    <div class="primary col-12">
+        {% block primary_content %}
+            {% block primary_content_inner %}
+            {% endblock %}
+        {% endblock %}
+    </div>
+{% endblock %}
+
+{% block secondary %}
+    <aside class="secondary col-12">
+        {% block secondary_content %}
+            <div class="module module-narrow module-shallow">
+                <h2 class="module-heading">
+                    <i class="fa fa-info-circle"></i>
+                    {{ _('Home page sections') }}
+                </h2>
+
+                <div class="module-content">
+                    {% block vic_info_content %}
+
+                    {% endblock %}
+                </div>
+            </div>
+        {% endblock %}
+    </aside>
+{% endblock %}
+
+{% block styles %}
+    {% asset "vic_home/css-global" %}
+
+    {{ super() }}
+{% endblock %}
+
+{% block scripts %}
+    {% asset "vic_home/js-global" %}
+
+    {{ super() }}
+{% endblock %}
