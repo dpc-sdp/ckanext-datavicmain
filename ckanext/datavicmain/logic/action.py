@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, OrderedDict
 
 import ckanapi
 from sqlalchemy import or_
@@ -24,6 +24,7 @@ from ckan.model import State
 from ckan.types import Action, Context, DataDict
 from ckan.types.logic import ActionResult
 
+from ckanext.syndicate import utils
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
 
@@ -64,37 +65,46 @@ def user_create(next_func, context, data_dict):
 
 @toolkit.chained_action
 def organization_update(next_, context, data_dict):
-    from ckanext.syndicate import utils
-
-    model = context["model"]
-
-    old = model.Group.get(data_dict.get("id"))
-    old_name = old.name if old else None
+    """Update remote organization if it's changed. We track only a subset of fields."""
+    old_org: OrderedDict[str, Any] = (
+        context["model"].Group.get(data_dict.get("id")).as_dict()
+    )
 
     result = next_(context, data_dict)
+    tracked_fields: list[str] = toolkit.aslist(
+        toolkit.config.get(
+            CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
+            DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
+        )
+    )
 
-    if old_name == result["name"]:
+    if not _is_org_changed(old_org, result, tracked_fields):
         return result
 
     for profile in utils.get_profiles():
         ckan = utils.get_target(profile.ckan_url, profile.api_key)
+
         try:
-            remote = ckan.action.organization_show(id=old_name)
+            remote = ckan.action.organization_show(id=old_org["name"])
         except ckanapi.NotFound:
             continue
 
-        patch = {
-            f: result[f]
-            for f in toolkit.aslist(
-                toolkit.config.get(
-                    CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
-                    DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
-                )
-            )
-        }
-        ckan.action.organization_patch(id=remote["id"], **patch)
+        ckan.action.organization_patch(
+            id=remote["id"],
+            **{f: result[f] for f in tracked_fields},
+        )
 
     return result
+
+
+def _is_org_changed(
+    old_org: dict[str, Any], new_org: dict[str, Any], tracked_fields: list[str]
+) -> bool:
+    for field_name in tracked_fields:
+        if old_org.get(field_name) != new_org.get(field_name):
+            return True
+
+    return False
 
 
 @toolkit.chained_action
