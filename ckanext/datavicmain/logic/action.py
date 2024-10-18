@@ -17,7 +17,7 @@ from ckan.model import State
 from ckan.types import Action, Context, DataDict
 from ckan.types.logic import ActionResult
 
-from ckanext.syndicate import utils
+from ckanext.syndicate.utils import get_profiles, get_target
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
 
@@ -172,8 +172,8 @@ def organization_update(next_, context, data_dict):
     if not _is_org_changed(old_org, result, tracked_fields):
         return result
 
-    for profile in utils.get_profiles():
-        ckan = utils.get_target(profile.ckan_url, profile.api_key)
+    for profile in get_profiles():
+        ckan = get_target(profile.ckan_url, profile.api_key)
 
         try:
             remote = ckan.action.organization_show(id=old_org["name"])
