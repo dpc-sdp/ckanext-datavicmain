@@ -198,6 +198,6 @@ def datavic_email_validator(
     for user in existing_users:
         if user and user.state in [model.State.ACTIVE, model.State.PENDING]:
             errors[key].append(
-                "This email might be already in use. Please email datavic@dgs.vic.gov.au if you have any questions."
+                "Registration unsuccessful. Please email datavic@dgs.vic.gov.au for assistance"
             )
             return
