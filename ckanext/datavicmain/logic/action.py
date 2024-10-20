@@ -6,32 +6,25 @@ from typing import Any
 import ckanapi
 from sqlalchemy import or_
 
+import ckan.lib.plugins as lib_plugins
 import ckan.model as model
 import ckan.types as types
 import ckan.plugins.toolkit as toolkit
 
-from ckanext.datavicmain import helpers, utils, const, jobs
-from ckanext.datavicmain.helpers import user_is_registering
-from ckanext.datavicmain.logic.schema import custom_user_create_schema
-
-import ckan.lib.plugins as lib_plugins
-import ckan.plugins.toolkit as toolkit
 from ckan.common import g
-from ckan.lib.dictization import model_dictize, model_save
-from ckan.lib.navl.validators import not_empty
-from ckan.logic import schema as ckan_schema, validate
-from ckan.model import State
+from ckan.logic import validate
 from ckan.types import Action, Context, DataDict
 from ckan.types.logic import ActionResult
 
+from ckanext.syndicate.utils import get_profiles, get_target
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
 
-import ckanext.datavic_iar_theme.helpers as theme_helpers
+from ckanext.datavicmain import helpers, utils, const
 from ckanext.datavicmain.logic import schema as vic_schema
 
+
 log = logging.getLogger(__name__)
-user_is_registering = helpers.user_is_registering
 ValidationError = toolkit.ValidationError
 get_action = toolkit.get_action
 _validate = toolkit.navl_validate
@@ -45,12 +38,12 @@ DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS = ["name", "title", "description"]
 @toolkit.chained_action
 def user_create(next_func, context, data_dict):
     """Create a pending user on registration"""
-    is_registration = user_is_registering()
+    is_registration = helpers.user_is_registering()
 
     if not is_registration:
         return next_func(context, data_dict)
 
-    context["schema"] = custom_user_create_schema()
+    context["schema"] = vic_schema.custom_user_create_schema()
 
     user_dict = next_func(context, data_dict)
     data_dict["user_id"] = user_dict["id"]
@@ -64,20 +57,34 @@ def user_create(next_func, context, data_dict):
 
 @toolkit.chained_action
 def organization_update(next_, context, data_dict):
-    from ckanext.syndicate import utils
-
+    """
+    Add organization fields synchronization logic.
+    Add prohibition on changing the organization visibility field.
+    """
     model = context["model"]
 
     old = model.Group.get(data_dict.get("id"))
     old_name = old.name if old else None
+    old_visibility = model.Group.get(data_dict["id"]).extras.get(
+        const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
+    )
 
     result = next_(context, data_dict)
 
-    if old_name == result["name"]:
+    org_id = result["id"]
+    new_name = result["name"]
+    new_visibility = utils.get_extra_value(const.ORG_VISIBILITY_FIELD, result)
+
+    if new_visibility != old_visibility:
+        raise ValidationError(
+            f"The organisation {org_id} visibility can't be changed after creation."
+        )
+
+    if old_name == new_name:
         return result
 
-    for profile in utils.get_profiles():
-        ckan = utils.get_target(profile.ckan_url, profile.api_key)
+    for profile in get_profiles():
+        ckan = get_target(profile.ckan_url, profile.api_key)
         try:
             remote = ckan.action.organization_show(id=old_name)
         except ckanapi.NotFound:
@@ -110,35 +117,6 @@ def organization_show(
         "_skip_restriction_check"
     ) and not utils.user_has_org_access(org_dict["id"], context["user"]):
         raise toolkit.ObjectNotFound
-
-    return org_dict
-
-
-@toolkit.chained_action
-def organization_update(
-    next_: types.ChainedAction,
-    context: types.Context,
-    data_dict: types.DataDict,
-) -> types.ActionResult.OrganizationUpdate:
-    """Changing visibility field should change the visibility datasets. We are
-    using permissions labels, so we have to reindex all the datasets to index
-    new labels into solr"""
-    current_visibility = model.Group.get(data_dict["id"]).extras.get(
-        const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
-    )
-
-    org_dict = next_(context, data_dict)
-
-    new_visibility = utils.get_extra_value(
-        const.ORG_VISIBILITY_FIELD, org_dict
-    )
-
-    if new_visibility != current_visibility:
-        log.info(
-            "The organisation %s visibility has changed. Rebuilding datasets index",
-            org_dict["id"],
-        )
-        toolkit.enqueue_job(jobs.reindex_organization, [org_dict["id"]])
 
     return org_dict
 
@@ -262,7 +240,7 @@ def datavic_list_incomplete_resources(context, data_dict):
     missing_conditions = []
     for field in required_fields:
         model_attr = getattr(model.Resource, field)
-        missing_conditions.append(or_(model_attr == None, model_attr == ""))
+        missing_conditions.append(or_(model_attr is None, model_attr == ""))
 
     q = (
         model.Session.query(model.Resource)
