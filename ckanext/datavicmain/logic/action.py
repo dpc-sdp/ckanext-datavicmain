@@ -6,28 +6,23 @@ from typing import Any, OrderedDict
 import ckanapi
 from sqlalchemy import or_
 
+import ckan.lib.plugins as lib_plugins
 import ckan.model as model
 import ckan.types as types
 import ckan.plugins.toolkit as toolkit
-import ckan.lib.plugins as lib_plugins
 
-
-from ckan import model
-from ckan.lib.dictization import model_dictize, model_save
-from ckan.lib.navl.validators import not_empty
-from ckan.logic import schema as ckan_schema, validate
-from ckan.model import ResourceView, State
-from ckan.types import Action, Context, DataDict, ErrorDict, ActionResult
+from ckan.common import g
+from ckan.logic import validate
+from ckan.types import Action, Context, DataDict, ErrorDict
+from ckan.types.logic import ActionResult
 
 from ckanext.datavic_harvester.harvesters.base import get_resource_size
-from ckanext.syndicate import utils as syndicate_utils
+from ckanext.syndicate.utils import get_profiles, get_target
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
 
-import ckanext.datavic_iar_theme.helpers as theme_helpers
-from ckanext.datavicmain import const, helpers, jobs, utils
-from ckanext.datavicmain.logic import schema as vic_schema
 from ckanext.datavicmain import helpers, utils, const, jobs
+from ckanext.datavicmain.logic import schema as vic_schema
 
 
 log = logging.getLogger(__name__)
@@ -63,47 +58,49 @@ def user_create(next_func, context, data_dict):
 
 @toolkit.chained_action
 def organization_update(next_, context, data_dict):
-    """Update remote organization if it's changed. We track only a subset of fields."""
-    old_org: OrderedDict[str, Any] = (
-        context["model"].Group.get(data_dict.get("id")).as_dict()
-    )
-    current_visibility = model.Group.get(data_dict["id"]).extras.get(
+    """
+    Add organization fields synchronization logic.
+    Add prohibition on changing the organization visibility field.
+    """
+    model = context["model"]
+
+    old = model.Group.get(data_dict.get("id"))
+    old_name = old.name if old else None
+    old_visibility = model.Group.get(data_dict["id"]).extras.get(
         const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
     )
 
     result = next_(context, data_dict)
 
-    _sync_organization(old_org, result)
-    _update_package_visibility(current_visibility, result)
+    org_id = result["id"]
+    new_name = result["name"]
+    new_visibility = utils.get_extra_value(const.ORG_VISIBILITY_FIELD, result)
 
-    return result
-
-
-def _sync_organization(
-    old_org: dict[str, Any], result: dict[str, Any]
-) -> None:
-    tracked_fields: list[str] = toolkit.aslist(
-        toolkit.config.get(
-            CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
-            DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
+    if new_visibility != old_visibility:
+        raise ValidationError(
+            f"The organisation {org_id} visibility can't be changed after creation."
         )
-    )
 
-    if not _is_org_changed(old_org, result, tracked_fields):
-        return
+    if old_name == new_name:
+        return result
 
-    for profile in syndicate_utils.get_profiles():
-        ckan = syndicate_utils.get_target(profile.ckan_url, profile.api_key)
-
+    for profile in get_profiles():
+        ckan = get_target(profile.ckan_url, profile.api_key)
         try:
-            remote = ckan.action.organization_show(id=old_org["name"])
+            remote = ckan.action.organization_show(id=old_name)
         except ckanapi.NotFound:
             continue
 
-        ckan.action.organization_patch(
-            id=remote["id"],
-            **{f: result[f] for f in tracked_fields},
-        )
+        patch = {
+            f: result[f]
+            for f in toolkit.aslist(
+                toolkit.config.get(
+                    CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
+                    DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
+                )
+            )
+        }
+        ckan.action.organization_patch(id=remote["id"], **patch)
 
 
 def _is_org_changed(
@@ -341,7 +338,7 @@ def datavic_list_incomplete_resources(context, data_dict):
     missing_conditions = []
     for field in required_fields:
         model_attr = getattr(model.Resource, field)
-        missing_conditions.append(or_(model_attr == None, model_attr == ""))
+        missing_conditions.append(or_(model_attr is None, model_attr == ""))
 
     q = (
         model.Session.query(model.Resource)
@@ -408,8 +405,8 @@ def datavic_datatables_view_prioritize(
 
     resource_id = data_dict["resource_id"]
     res_views = sorted(
-        model.Session.query(ResourceView)
-        .filter(ResourceView.resource_id == resource_id)
+        model.Session.query(model.ResourceView)
+        .filter(model.ResourceView.resource_id == resource_id)
         .all(),
         key=lambda x: x.order,
     )
@@ -445,7 +442,7 @@ def resource_view_create(next_, context, data_dict):
 
 
 def _filter_views(
-    res_views: list[ResourceView], view_type: str
-) -> list[ResourceView]:
+    res_views: list[model.ResourceView], view_type: str
+) -> list[model.ResourceView]:
     """Return a list of views with the given view type."""
     return [view for view in res_views if view.view_type == view_type]

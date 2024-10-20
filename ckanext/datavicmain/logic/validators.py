@@ -197,3 +197,45 @@ def datavic_email_validator(
             "This email might be already in use. Please email datavic@dgs.vic.gov.au if you have any questions."
         )
         return
+
+
+def datavic_organization_parent_validator(
+    key: types.FlattenKey,
+    data: types.FlattenDataDict,
+    errors: types.FlattenErrorDict,
+    context: types.Context,
+) -> Any:
+    """
+    Restricted organization can't be assigned as a child of unrestricted one
+    or vice versa
+    """
+    value = data.get(('groups', 0, 'name'))
+    visibility = data.get(("visibility",)) == "restricted"
+    model = context['model']
+    parent = model.Group.get(value)
+    if parent:
+        is_restricted = tk.h.datavic_is_org_restricted(parent.id)
+        if (is_restricted and not visibility) or \
+            (not is_restricted and visibility):
+            errors[("parent",)].append(
+                """Incorrect value - restricted organization can't be assigned 
+                as a child of unrestricted one or vice versa"""
+            )
+            return
+
+
+def datavic_set_if_new(
+    key: types.FlattenKey,
+    data: types.FlattenDataDict,
+    errors: types.FlattenErrorDict,
+    context: types.Context,
+) -> Any:
+    """
+    The field can be set at creation stage only
+    """
+    blueprint, endpoint = tk.get_endpoint()
+    if endpoint != 'new':
+        errors[("visibility",)].append(
+            """Incorrect value - the field can be set at creation stage only"""
+        )
+        return
