@@ -209,9 +209,9 @@ def datavic_organization_parent_validator(
     Restricted organization can't be assigned as a child of unrestricted one
     or vice versa
     """
-    value = data.get(('groups', 0, 'name'))
+    value = data.get(("groups", 0, "name"))
     visibility = data.get(("visibility",)) == "restricted"
-    model = context['model']
+    model = context["model"]
     parent = model.Group.get(value)
     if parent:
         is_restricted = tk.h.datavic_is_org_restricted(parent.id)
@@ -224,7 +224,7 @@ def datavic_organization_parent_validator(
             return
 
 
-def datavic_set_if_new(
+def datavic_set_org_visibility_if_new(
     key: types.FlattenKey,
     data: types.FlattenDataDict,
     errors: types.FlattenErrorDict,
@@ -234,8 +234,12 @@ def datavic_set_if_new(
     The field can be set at creation stage only
     """
     blueprint, endpoint = tk.get_endpoint()
-    if endpoint != 'new':
-        errors[("visibility",)].append(
-            """Incorrect value - the field can be set at creation stage only"""
-        )
-        return
+    if blueprint == "organization" and endpoint == "edit":
+        model = context["model"]
+        old_value = model.Group.get(data[("name",)]).extras.get("visibility")
+        new_value = data[key]
+        if old_value != new_value:
+            errors[key].append(
+                """Incorrect value - the field can be set at creation stage only"""
+            )
+            return

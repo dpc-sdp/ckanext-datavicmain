@@ -34,7 +34,7 @@ fields:
     form_snippet: vic_org_visibility.html
     required: true
     help_text: Restricted organisations, their datasets and their child organisations are only visible to members of that organisation.
-    validators: datavic_set_if_new default(unrestricted) 
+    validators: datavic_set_org_visibility_if_new default(unrestricted) 
     choices:
     - value: unrestricted
       label: Unrestricted
