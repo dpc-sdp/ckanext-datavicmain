@@ -163,8 +163,11 @@ def organization_list(
     org_list: types.ActionResult.OrganizationList = next_(context, data_dict)
 
     if not all_fields:
+        orgs = model.Session.query(model.Group)\
+            .filter(model.Group.name.in_(org_list))
+
         # Intead of all all_fields, lets get the ID from the Objet as it much faster
-        org_list = [{'id': model.Group.get(org).id , 'name': org} for org in org_list]
+        org_list = [{'id': org.id , 'name': org.name} for org in orgs]
 
     filtered_orgs = _hide_restricted_orgs(context, org_list)
 
