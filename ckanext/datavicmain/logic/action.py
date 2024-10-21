@@ -161,13 +161,18 @@ def organization_list(
     """Restrict organisations. Force all_fields and include_extras, because we
     need visibility field to be here.
     Throw out extra fields later if it's not all_fields initially"""
-    all_fields = data_dict.pop("all_fields", False)
+    all_fields = data_dict.get("all_fields", False)
 
-    data_dict.update({"all_fields": True, "include_extras": True})
+    if all_fields:
+        data_dict.update({"include_extras": True})
 
     context["_skip_restriction_check"] = True
 
     org_list: types.ActionResult.OrganizationList = next_(context, data_dict)
+
+    if not all_fields:
+        # Intead of all all_fields, lets get the ID from the Objet as it much faster
+        org_list = [{'id': model.Group.get(org).id , 'name': org} for org in org_list]
 
     filtered_orgs = _hide_restricted_orgs(context, org_list)
 
