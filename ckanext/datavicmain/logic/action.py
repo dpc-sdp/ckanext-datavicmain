@@ -1,41 +1,31 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, OrderedDict
+from typing import Any
 
 import ckanapi
 from sqlalchemy import or_
 
 import ckan.model as model
 import ckan.types as types
-import ckan.plugins.toolkit as toolkit
-
-from ckanext.datavicmain import helpers, utils, const, jobs
-from ckanext.datavicmain.helpers import user_is_registering
-from ckanext.datavicmain.logic.schema import custom_user_create_schema
-
 import ckan.lib.plugins as lib_plugins
 import ckan.plugins.toolkit as toolkit
-from ckan.common import g
-from ckan.lib.dictization import model_dictize, model_save
-from ckan.lib.navl.validators import not_empty
-from ckan.logic import schema as ckan_schema, validate
-from ckan.model import State
+from ckan.logic import validate
 from ckan.types import Action, Context, DataDict
-from ckan.types.logic import ActionResult
 
 from ckanext.syndicate.utils import get_profiles, get_target
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
 
-import ckanext.datavic_iar_theme.helpers as theme_helpers
 from ckanext.datavicmain.logic import schema as vic_schema
+from ckanext.datavicmain import helpers, utils, const
+from ckanext.datavicmain.helpers import user_is_registering
+from ckanext.datavicmain.logic.schema import custom_user_create_schema
 
 log = logging.getLogger(__name__)
 user_is_registering = helpers.user_is_registering
 ValidationError = toolkit.ValidationError
 get_action = toolkit.get_action
-_validate = toolkit.navl_validate
 
 CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS = (
     "ckanext.datavicmain.synchronized_organization_fields"
@@ -65,12 +55,26 @@ def user_create(next_func, context, data_dict):
 
 @toolkit.chained_action
 def organization_update(next_, context, data_dict):
-    """Update remote organization if it's changed. We track only a subset of fields."""
-    old_org: OrderedDict[str, Any] = (
-        context["model"].Group.get(data_dict.get("id")).as_dict()
+    """
+    Add organization fields synchronization logic.
+    Add prohibition on changing the organization visibility field.
+    """
+    model = context["model"]
+
+    old = model.Group.get(data_dict.get("id"))
+    old_name = old.name if old else None
+    old_visibility = model.Group.get(data_dict["id"]).extras.get(
+        const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
     )
 
     result = next_(context, data_dict)
+    new_visibility = utils.get_extra_value(const.ORG_VISIBILITY_FIELD, result)
+
+    if new_visibility != old_visibility:
+        raise ValidationError(
+            f"The organisation {result['id']} visibility can't be changed after creation."
+        )
+
     tracked_fields: list[str] = toolkit.aslist(
         toolkit.config.get(
             CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
@@ -78,21 +82,18 @@ def organization_update(next_, context, data_dict):
         )
     )
 
-    if not _is_org_changed(old_org, result, tracked_fields):
+    if not _is_org_changed(old, result, tracked_fields):
         return result
 
     for profile in get_profiles():
         ckan = get_target(profile.ckan_url, profile.api_key)
-
         try:
-            remote = ckan.action.organization_show(id=old_org["name"])
+            remote = ckan.action.organization_show(id=old_name)
         except ckanapi.NotFound:
             continue
 
-        ckan.action.organization_patch(
-            id=remote["id"],
-            **{f: result[f] for f in tracked_fields},
-        )
+        patch = {f: result[f] for f in tracked_fields}
+        ckan.action.organization_patch(id=remote["id"], **patch)
 
     return result
 
@@ -120,35 +121,6 @@ def organization_show(
         "_skip_restriction_check"
     ) and not utils.user_has_org_access(org_dict["id"], context["user"]):
         raise toolkit.ObjectNotFound
-
-    return org_dict
-
-
-@toolkit.chained_action
-def organization_update(
-    next_: types.ChainedAction,
-    context: types.Context,
-    data_dict: types.DataDict,
-) -> types.ActionResult.OrganizationUpdate:
-    """Changing visibility field should change the visibility datasets. We are
-    using permissions labels, so we have to reindex all the datasets to index
-    new labels into solr"""
-    current_visibility = model.Group.get(data_dict["id"]).extras.get(
-        const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
-    )
-
-    org_dict = next_(context, data_dict)
-
-    new_visibility = utils.get_extra_value(
-        const.ORG_VISIBILITY_FIELD, org_dict
-    )
-
-    if new_visibility != current_visibility:
-        log.info(
-            "The organisation %s visibility has changed. Rebuilding datasets index",
-            org_dict["id"],
-        )
-        toolkit.enqueue_job(jobs.reindex_organization, [org_dict["id"]])
 
     return org_dict
 
@@ -198,7 +170,7 @@ def _hide_restricted_orgs(
 @toolkit.chained_action
 def resource_update(
     next_: Action, context: Context, data_dict: DataDict
-) -> ActionResult.ResourceUpdate:
+) -> types.Action.ActionResult.ResourceUpdate:
     try:
         result = next_(context, data_dict)
         return result
@@ -209,7 +181,7 @@ def resource_update(
 @toolkit.chained_action
 def resource_create(
     next_: Action, context: Context, data_dict: DataDict
-) -> ActionResult.ResourceCreate:
+) -> types.Action.ActionResult.ResourceCreate:
     try:
         result = next_(context, data_dict)
         return result
@@ -341,7 +313,7 @@ def send_delwp_data_request(context, data_dict):
     )
 
     pkg_title = data_dict["__extras"]["package_title"]
-    user = g.userobj.fullname or g.user
+    user = toolkit.g.userobj.fullname or toolkit.g.user
     subject = f"Data request via VPS Data Directory - {pkg_title} requested by {user}"
 
     try:
