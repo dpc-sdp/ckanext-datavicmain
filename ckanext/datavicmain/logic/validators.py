@@ -197,7 +197,7 @@ def datavic_email_validator(
 
     for user in existing_users:
         if user and user.state in [model.State.ACTIVE, model.State.PENDING]:
-            errors[key].append(
-                "Registration unsuccessful. Please email datavic@dgs.vic.gov.au for assistance"
+            errors.append(
+                "<strong>406 Registration unsuccessful.</strong> Please email <a href='mailto:datavic@dpc.vic.gov.au'>datavic@dpc.vic.gov.au</a> for assistance"
             )
             return
