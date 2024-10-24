@@ -193,9 +193,9 @@ def datavic_email_validator(
     user = model.User.by_email(data[key])
 
     if user and user.state in [model.State.ACTIVE, model.State.PENDING]:
-        errors[key].append(
-            "This email might be already in use. Please email datavic@dgs.vic.gov.au if you have any questions."
-        )
+        errors[("registration",)] = [
+            "<strong>406 Registration unsuccessful.</strong> Please email <a href='mailto:datavic@dpc.vic.gov.au'>datavic@dpc.vic.gov.au</a> for assistance"
+        ]
         return
 
 
@@ -218,7 +218,7 @@ def datavic_organization_parent_validator(
         if (is_restricted and not visibility) or \
             (not is_restricted and visibility):
             errors[("parent",)].append(
-                """Incorrect value - restricted organization can't be assigned 
+                """Incorrect value - restricted organization can't be assigned
                 as a child of unrestricted one or vice versa"""
             )
             return
