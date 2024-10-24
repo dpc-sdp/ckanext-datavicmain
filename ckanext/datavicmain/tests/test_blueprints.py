@@ -250,6 +250,77 @@ class TestDatavicUserCreate:
             == user_dict["name"]
         )
 
+    def test_cant_register_with_same_email_while_pending(
+        self, send_email_notification, app, organization
+    ):
+        app.post(
+            url_for("datavicuser.register"),
+            data={
+                "save": "",
+                "name": "test_user_1",
+                "email": "test_user_1@gmail.com",
+                "password1": "TestPassword1",
+                "password2": "TestPassword1",
+                "organisation_id": organization["name"],
+                "organisation_role": "editor",
+            },
+        )
+
+        user_dict = call_action("user_show", id="test_user_1")
+        assert user_dict["state"] == model.State.PENDING
+
+        response = app.post(
+            url_for("datavicuser.register"),
+            data={
+                "save": "",
+                "name": "test_user_2",
+                "email": "test_user_1@gmail.com",
+                "password1": "TestPassword1",
+                "password2": "TestPassword1",
+                "organisation_id": organization["name"],
+                "organisation_role": "editor",
+            },
+        )
+
+        assert "This email might be already in use" in response
+
+        with pytest.raises(tk.ObjectNotFound):
+            call_action("user_show", id="test_user_2")
+
+    def test_email_is_case_insensetive(
+        self, send_email_notification, app, organization
+    ):
+        app.post(
+            url_for("datavicuser.register"),
+            data={
+                "save": "",
+                "name": "test_user_1",
+                "email": "test_user_1@gmail.com",
+                "password1": "TestPassword1",
+                "password2": "TestPassword1",
+                "organisation_id": organization["name"],
+                "organisation_role": "editor",
+            },
+        )
+
+        user_dict = call_action("user_show", id="test_user_1")
+        assert user_dict["state"] == model.State.PENDING
+
+        response = app.post(
+            url_for("datavicuser.register"),
+            data={
+                "save": "",
+                "name": "test_user_2",
+                "email": "Test_User_1@gmail.com",
+                "password1": "TestPassword1",
+                "password2": "TestPassword1",
+                "organisation_id": organization["name"],
+                "organisation_role": "editor",
+            },
+        )
+
+        assert "This email might be already in use" in response
+
 
 @pytest.mark.usefixtures("clean_db", "with_plugins", "with_request_context")
 @mock.patch("ckanext.datavicmain.utils.notify_about_org_join_request")
