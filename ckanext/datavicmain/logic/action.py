@@ -91,15 +91,21 @@ def organization_update(next_, context, data_dict):
         except ckanapi.NotFound:
             continue
 
+        tracked_fields = toolkit.aslist(
+            toolkit.config.get(
+                CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
+                DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
+            )
+        )
         patch = {
             f: result[f]
-            for f in toolkit.aslist(
-                toolkit.config.get(
-                    CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
-                    DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
-                )
-            )
+            for f in tracked_fields if f in result
         }
+
+        if 'image_url' in tracked_fields and result.get('image_display_url'):
+            # Save the image as an full path URL instead of uploading to ODP.
+            patch['image_url'] = result['image_display_url']
+
         ckan.action.organization_patch(id=remote["id"], **patch)
 
 
