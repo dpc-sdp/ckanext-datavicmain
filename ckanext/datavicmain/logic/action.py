@@ -6,6 +6,7 @@ from typing import Any, OrderedDict
 import ckanapi
 from sqlalchemy import or_
 
+from ckan.lib import uploader
 import ckan.lib.plugins as lib_plugins
 import ckan.plugins.toolkit as toolkit
 from ckan import model
@@ -183,13 +184,19 @@ def organization_update(next_, context, data_dict):
         patch = {f: result[f] for f in tracked_fields if f in result}
 
         if 'image_url' in tracked_fields and result.get('image_display_url'):
-            # Save the image as an full path URL instead of uploading to ODP.
-            patch['image_url'] = result['image_display_url']
+            grp_uloader: uploader.PUploader = uploader.get_uploader('group')
+            file_data = None
+            with open(grp_uloader.storage_path + '/' + result['image_url'], 'rb') as f:
+                file_data = f.read()
 
-        ckan.action.organization_patch(
-            id=remote["id"],
-            **patch,
-        )
+            patch['id'] = remote['id']
+            ckan.call_action('organization_patch', data_dict=patch, files={
+                "image_upload": (result['image_url'], file_data)})
+        else:
+            ckan.action.organization_patch(
+                id=remote["id"],
+                **patch,
+            )
 
     return result
 
