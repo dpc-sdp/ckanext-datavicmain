@@ -79,7 +79,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
     p.implements(p.IClick)
     p.implements(ISyndicate, inherit=True)
     p.implements(IOidcPkce, inherit=True)
-    p.implements(ITransmute)
+    p.implements(ITransmute, inherit=True)
     p.implements(p.IAuthenticator, inherit=True)
 
 
