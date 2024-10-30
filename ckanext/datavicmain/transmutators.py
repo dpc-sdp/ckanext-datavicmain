@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from typing import Callable, Any
+import json
 
+import ckan.plugins.toolkit as tk
 
 from ckanext.transmute.types import Field
 
@@ -31,4 +33,22 @@ def restrict_res_formats(field: Field, fmts: list[str]) -> Field:
             resources.append(res)
 
     field.value = resources
+    return field
+
+
+@transmutator
+def to_json_string(field: Field) -> Field:
+    """Casts field.value to json str
+
+    Args:
+        field (Field): Field object
+
+    Returns:
+        Field: the same Field with new value
+    """
+    try:
+        field.value = json.dumps(field.value)
+    except (ValueError, TypeError) as e:
+        raise tk.Invalid(tk._('Invalid JSON object: {}').format(e))
+
     return field

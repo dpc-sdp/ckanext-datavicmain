@@ -421,4 +421,4 @@ resource_fields:
   label: Attributes
   form_snippet: vic_hidden.html
   display_snippet: null
-  validators: ignore_empty
+  validators: ignore_missing

@@ -77,7 +77,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
     p.implements(ISyndicate, inherit=True)
     p.implements(p.IOrganizationController, inherit=True)
     p.implements(IOidcPkce, inherit=True)
-    p.implements(ITransmute)
+    p.implements(ITransmute, inherit=True)
 
 
     # IBlueprint
