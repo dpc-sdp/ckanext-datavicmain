@@ -395,6 +395,8 @@ resource_fields:
 
 - field_name: filesize
   label: Filesize
+  display_snippet: filesize.html
+  help_text: File size in bytes. Leave blank if autocalculation is required.
 
 - field_name: release_date
   label: Release Date
