@@ -344,7 +344,7 @@ def datavic_get_dtv_url() -> str:
     return url
 
 
-def localized_filesize(size_bytes: int) -> str:
+def localized_filesize(size_bytes: Any) -> str:
     """Returns a localized unicode representation of a number in bytes, MB
     etc.
 
@@ -353,11 +353,8 @@ def localized_filesize(size_bytes: int) -> str:
     smaller than 1000.
     """
 
-    if size_bytes < 0:
+    if not isinstance(size_bytes, int) or size_bytes < 0:
         return ""
-
-    if size_bytes == 0:
-        return "0 bytes"
 
     size_name = ("bytes", "KB", "MB", "GB", "TB")
     i = int(math.floor(math.log(size_bytes, 1024)))
