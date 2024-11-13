@@ -24,6 +24,8 @@ from ckanext.transmute.interfaces import ITransmute
 from ckanext.datavicmain import helpers, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.transmutators import get_transmutators
+from ckanext.datavicmain.syndication.organization import sync_organization
+from ckanext.datavicmain.implementation import PermissionLabels
 
 
 config = toolkit.config
@@ -66,7 +68,7 @@ def release_date(pkg_dict):
 @toolkit.blanket.actions
 @toolkit.blanket.validators
 @toolkit.blanket.config_declarations
-class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
+class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetForm):
     ''' A plugin that provides some metadata fields and
     overrides the default dataset form
     '''
@@ -77,8 +79,6 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     p.implements(p.IBlueprint)
     p.implements(p.IClick)
     p.implements(ISyndicate, inherit=True)
-    p.implements(IOidcPkce, inherit=True)
-    p.implements(p.IAuthenticator, inherit=True)
     p.implements(p.IOrganizationController, inherit=True)
     p.implements(IOidcPkce, inherit=True)
     p.implements(ITransmute)
@@ -243,9 +243,22 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             'get_digital_twin_resources': helpers.get_digital_twin_resources,
             'url_for_dtv_config': helpers.url_for_dtv_config,
             "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
+            "datavic_user_is_a_member_of_org": helpers.datavic_user_is_a_member_of_org,
+            "datavic_is_pending_request_to_join_org": helpers.datavic_is_pending_request_to_join_org,
+            "datavic_is_org_restricted": helpers.datavic_is_org_restricted,
+            "datavic_org_has_restricted_parents": helpers.datavic_org_has_restricted_parents,
+            "datavic_restrict_hierarchy_tree": helpers.datavic_restrict_hierarchy_tree,
+            "datavic_org_has_unrestricted_child": helpers.datavic_org_has_unrestricted_child,
+            "group_tree_parents": helpers.group_tree_parents,
+            "add_current_organisation": helpers.add_current_organisation,
+            "datavic_max_image_size": helpers.datavic_max_image_size,
             "get_user_organizations": helpers.get_user_organizations,
             "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
             "localized_filesize": helpers.localized_filesize,
+            "datavic_update_org_error_dict": helpers.datavic_update_org_error_dict,
+            "datavic_get_org_roles": helpers.datavic_get_org_roles,
+            "datavic_get_user_roles_in_org": helpers.datavic_get_user_roles_in_org,
+            "datavic_allowable_parent_orgs": helpers.datavic_allowable_parent_orgs,
         }
 
     ## IConfigurer interface ##
@@ -306,11 +319,41 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
                 helpers.set_private_activity(pkg_dict, context, str('changed'))
 
     def before_dataset_index(self, pkg_dict: dict[str, Any]) -> dict[str, Any]:
-        if pkg_dict.get('res_format'):
-            pkg_dict['res_format'] = [
-                format.upper().split('.')[-1] for format in pkg_dict['res_format']
+        if pkg_dict.get("res_format"):
+            pkg_dict["res_format"] = [
+                res_format.upper().split(".")[-1]
+                for res_format in pkg_dict["res_format"]
             ]
+
+        if pkg_dict.get("res_format") and self._is_all_api_format(pkg_dict):
+            pkg_dict.get("res_format").append("ALL_API")
         return pkg_dict
+
+    def _is_all_api_format(self, pkg_dict: dict[str, Any]) -> bool:
+        """Check if the dataset contains a resource in a format recognized as an API.
+        This involves determining if the format of the resource is CSV and if this resource exists in the datastore
+        or matches a format inside a predefined list.
+        """
+        for resource in toolkit.get_action("package_show")({"ignore_auth": True}, {"id": pkg_dict["id"]}).get(
+                "resources", []):
+            if resource["format"].upper() == "CSV" and resource["datastore_active"]:
+                return True
+
+        if [
+            res_format
+            for res_format in pkg_dict["res_format"]
+            if res_format
+            in [
+                "WMS",
+                "WFS",
+                "API",
+                "ARCGIS GEOSERVICES REST API",
+                "ESRI REST",
+                "GEOJSON",
+            ]
+        ]:
+            return True
+        return False
 
     # IClick
     def get_commands(self):
@@ -341,6 +384,10 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
     def skip_syndication(
         self, package: model.Package, profile: Profile
     ) -> bool:
+        if toolkit.h.datavic_is_org_restricted(package.owner_org):
+            log.debug("Do not syndicate %s because its organisation is restricted", package.id)
+            return True
+
         if package.type == "harvest":
             log.debug("Do not syndicate %s because it is a harvest source", package.id)
             return True
@@ -363,7 +410,7 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
 
     def get_transmutators(self):
         return get_transmutators()
-    
+
     # IResourceController
 
     def after_resource_create(
@@ -374,3 +421,23 @@ class DatasetForm(p.SingletonPlugin, toolkit.DefaultDatasetForm):
             else:
                 resource["filesize"] = get_resource_size(resource["url"])
             toolkit.get_action("resource_update")(context, resource)
+
+    # IOrganizationController
+
+    def edit(self, entity: model.Group):
+        """Called after organization had been updated inside
+        organization_update.
+        We are using it to syndicate organization on update.
+        """
+
+        if not isinstance(entity, model.Group) or not entity.is_organization:
+            return
+
+        if not entity.packages():
+            return
+
+        toolkit.enqueue_job(
+            sync_organization,
+            [entity],
+            title="DataVic organization sync",
+        )

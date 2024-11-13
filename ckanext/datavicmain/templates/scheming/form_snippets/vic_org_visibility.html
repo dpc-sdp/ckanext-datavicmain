@@ -1,0 +1,54 @@
+{% import 'macros/form.html' as form %}
+
+{% if data.id %}
+    {% set has_restricted_parent = h.datavic_org_has_restricted_parents(data.id) %}
+{% endif %}
+
+{% set options=[] %}
+{% set attrs = dict({"class": "form-control"}, **(field.get('form_attrs', {}))) %}
+
+{% if g.view == "edit" or has_restricted_parent %}
+    {% do attrs.update({"readonly": "true"}) %}
+{% endif %}
+
+{% for c in h.scheming_field_choices(field) %}
+    {% if not form_restrict_choices_to or c.value in form_restrict_choices_to %}
+        {% do options.append({
+            'value': c.value|string,
+            'text': h.scheming_language_text(c.label)
+        }) %}
+    {% endif %}
+{% endfor %}
+
+{% set option_selected = data[field.field_name]|string if data[field.field_name] else None %}
+
+{% if has_restricted_parent %}
+    {% set option_selected = "restricted" %}
+{% endif %}
+
+<div class="d-flex">
+    {% call form.select(
+        field.field_name,
+        id='field-' + field.field_name,
+        label=h.scheming_language_text(field.label),
+        options=options,
+        selected=option_selected,
+        error=errors[field.field_name],
+        classes=field.classes if 'classes' in field else ['control-medium'],
+        attrs=attrs,
+        is_required=h.scheming_field_required(field)
+        )
+    %}
+        {% snippet 'scheming/form_snippets/help_text.html', field=field %}
+
+        <div class="info-block">
+            <i class="fa fa-info-circle blank"></i>
+            {{ _("Restricted organisations can only be created at the top level or as the child of an existing restricted organisation.") }}
+        </div>
+
+        <div class="info-block">
+            <i class="fa fa-info-circle blank"></i>
+            {{ _("You cannot change the visibility of an organisation after it has been created.") }}
+        </div>
+    {% endcall %}
+</div>

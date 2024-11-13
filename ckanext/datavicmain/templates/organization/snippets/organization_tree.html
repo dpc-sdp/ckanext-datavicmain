@@ -1,0 +1,35 @@
+{#}
+ alterations:
+    - add restricted label
+    - remove restricted orgs from tree
+
+ note: to make this template work, hierarchy must be below the datavicmain plugin in plugin list
+{#}
+
+{% include 'hierarchy/snippets/hierarchy_asset.html' %}
+
+{% set top_nodes = h.datavic_restrict_hierarchy_tree(top_nodes) %}
+
+<ul class="hierarchy-tree-top">
+    {% for node in top_nodes recursive %}
+    {% set display_text = node.title %}
+        {% set longname = h.group_tree_get_longname(node.name) %}
+        {% set display_text = node.title %}
+
+        {% if use_longnames and longname%}
+            {% set display_text = longname + " (" + display_text + ")" %}
+        {% endif %}
+
+        <li id="node_{{ node.name }}" {% if node.highlighted %} class="highlighted" {% endif %}>
+            {% link_for display_text, controller='organization', action='read', id=node.name %}
+
+            {% if h.datavic_is_org_restricted(node.id) %}
+                <span class="badge alert-info">{{ _("Restricted") }}</span>
+            {% endif %}
+
+            {% if node.children %}
+                    <ul class="hierarchy-tree"> {{ loop(node.children) }} </ul>
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>
