@@ -600,6 +600,31 @@ def datavic_get_dtv_url(ext_link: bool = False) -> str:
     return url
 
 
+def localized_filesize(size_bytes: Any) -> str:
+    """Returns a localized unicode representation of a number in bytes, MB
+    etc.
+
+    It's  similar  to  CKAN's  original `localised_filesize`,  but  uses  MB/KB
+    instead of MiB/KiB.  Additionally, it rounds up to 1.0KB  any value that is
+    smaller than 1000.
+    """
+
+    if isinstance(size_bytes, str) and not size_bytes.isdecimal():
+        return size_bytes
+
+    size_bytes = int(size_bytes)
+
+    if size_bytes < 0:
+        return ""
+
+    size_name = ("bytes", "KB", "MB", "GB", "TB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(float(size_bytes) / p, 1)
+
+    return f"{s} {size_name[i]}"
+
+
 def datavic_update_org_error_dict(
     error_dict: dict[str, Any],
 ) -> dict[str, Any]:
@@ -633,23 +658,3 @@ def datavic_allowable_parent_orgs(org_id: str = None) -> list[dict[str, Any]]:
             continue
         orgs.append(org)
     return orgs
-
-
-def localized_filesize(size_bytes: Any) -> str:
-    """Returns a localized unicode representation of a number in bytes, MB
-    etc.
-
-    It's  similar  to  CKAN's  original `localised_filesize`,  but  uses  MB/KB
-    instead of MiB/KiB.  Additionally, it rounds up to 1.0KB  any value that is
-    smaller than 1000.
-    """
-
-    if not isinstance(size_bytes, int) or size_bytes < 0:
-        return ""
-
-    size_name = ("bytes", "KB", "MB", "GB", "TB")
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(float(size_bytes) / p, 1)
-
-    return f"{s} {size_name[i]}"

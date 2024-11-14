@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import ckanapi
 from sqlalchemy import or_
@@ -197,8 +197,8 @@ def resource_update(
 
         result = next_(context, data_dict)
         return result
-    except ValidationError:
-        _show_errors_in_sibling_resources(context, data_dict)
+    except ValidationError as valid_errors:
+        _show_errors_in_sibling_resources(context, data_dict, valid_errors)
 
 
 @toolkit.chained_action
@@ -208,14 +208,20 @@ def resource_create(
     try:
         result = next_(context, data_dict)
         return result
-    except ValidationError:
-        _show_errors_in_sibling_resources(context, data_dict)
+    except ValidationError as valid_errors:
+        _show_errors_in_sibling_resources(context, data_dict, valid_errors)
 
 
 def _show_errors_in_sibling_resources(
-    context: Context, data_dict: DataDict
+    context: Context, data_dict: DataDict, valid_errors: DataDict
 ) -> Any:
     """Retrieves and raises validation errors for resources within the same package."""
+    try:
+        error_dict = cast(
+            "list[type.ErrorDict]", valid_errors.error_dict['resources'])[-1]
+    except (KeyError, IndexError):
+        error_dict = valid_errors.error_dict
+    
     pkg_dict = toolkit.get_action("package_show")(
         context, {"id": data_dict["package_id"]}
     )
@@ -233,9 +239,9 @@ def _show_errors_in_sibling_resources(
     resources_errors = errors.pop("resources", [])
 
     for i, resource_error in enumerate(resources_errors):
-        if not resource_error:
+        if not resource_error or data_dict.get("id") == pkg_dict["resources"][i]["id"]:
             continue
-        errors.update(
+        error_dict.update(
             {
                 f"Field '{field}' in the resource '{pkg_dict['resources'][i]['name']}'": (
                     error
@@ -243,8 +249,8 @@ def _show_errors_in_sibling_resources(
                 for field, error in resource_error.items()
             }
         )
-    if errors:
-        raise ValidationError(errors)
+    if error_dict:
+        raise ValidationError(error_dict)
 
 
 @toolkit.side_effect_free

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import csv
 import datetime
 import logging
 import csv
@@ -28,8 +27,6 @@ from ckan.model import Resource, ResourceView
 from ckan.types import Context
 from ckanext.datavicmain.helpers import field_choices
 from ckanext.harvest.model import HarvestObject, HarvestSource
-from sqlalchemy.orm import Query
-
 from ckanext.datastore.backend import get_all_resources_ids_in_datastore
 
 
@@ -429,7 +426,7 @@ def list_delwp_wrong_names():
 
 
 def _get_query_delwp_datasets() -> Query[model.Package]:
-    """Get all DELWP datsets
+    """Get all DELWP datasets
 
     Returns:
         Query[model.Package]: Package model query object

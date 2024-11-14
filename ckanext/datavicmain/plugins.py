@@ -253,11 +253,11 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "datavic_max_image_size": helpers.datavic_max_image_size,
             "get_user_organizations": helpers.get_user_organizations,
             "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
+            "localized_filesize": helpers.localized_filesize,
             "datavic_update_org_error_dict": helpers.datavic_update_org_error_dict,
             "datavic_get_org_roles": helpers.datavic_get_org_roles,
             "datavic_get_user_roles_in_org": helpers.datavic_get_user_roles_in_org,
             "datavic_allowable_parent_orgs": helpers.datavic_allowable_parent_orgs,
-            "localized_filesize": helpers.localized_filesize,
         }
 
     ## IConfigurer interface ##
@@ -409,7 +409,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
 
     def get_transmutators(self):
         return get_transmutators()
-    
+
     # IResourceController
 
     def after_resource_create(
