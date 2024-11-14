@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, OrderedDict
+from typing import Any, cast
 
 import ckanapi
 from sqlalchemy import or_
@@ -232,7 +232,7 @@ def resource_update(
             # If the error is due to a virus check, return the error
             raise e
 
-        _show_errors_in_sibling_resources(context, data_dict, e.error_dict)
+        _show_errors_in_sibling_resources(context, data_dict, e)
 
 
 @toolkit.chained_action
@@ -247,7 +247,7 @@ def resource_create(
             # If the error is due to a virus check, return the error
             raise e
 
-        _show_errors_in_sibling_resources(context, data_dict, e.error_dict)
+        _show_errors_in_sibling_resources(context, data_dict, e)
 
 
 @toolkit.chained_action
@@ -258,13 +258,19 @@ def resource_delete(
         result = next_(context, data_dict)
         return result
     except ValidationError as e:
-        _show_errors_in_sibling_resources(context, data_dict, e.error_dict)
+        _show_errors_in_sibling_resources(context, data_dict, e)
 
 
 def _show_errors_in_sibling_resources(
-    context: Context, data_dict: DataDict, current_resource_errors: ErrorDict
+    context: Context, data_dict: DataDict, valid_errors: ErrorDict
 ) -> Any:
     """Retrieves and raises validation errors for resources within the same package."""
+    try:
+        error_dict = cast(
+            "list[type.ErrorDict]", valid_errors.error_dict['resources'])[-1]
+    except (KeyError, IndexError):
+        error_dict = valid_errors.error_dict
+    
     pkg_dict = toolkit.get_action("package_show")(
         context,
         {
@@ -286,10 +292,9 @@ def _show_errors_in_sibling_resources(
     resources_errors = errors.pop("resources", [])
 
     for i, resource_error in enumerate(resources_errors):
-        if not resource_error:
+        if not resource_error or data_dict.get("id") == pkg_dict["resources"][i]["id"]:
             continue
-
-        errors.update(
+        error_dict.update(
             {
                 f"Field '{field}' in the resource '{pkg_dict['resources'][i]['name']}'": (
                     error
@@ -297,9 +302,8 @@ def _show_errors_in_sibling_resources(
                 for field, error in resource_error.items()
             }
         )
-
-    if errors:
-        raise ValidationError(errors)
+    if error_dict:
+        raise ValidationError(error_dict)
 
 
 @validate(vic_schema.delwp_data_request_schema)

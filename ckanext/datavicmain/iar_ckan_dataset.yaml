@@ -400,7 +400,7 @@ resource_fields:
 - field_name: filesize
   label: Filesize
   display_snippet: filesize.html
-  validators: int_validator
+  validators: ignore_missing datavic_filesize_validator
   help_text: File size in bytes. Leave blank if autocalculation is required.
 
 - field_name: release_date
