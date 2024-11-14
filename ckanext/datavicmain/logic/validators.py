@@ -178,3 +178,24 @@ def datavic_private_validator(
             not suitable for public release"""
         )
         return
+
+
+def datavic_filesize_validator(
+    key: types.FlattenKey,
+    data: types.FlattenDataDict,
+    errors: types.FlattenErrorDict,
+    context: types.Context,
+) -> Any:
+    """
+    Check if the field value is an integer
+    """
+    value = data.get(key)
+
+    if value:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            errors[key].append(
+                "Enter file size in bytes (numeric values only), or leave blank"
+            )
+            return
