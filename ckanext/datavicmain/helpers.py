@@ -609,7 +609,12 @@ def localized_filesize(size_bytes: Any) -> str:
     smaller than 1000.
     """
 
-    if not isinstance(size_bytes, int) or size_bytes < 0:
+    if isinstance(size_bytes, str) and not size_bytes.isdecimal():
+        return size_bytes
+
+    size_bytes = int(size_bytes)
+
+    if size_bytes < 0:
         return ""
 
     size_name = ("bytes", "KB", "MB", "GB", "TB")
