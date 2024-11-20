@@ -22,6 +22,7 @@ dataset_fields:
 
 - field_name: alias
   preset: dataset_alias
+  display_group: General
 
 - field_name: notes
   label: Description
@@ -152,6 +153,7 @@ dataset_fields:
       label: "Off"
   validators: default(true) boolean_validator
   output_validators: boolean_validator
+  display_group: General
 
   # Security fields
 

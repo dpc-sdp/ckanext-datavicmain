@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import pytest
-from unittest import mock
 
+import ckan.tests.factories as factories
 import ckan.tests.helpers as helpers
 
 from ckanext.datavicmain import const
@@ -65,3 +65,18 @@ class TestOrganisationListRestricted(object):
         )
 
         assert results
+
+
+@pytest.mark.usefixtures("with_plugins", "clean_db")
+class TestOrganizationCreate(object):
+    def test_create_organization(self):
+        user = factories.User()
+        context = {"user": user["name"], "ignore_auth": True}
+
+        result = helpers.call_action(
+            "organization_create",
+            context=context,
+            name=factories.Organization.stub().name,
+        )
+        
+        assert result

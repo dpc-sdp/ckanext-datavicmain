@@ -1,0 +1,9 @@
+.image-preview {
+    position: relative;
+}
+
+.image-preview .vic-remove-image {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
