@@ -1,9 +1,17 @@
 {% ckan_extends %}
 
+{% block resource_more_items %}
+  {% for key, value in h.format_resource_items(res.items()) %}
+    {% if key not in ("created", "metadata modified", "last modified", "format", "filesize", "size") %}
+      <tr class="toggle-more"><th scope="row">{{ key | capitalize }}</th><td>{{ value }}</td></tr>
+    {% endif %}
+  {% endfor %}
+{% endblock %}
+
 {% block resource_fields %}
   {% for field in schema.resource_fields %}
-    {% if field.field_name == "filesize" and res.filesize and res.filesize is string and res.filesize.startswith("eg.") or not res.filesize %}
-    {% elif field.field_name == "size" %}
+    {% if field.field_name == "filesize" and res.filesize and res.filesize is string and res.filesize.startswith("eg.")
+    or not res.filesize or res.filesize == "0" %}
     {% else %}
       {% if field.field_name not in exclude_fields
           and field.display_snippet is not none %}
