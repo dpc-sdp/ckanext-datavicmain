@@ -394,10 +394,10 @@ resource_fields:
   validators: if_empty_guess_format not_empty clean_format unicode_safe
 
 - field_name: filesize
-  label: Filesize
+  label: File Size
   display_snippet: filesize.html
   validators: ignore_missing datavic_filesize_validator
-  help_text: File size in bytes. Leave blank if autocalculation is required.
+  help_text: File size in bytes. Leave blank to allow the platform to detect file size automatically.
 
 - field_name: release_date
   label: Release Date
