@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import csv
+import copy
 import datetime
 import logging
 import csv
 import openpyxl
 import mimetypes
 
-from os import path
+from os import path, stat
 from typing import Any
 from sqlalchemy.orm import Query
 from itertools import groupby
@@ -19,14 +19,15 @@ import tqdm
 import ckan.logic.validators as validators
 import ckan.model as model
 import ckan.plugins.toolkit as tk
-import click
-import tqdm
+
 from ckan.lib.munge import munge_title_to_name
+from ckan.lib.search import rebuild
+from ckan.lib.uploader import get_resource_uploader
 from ckan.model import Resource, ResourceView
 from ckan.types import Context
 from ckanext.datavicmain.helpers import field_choices
 from ckanext.harvest.model import HarvestObject, HarvestSource
-from sqlalchemy.orm import Query
+from ckanext.datastore.backend import get_all_resources_ids_in_datastore
 
 
 log = logging.getLogger(__name__)
@@ -425,7 +426,7 @@ def list_delwp_wrong_names():
 
 
 def _get_query_delwp_datasets() -> Query[model.Package]:
-    """Get all DELWP datsets
+    """Get all DELWP datasets
 
     Returns:
         Query[model.Package]: Package model query object
@@ -689,3 +690,138 @@ def _suggest_file_format(url: str | None) -> str:
 
     mimetype, _ = mimetypes.guess_type(url)
     return validators.clean_format(mimetype) if mimetype else "unknown"
+
+
+@maintain.command
+def delete_datastore_tables_with_no_related_resource():
+    """Delete from Datastore all tables that do not have a related resource."""
+    res_ids = _get_datastore_tables_with_no_related_resource()
+
+    if not res_ids:
+        click.secho(
+            "Nothing to delete. "
+            "All Datastore tables are associated with an existing resource",
+            fg="green",
+        )
+        return
+
+    for res_id in res_ids:
+        try:
+            click.secho(f"Deleting Datastore table with ID {res_id}", fg="green")
+            tk.get_action("datastore_delete")(
+                {"ignore_auth": True}, {"resource_id": res_id, "force": True}
+            )
+        except tk.ObjectNotFound:
+            continue
+
+
+@maintain.command
+def list_datastore_tables_with_no_related_resource():
+    """Show all Datastore tables that do not have a related resource."""
+    res_ids = _get_datastore_tables_with_no_related_resource()
+
+    if not res_ids:
+        click.secho(
+            "All Datastore tables are associated with an existing resource", fg="green"
+        )
+        return
+
+    for res_id in res_ids:
+        click.secho(f"{res_id}", fg="red")
+    click.secho(
+        f"Total number of Datastore tables that don't have a related resource is "
+        f"{len(res_ids)}",
+        fg="green",
+    )
+
+
+def _get_datastore_tables_with_no_related_resource() -> list[str]:
+    """Return a list of Datastore table names that are not associated with
+    the currently active resource."""
+    res_ids = []
+    for res_id in get_all_resources_ids_in_datastore():
+        res = model.Resource.get(res_id)
+        if not res or res.state == model.State.DELETED:
+            res_ids.append(res_id)
+    return res_ids
+
+
+@maintain.command()
+def recalculate_resource_size():
+    """Update file size for uploaded resources"""
+
+    packages = set()
+    q = model.Session.query(model.Resource).filter_by(url_type="upload")
+
+    with click.progressbar(q, length=q.count()) as bar:
+        for resource in bar:
+            resource_path = get_resource_uploader({}).get_path(resource.id)
+            if not path.exists(resource_path):
+                tk.error_shout(f"Resource does not exist with id: {resource.id}")
+                continue
+            size = stat(resource_path).st_size
+            updated_size = tk.h.localized_filesize(size)
+            extras = copy.deepcopy(resource.extras or {})
+            extras["filesize"] = updated_size
+            resource.extras = extras
+            packages.add(resource.package_id)
+
+    model.Session.commit()
+    rebuild(package_ids=packages)
+
+
+@maintain.command()
+@click.option(
+    "-e", "--empty", is_flag=True, help="Get resources with empty size"
+)
+@click.option(
+    "-l",
+    "--limit",
+    is_flag=True,
+    help="Get resources with size > max_content_length",
+)
+@click.option(
+    "-r",
+    "--restricted",
+    is_flag=True,
+    help="Get resources with restricted size autocalculation",
+)
+def get_resources_by_size(empty: bool, limit: bool, restricted: bool):
+    """
+    Get resources by file size.
+    Return all resources with not empty size by default
+    """
+
+    resources = model.Session.query(model.Resource).filter_by(state="active")
+    click.secho(
+        f"Total number of resources is {resources.count()}",
+        fg="green",
+    )
+    if empty:
+        resources = resources.filter(model.Resource.size.is_(None))
+    elif limit:
+        resources = resources.filter_by(size=-1)
+    elif restricted:
+        resources = resources.filter_by(size=0)
+    else:
+        resources = resources.filter(model.Resource.size.isnot(None))
+
+    click.secho(
+        "Searching for resources...",
+        fg="green",
+    )
+
+    if not resources:
+        return click.secho("No resources found.", fg="green")
+
+    for resource in resources:
+        if not empty:
+            click.secho(
+                f"Dataset ID {resource.package_id} - resource {resource.name}",
+                fg="green",
+            )
+
+    click.secho(
+        f"Found {resources.count()} resources...",
+        fg="green",
+    )

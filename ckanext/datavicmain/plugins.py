@@ -12,6 +12,9 @@ import ckan.model as model
 import ckan.plugins as p
 import ckan.plugins.toolkit as toolkit
 
+from ckan.types import Context
+
+from ckanext.datavic_harvester.harvesters.base import get_resource_size
 from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.oidc_pkce.interfaces import IOidcPkce
 from ckanext.transmute.interfaces import ITransmute
@@ -19,7 +22,7 @@ from ckanext.transmute.interfaces import ITransmute
 from ckanext.datavicmain import helpers, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.transmutators import get_transmutators
-from ckanext.datavicmain.syndication.organization import sync_organization
+
 from ckanext.datavicmain.implementation import PermissionLabels
 
 
@@ -70,12 +73,12 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
     p.implements(p.ITemplateHelpers)
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IPackageController, inherit=True)
+    p.implements(p.IResourceController, inherit=True)
     p.implements(p.IBlueprint)
     p.implements(p.IClick)
     p.implements(ISyndicate, inherit=True)
-    p.implements(p.IOrganizationController, inherit=True)
     p.implements(IOidcPkce, inherit=True)
-    p.implements(ITransmute)
+    p.implements(ITransmute, inherit=True)
 
 
     # IBlueprint
@@ -250,6 +253,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "datavic_max_image_size": helpers.datavic_max_image_size,
             "get_user_organizations": helpers.get_user_organizations,
             "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
+            "localized_filesize": helpers.localized_filesize,
             "datavic_update_org_error_dict": helpers.datavic_update_org_error_dict,
             "datavic_get_org_roles": helpers.datavic_get_org_roles,
             "datavic_get_user_roles_in_org": helpers.datavic_get_user_roles_in_org,
@@ -406,21 +410,13 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
     def get_transmutators(self):
         return get_transmutators()
 
-    # IOrganizationController
-    def edit(self, entity: model.Group):
-        """Called after organization had been updated inside
-        organization_update.
-        We are using it to syndicate organization on update.
-        """
+    # IResourceController
 
-        if not isinstance(entity, model.Group) or not entity.is_organization:
-            return
-
-        if not entity.packages():
-            return
-
-        toolkit.enqueue_job(
-            sync_organization,
-            [entity],
-            title="DataVic organization sync",
-        )
+    def after_resource_create(
+            self, context: Context, resource: dict[str, Any]) -> None:
+        if not resource.get("filesize"):
+            if resource["url_type"] == "upload":
+                resource["filesize"] = resource["size"]
+            else:
+                resource["filesize"] = get_resource_size(resource["url"])
+            toolkit.get_action("resource_update")(context, resource)

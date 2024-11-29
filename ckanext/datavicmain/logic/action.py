@@ -1,40 +1,33 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import ckanapi
 from sqlalchemy import or_
 
 import ckan.model as model
 import ckan.types as types
-import ckan.plugins.toolkit as toolkit
-
-from ckanext.datavicmain import helpers, utils, const, jobs
-from ckanext.datavicmain.helpers import user_is_registering
-from ckanext.datavicmain.logic.schema import custom_user_create_schema
-
+from ckan.lib import uploader
 import ckan.lib.plugins as lib_plugins
 import ckan.plugins.toolkit as toolkit
-from ckan.common import g
-from ckan.lib.dictization import model_dictize, model_save
-from ckan.lib.navl.validators import not_empty
-from ckan.logic import schema as ckan_schema, validate
-from ckan.model import State
+from ckan.logic import validate
 from ckan.types import Action, Context, DataDict
-from ckan.types.logic import ActionResult
 
+from ckanext.syndicate.utils import get_profiles, get_target
+from ckanext.datavic_harvester.harvesters.base import get_resource_size
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
 
-import ckanext.datavic_iar_theme.helpers as theme_helpers
 from ckanext.datavicmain.logic import schema as vic_schema
+from ckanext.datavicmain import helpers, utils, const
+from ckanext.datavicmain.helpers import user_is_registering
+from ckanext.datavicmain.logic.schema import custom_user_create_schema
 
 log = logging.getLogger(__name__)
 user_is_registering = helpers.user_is_registering
 ValidationError = toolkit.ValidationError
 get_action = toolkit.get_action
-_validate = toolkit.navl_validate
 
 CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS = (
     "ckanext.datavicmain.synchronized_organization_fields"
@@ -64,37 +57,71 @@ def user_create(next_func, context, data_dict):
 
 @toolkit.chained_action
 def organization_update(next_, context, data_dict):
-    from ckanext.syndicate import utils
-
+    """
+    Add organization fields synchronization logic.
+    Add prohibition on changing the organization visibility field.
+    """
     model = context["model"]
 
     old = model.Group.get(data_dict.get("id"))
     old_name = old.name if old else None
+    old_visibility = model.Group.get(data_dict["id"]).extras.get(
+        const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
+    )
 
     result = next_(context, data_dict)
+    new_visibility = utils.get_extra_value(const.ORG_VISIBILITY_FIELD, result)
 
-    if old_name == result["name"]:
+    if new_visibility != old_visibility:
+        raise ValidationError(
+            f"The organisation {result['id']} visibility can't be changed after creation."
+        )
+
+    tracked_fields: list[str] = toolkit.aslist(
+        toolkit.config.get(
+            CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
+            DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
+        )
+    )
+
+    if not _is_org_changed(old, result, tracked_fields):
         return result
 
-    for profile in utils.get_profiles():
-        ckan = utils.get_target(profile.ckan_url, profile.api_key)
+    for profile in get_profiles():
+        ckan = get_target(profile.ckan_url, profile.api_key)
         try:
             remote = ckan.action.organization_show(id=old_name)
         except ckanapi.NotFound:
             continue
 
-        patch = {
-            f: result[f]
-            for f in toolkit.aslist(
-                toolkit.config.get(
-                    CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
-                    DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
-                )
+        patch = {f: result[f] for f in tracked_fields if f in result}
+
+        if 'image_url' in tracked_fields and result.get('image_display_url'):
+            grp_uloader: uploader.PUploader = uploader.get_uploader('group')
+            file_data = None
+            with open(grp_uloader.storage_path + '/' + result['image_url'], 'rb') as f:
+                file_data = f.read()
+
+            patch['id'] = remote['id']
+            ckan.call_action('organization_patch', data_dict=patch, files={
+                "image_upload": (result['image_url'], file_data)})
+        else:
+            ckan.action.organization_patch(
+                id=remote["id"],
+                **patch,
             )
-        }
-        ckan.action.organization_patch(id=remote["id"], **patch)
 
     return result
+
+
+def _is_org_changed(
+    old_org: dict[str, Any], new_org: dict[str, Any], tracked_fields: list[str]
+) -> bool:
+    for field_name in tracked_fields:
+        if old_org.get(field_name) != new_org.get(field_name):
+            return True
+
+    return False
 
 
 @toolkit.chained_action
@@ -110,35 +137,6 @@ def organization_show(
         "_skip_restriction_check"
     ) and not utils.user_has_org_access(org_dict["id"], context["user"]):
         raise toolkit.ObjectNotFound
-
-    return org_dict
-
-
-@toolkit.chained_action
-def organization_update(
-    next_: types.ChainedAction,
-    context: types.Context,
-    data_dict: types.DataDict,
-) -> types.ActionResult.OrganizationUpdate:
-    """Changing visibility field should change the visibility datasets. We are
-    using permissions labels, so we have to reindex all the datasets to index
-    new labels into solr"""
-    current_visibility = model.Group.get(data_dict["id"]).extras.get(
-        const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
-    )
-
-    org_dict = next_(context, data_dict)
-
-    new_visibility = utils.get_extra_value(
-        const.ORG_VISIBILITY_FIELD, org_dict
-    )
-
-    if new_visibility != current_visibility:
-        log.info(
-            "The organisation %s visibility has changed. Rebuilding datasets index",
-            org_dict["id"],
-        )
-        toolkit.enqueue_job(jobs.reindex_organization, [org_dict["id"]])
 
     return org_dict
 
@@ -196,29 +194,42 @@ def _hide_restricted_orgs(
 @toolkit.chained_action
 def resource_update(
     next_: Action, context: Context, data_dict: DataDict
-) -> ActionResult.ResourceUpdate:
+) -> types.Action.ActionResult.ResourceUpdate:
     try:
+        if not data_dict.get("filesize"):
+            resource = model.Resource.get(data_dict.get("id"))
+            if data_dict["url_type"] == "upload":
+                data_dict["filesize"] = resource.size
+            else:
+                data_dict["filesize"] = get_resource_size(data_dict["url"])
+
         result = next_(context, data_dict)
         return result
-    except ValidationError:
-        _show_errors_in_sibling_resources(context, data_dict)
+    except ValidationError as valid_errors:
+        _show_errors_in_sibling_resources(context, data_dict, valid_errors)
 
 
 @toolkit.chained_action
 def resource_create(
     next_: Action, context: Context, data_dict: DataDict
-) -> ActionResult.ResourceCreate:
+) -> types.Action.ActionResult.ResourceCreate:
     try:
         result = next_(context, data_dict)
         return result
-    except ValidationError:
-        _show_errors_in_sibling_resources(context, data_dict)
+    except ValidationError as valid_errors:
+        _show_errors_in_sibling_resources(context, data_dict, valid_errors)
 
 
 def _show_errors_in_sibling_resources(
-    context: Context, data_dict: DataDict
+    context: Context, data_dict: DataDict, valid_errors: DataDict
 ) -> Any:
     """Retrieves and raises validation errors for resources within the same package."""
+    try:
+        error_dict = cast(
+            "list[type.ErrorDict]", valid_errors.error_dict['resources'])[-1]
+    except (KeyError, IndexError):
+        error_dict = valid_errors.error_dict
+    
     pkg_dict = toolkit.get_action("package_show")(
         context, {"id": data_dict["package_id"]}
     )
@@ -236,9 +247,9 @@ def _show_errors_in_sibling_resources(
     resources_errors = errors.pop("resources", [])
 
     for i, resource_error in enumerate(resources_errors):
-        if not resource_error:
+        if not resource_error or data_dict.get("id") == pkg_dict["resources"][i]["id"]:
             continue
-        errors.update(
+        error_dict.update(
             {
                 f"Field '{field}' in the resource '{pkg_dict['resources'][i]['name']}'": (
                     error
@@ -246,8 +257,8 @@ def _show_errors_in_sibling_resources(
                 for field, error in resource_error.items()
             }
         )
-    if errors:
-        raise ValidationError(errors)
+    if error_dict:
+        raise ValidationError(error_dict)
 
 
 @toolkit.side_effect_free
@@ -339,7 +350,7 @@ def send_delwp_data_request(context, data_dict):
     )
 
     pkg_title = data_dict["__extras"]["package_title"]
-    user = g.userobj.fullname or g.user
+    user = toolkit.g.userobj.fullname or toolkit.g.user
     subject = f"Data request via VPS Data Directory - {pkg_title} requested by {user}"
 
     try:
