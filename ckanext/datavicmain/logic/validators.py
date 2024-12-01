@@ -118,7 +118,6 @@ def datavic_organization_upload(key, data, errors, context):
         )
 
 
-
 def _is_valid_image_extension(mimetype: str) -> bool:
     """Check if the mimetype corresponds to a valid image extension."""
     valid_extensions = ["jpg", "png", "jpeg", "gif", "bmp", "svg"]
@@ -190,12 +189,17 @@ def datavic_email_validator(
     an existing user or a pending user.
     """
     model = context["model"]  # type: ignore
-    user = model.User.by_email(data[key])
+    existing_users = (
+        model.Session.query(model.User)
+        .filter(model.User.email.ilike(data[key]))
+        .all()
+    )
 
-    if user and user.state in [model.State.ACTIVE, model.State.PENDING]:
-        errors[("registration",)] = [
-            "<strong>406 Registration unsuccessful.</strong> Please email <a href='mailto:datavic@dpc.vic.gov.au'>datavic@dpc.vic.gov.au</a> for assistance"
-        ]
+    for user in existing_users:
+        if user and user.state in [model.State.ACTIVE, model.State.PENDING]:
+            errors[("registration",)] = [
+                "<strong>406 Registration unsuccessful.</strong> Please email <a href='mailto:datavic@dpc.vic.gov.au'>datavic@dpc.vic.gov.au</a> for assistance"
+            ]
         return
 
 

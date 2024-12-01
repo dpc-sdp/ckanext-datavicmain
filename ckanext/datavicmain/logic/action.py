@@ -24,12 +24,14 @@ from ckanext.mailcraft.exception import MailerException
 
 from ckanext.datavicmain import helpers, utils, const, jobs
 from ckanext.datavicmain.logic import schema as vic_schema
+from ckanext.datavicmain import helpers, utils, const
+from ckanext.datavicmain.helpers import user_is_registering
+from ckanext.datavicmain.logic.schema import custom_user_create_schema
 
 
 log = logging.getLogger(__name__)
 ValidationError = toolkit.ValidationError
 get_action = toolkit.get_action
-_validate = toolkit.navl_validate
 
 CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS = (
     "ckanext.datavicmain.synchronized_organization_fields"
@@ -72,17 +74,21 @@ def organization_update(next_, context, data_dict):
     )
 
     result = next_(context, data_dict)
-
-    org_id = result["id"]
-    new_name = result["name"]
     new_visibility = utils.get_extra_value(const.ORG_VISIBILITY_FIELD, result)
 
     if new_visibility != old_visibility:
         raise ValidationError(
-            f"The organisation {org_id} visibility can't be changed after creation."
+            f"The organisation {result['id']} visibility can't be changed after creation."
         )
 
-    if old_name == new_name:
+    tracked_fields: list[str] = toolkit.aslist(
+        toolkit.config.get(
+            CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
+            DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
+        )
+    )
+
+    if not _is_org_changed(old, result, tracked_fields):
         return result
 
     for profile in get_profiles():
@@ -92,12 +98,6 @@ def organization_update(next_, context, data_dict):
         except ckanapi.NotFound:
             continue
 
-        tracked_fields = toolkit.aslist(
-            toolkit.config.get(
-                CONFIG_SYNCHRONIZED_ORGANIZATION_FIELDS,
-                DEFAULT_SYNCHRONIZED_ORGANIZATION_FIELDS,
-            )
-        )
         patch = {
             f: result[f]
             for f in tracked_fields if f in result

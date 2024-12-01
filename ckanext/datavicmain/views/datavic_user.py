@@ -21,6 +21,7 @@ from ckan.lib import signals
 from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
 
+import ckanext.datavicmain.utils as utils
 import ckanext.datavicmain.helpers as helpers
 import ckanext.datavicmain.utils as utils
 

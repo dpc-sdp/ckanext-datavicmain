@@ -5,16 +5,15 @@ import copy
 import csv
 import datetime
 import logging
-import csv
 import openpyxl
 import mimetypes
 import tqdm
-from itertools import groupby
-from urllib.parse import urlparse
 
 from os import path, stat
 from typing import Any
-
+from sqlalchemy.orm import Query
+from itertools import groupby
+from urllib.parse import urlparse
 
 import ckan.logic.validators as validators
 import ckan.model as model
@@ -28,7 +27,7 @@ from ckan.types import Context
 
 from ckanext.datavicmain.helpers import field_choices
 from ckanext.harvest.model import HarvestObject, HarvestSource
-from sqlalchemy.orm import Query
+from ckanext.datastore.backend import get_all_resources_ids_in_datastore
 
 from ckanext.datastore.backend import get_all_resources_ids_in_datastore
 
@@ -429,7 +428,7 @@ def list_delwp_wrong_names():
 
 
 def _get_query_delwp_datasets() -> Query[model.Package]:
-    """Get all DELWP datsets
+    """Get all DELWP datasets
 
     Returns:
         Query[model.Package]: Package model query object
@@ -708,6 +707,60 @@ def make_datatables_view_prioritized():
         if result.get("updated"):
             number_reordered += 1
     click.secho(f"Reordered {number_reordered} resources", fg="green")
+
+
+@maintain.command
+def delete_datastore_tables_with_no_related_resource():
+    """Delete from Datastore all tables that do not have a related resource."""
+    res_ids = _get_datastore_tables_with_no_related_resource()
+
+    if not res_ids:
+        click.secho(
+            "Nothing to delete. "
+            "All Datastore tables are associated with an existing resource",
+            fg="green",
+        )
+        return
+
+    for res_id in res_ids:
+        try:
+            click.secho(f"Deleting Datastore table with ID {res_id}", fg="green")
+            tk.get_action("datastore_delete")(
+                {"ignore_auth": True}, {"resource_id": res_id, "force": True}
+            )
+        except tk.ObjectNotFound:
+            continue
+
+
+@maintain.command
+def list_datastore_tables_with_no_related_resource():
+    """Show all Datastore tables that do not have a related resource."""
+    res_ids = _get_datastore_tables_with_no_related_resource()
+
+    if not res_ids:
+        click.secho(
+            "All Datastore tables are associated with an existing resource", fg="green"
+        )
+        return
+
+    for res_id in res_ids:
+        click.secho(f"{res_id}", fg="red")
+    click.secho(
+        f"Total number of Datastore tables that don't have a related resource is "
+        f"{len(res_ids)}",
+        fg="green",
+    )
+
+
+def _get_datastore_tables_with_no_related_resource() -> list[str]:
+    """Return a list of Datastore table names that are not associated with
+    the currently active resource."""
+    res_ids = []
+    for res_id in get_all_resources_ids_in_datastore():
+        res = model.Resource.get(res_id)
+        if not res or res.state == model.State.DELETED:
+            res_ids.append(res_id)
+    return res_ids
 
 
 @maintain.command()
