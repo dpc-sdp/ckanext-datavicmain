@@ -10,10 +10,10 @@ from ckan.tests.helpers import call_action
 
 @pytest.fixture
 def ckan(user, app, monkeypatch):
-    from ckanext.syndicate import utils
+    from ckanext.datavicmain.logic import action
 
     ckan = ckanapi.TestAppCKAN(app, user["apikey"])
-    monkeypatch.setattr(utils, "get_target", lambda *args: ckan)
+    monkeypatch.setattr(action, "get_target", lambda *args: ckan)
     yield ckan
 
 

@@ -3,23 +3,21 @@ from __future__ import annotations
 import copy
 import datetime
 import logging
-import csv
-import openpyxl
 import mimetypes
 
 from os import path, stat
-from typing import Any
-from sqlalchemy.orm import Query
 from itertools import groupby
+from os import path
+from typing import Any
 from urllib.parse import urlparse
-
-import click
-import tqdm
 
 import ckan.logic.validators as validators
 import ckan.model as model
 import ckan.plugins.toolkit as tk
 
+import click
+import openpyxl
+import tqdm
 from ckan.lib.munge import munge_title_to_name
 from ckan.lib.search import rebuild
 from ckan.lib.uploader import get_resource_uploader
@@ -29,6 +27,8 @@ from ckanext.datavicmain.helpers import field_choices
 from ckanext.harvest.model import HarvestObject, HarvestSource
 from ckanext.datastore.backend import get_all_resources_ids_in_datastore
 
+from ckanext.harvest.model import HarvestObject, HarvestSource
+from sqlalchemy.orm import Query
 
 log = logging.getLogger(__name__)
 
@@ -576,7 +576,7 @@ _missing_value_fields: list[str] = [
 
 def _get_default_values_for_missing_fields(
     dataset: dict[str, Any], field: str
-) -> "str":
+) -> str:
     """Get values for missing fields"""
     if field == "date_created_data_asset":
         return _get_date_created(dataset)
@@ -590,6 +590,7 @@ def _get_default_values_for_missing_fields(
         return "official"
     elif field == "category":
         return _get_category(dataset)
+    return ""
 
 
 def _get_date_created(pkg: dict[str, Any]) -> str:
@@ -615,7 +616,7 @@ def _get_category(pkg: dict[str, Any]) -> str:
     """
     if groups := pkg.get("groups"):
         return groups[0].get("id")
-    return
+    return ""
 
 
 @maintain.command(u"update-broken-urls",
@@ -624,7 +625,8 @@ def update_broken_urls():
     """Change resources urls' protocols from http to https listed in XLSX file"""
 
     file = path.join(
-        path.dirname(__file__), "data/DTF Content list bulk URL change 20231017.xlsx"
+        path.dirname(__file__),
+        "data/DTF Content list bulk URL change 20231017.xlsx",
     )
     wb = openpyxl.load_workbook(file)
     ws = wb.active
@@ -641,15 +643,14 @@ def update_broken_urls():
 
         if not resource:
             click.secho(
-                f"Resource <{title}> with URL <{url}> does not exist",
-                fg="red"
+                f"Resource <{title}> with URL <{url}> does not exist", fg="red"
             )
             continue
 
         resource.url = row[XLSX_IDX_NEW_URL].value
         click.secho(
             f"URL of resource <{title}> has been updated to <{resource.url}>",
-            fg="green"
+            fg="green",
         )
 
         model.Session.commit()
@@ -825,3 +826,18 @@ def get_resources_by_size(empty: bool, limit: bool, restricted: bool):
         f"Found {resources.count()} resources...",
         fg="green",
     )
+
+
+@maintain.command("make-datatables-view-prioritized")
+def make_datatables_view_prioritized():
+    """Check if there are resources that have recline_view and datatables_view and
+    reorder them so that datatables_view is first."""
+    resources = model.Session.query(Resource).all()
+    number_reordered = 0
+    for resource in tqdm.tqdm(resources):
+        result = tk.get_action("datavic_datatables_view_prioritize")(
+            {"ignore_auth": True}, {"resource_id": resource.id}
+        )
+        if result.get("updated"):
+            number_reordered += 1
+    click.secho(f"Reordered {number_reordered} resources", fg="green")

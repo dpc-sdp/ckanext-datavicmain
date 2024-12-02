@@ -92,7 +92,7 @@ def _has_user_capacity_in_org(org_id: str, roles: list) -> bool:
         organization
 
     Args:
-        org_id (str): id of the organization 
+        org_id (str): id of the organization
         roles (list): list of necessary member roles in the organization
 
     Returns:
@@ -101,20 +101,20 @@ def _has_user_capacity_in_org(org_id: str, roles: list) -> bool:
     """
     if authz.users_role_for_group_or_org(
         group_id=org_id,
-        user_name=toolkit.current_user.name) in roles:
+        user_name=tk.current_user.name) in roles:
         return True
     return False
 
 
-@toolkit.chained_auth_function
+@tk.chained_auth_function
 def package_activity_list(next_auth, context, data_dict):
-    pkg_dict = toolkit.get_action("package_show")(
+    pkg_dict = tk.get_action("package_show")(
         context,
         {"id": data_dict["id"]},
     )
     allowed_roles = ["admin", "editor"]
     is_user_collaborator = authz.user_is_collaborator_on_dataset(
-        toolkit.current_user.id, pkg_dict["id"], allowed_roles
+        tk.current_user.id, pkg_dict["id"], allowed_roles
     )
     has_user_capacity = _has_user_capacity_in_org(
         pkg_dict["owner_org"], allowed_roles
@@ -125,7 +125,15 @@ def package_activity_list(next_auth, context, data_dict):
     return {"success": False}
 
 
-@toolkit.chained_auth_function
+@tk.chained_auth_function
+def organization_activity_list(next_auth, context, data_dict):
+    allowed_roles = ["admin", "editor"]
+    if _has_user_capacity_in_org(data_dict["id"], allowed_roles):
+        return next_auth(context, data_dict)
+    return {"success": False}
+
+
+@tk.chained_auth_function
 def organization_activity_list(next_auth, context, data_dict):
     allowed_roles = ["admin", "editor"]
     if _has_user_capacity_in_org(data_dict["id"], allowed_roles):
