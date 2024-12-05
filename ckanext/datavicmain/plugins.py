@@ -5,8 +5,6 @@ import time
 import calendar
 import logging
 from typing import Any
-from six import text_type
-from typing import Any
 from datetime import datetime
 
 import ckan.authz as authz
@@ -242,6 +240,8 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             'get_digital_twin_resources': helpers.get_digital_twin_resources,
             'url_for_dtv_config': helpers.url_for_dtv_config,
             "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
+            "get_group": helpers.get_group,
+            "dtv_exceeds_max_size_limit": helpers.dtv_exceeds_max_size_limit,
             "datavic_user_is_a_member_of_org": helpers.datavic_user_is_a_member_of_org,
             "datavic_is_pending_request_to_join_org": helpers.datavic_is_pending_request_to_join_org,
             "datavic_is_org_restricted": helpers.datavic_is_org_restricted,
@@ -258,6 +258,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             "datavic_get_org_roles": helpers.datavic_get_org_roles,
             "datavic_get_user_roles_in_org": helpers.datavic_get_user_roles_in_org,
             "datavic_allowable_parent_orgs": helpers.datavic_allowable_parent_orgs,
+            "has_user_capacity": helpers.has_user_capacity,
         }
 
     ## IConfigurer interface ##

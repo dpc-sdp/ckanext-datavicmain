@@ -1,5 +1,4 @@
 from __future__ import annotations
-from json import tool
 
 import math
 import os
@@ -8,26 +7,23 @@ import inspect
 import logging
 import json
 import base64
-from typing import Any
+from typing import Any, Optional
 
 from urllib.parse import urlsplit, urljoin
 
 from flask import Blueprint
 
-import ckan.plugins as plugins
 import ckan.model as model
 import ckan.authz as authz
 import ckan.plugins.toolkit as toolkit
 
 from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
-from ckanext.mailcraft.utils import get_mailer
-from ckanext.mailcraft.exception import MailerException
 
-from . import utils, const
+from . import utils, const, config as conf
 from ckanext.datavicmain.config import get_dtv_url, get_dtv_external_link
 
-mailer = get_mailer()
+
 log = logging.getLogger(__name__)
 WORKFLOW_STATUS_OPTIONS = [
     "draft",
@@ -368,6 +364,43 @@ def datavic_org_uploads_allowed(org_id: str) -> bool:
     return flake["data"].get(org.id, False)
 
 
+def get_group(group: Optional[str] = None,
+              include_datasets: bool = False) -> dict[str, Any]:
+    if group is None:
+        return {}
+    try:
+        return toolkit.get_action("group_show")(
+            {},
+            {"id": group, "include_datasets": include_datasets}
+        )
+    except (toolkit.NotFound, toolkit.ValidationError, toolkit.NotAuthorized):
+        return {}
+
+
+def dtv_exceeds_max_size_limit(resource_id: str) -> bool:
+    """Check if DTV resource exceeds the maximum file size limit
+
+    Args:
+        resource_id (str): DTV resource id
+
+    Returns:
+        bool: return True if dtv resource exceeds maximum file size limit set
+            in ckan config "ckanext.datavicmain.dtv.max_size_limit",
+            otherwise - False  
+    """
+    try:
+        resource = toolkit.get_action("resource_show")({}, {"id": resource_id})
+    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
+        return True
+
+    limit = conf.get_dtv_max_size_limit()
+    filesize = resource.get("filesize")
+    if filesize and int(filesize) >= int(limit):
+        return True
+
+    return False
+
+
 def datavic_get_org_roles() -> list[str]:
     return ["admin", "editor", "member"]
 
@@ -560,7 +593,7 @@ def _group_tree_parents(id_, type_="organization"):
 
 
 def add_current_organisation(
-    avalable_organisations: list[dict[str, Any]], current_org: dict[str, Any]
+    available_organisations: list[dict[str, Any]], current_org: dict[str, Any]
 ):
     """When user doesn't have an access to an organisation, it won't be included
     for a list of available organisations. Include it there, but check if it's
@@ -568,19 +601,19 @@ def add_current_organisation(
 
     current_org_included = False
 
-    for organization in avalable_organisations:
+    for organization in available_organisations:
         if organization["id"] == current_org["id"]:
             current_org_included = True
             break
 
     if not current_org_included:
-        avalable_organisations.append(current_org)
+        available_organisations.append(current_org)
 
-    return avalable_organisations
+    return available_organisations
 
 
 def datavic_max_image_size():
-    """Return max size for image configurate for portal"""
+    """Return max size for image configuration for portal"""
     return toolkit.config["ckan.max_image_size"]
 
 
@@ -658,3 +691,33 @@ def datavic_allowable_parent_orgs(org_id: str = None) -> list[dict[str, Any]]:
             continue
         orgs.append(org)
     return orgs
+
+
+def has_user_capacity(
+    org_id: str,
+    current_user_id: str, 
+    capacity: Optional[str] = None) -> bool:
+    """Check if the current user has an appropriate capacity in the certain organization
+
+    Args:
+        org_id (str): the id or name of the organization
+        current_user_id (str): the id or name of the user
+        capacity (str): restrict the members returned to those with a given capacity,
+                        e.g. 'member', 'editor', 'admin', 'public', 'private'
+                        (optional, default: None)
+
+    Returns:
+        bool: True for success, False otherwise
+    """
+    try:
+        members = toolkit.get_action("member_list")(
+            {},
+            {"id": org_id, "object_type": "user", "capacity": capacity}
+        )
+        members_id = [member[0] for member in members]
+        if current_user_id in members_id:
+            return True
+    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
+        return False
+
+    return False

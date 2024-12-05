@@ -10,6 +10,7 @@ fields:
     form_attrs:
       data-module: slug-preview-target
     form_placeholder: My Organization
+    required: true
 
   - field_name: name
     label: URL
@@ -28,10 +29,6 @@ fields:
     validators: scheming_required
     form_placeholder: http://example.com/my-image.jpg
 
-  - field_name: parent
-    label: Parent
-    form_snippet: org_hierarchy.html
-
   - field_name: visibility
     label: Visibility
     form_snippet: vic_org_visibility.html
@@ -43,3 +40,9 @@ fields:
       label: Unrestricted
     - value: restricted
       label: Restricted
+
+  - field_name: parent
+    label: Parent
+    form_snippet: org_hierarchy.html
+    validators: ignore_empty
+    required: true
