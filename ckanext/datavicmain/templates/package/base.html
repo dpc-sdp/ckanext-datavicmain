@@ -1,7 +1,7 @@
 {% ckan_extends %}
 
 {% block breadcrumb_content %}
-    {#} check if user has an access to parent org before showing it in breadcrumb {#}
+    {# check if user has an access to parent org before showing it in breadcrumb #}
 
     {% if pkg %}
         {% set dataset = h.dataset_display_name(pkg) %}
