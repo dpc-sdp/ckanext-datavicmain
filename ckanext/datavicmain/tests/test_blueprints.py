@@ -282,7 +282,7 @@ class TestDatavicUserCreate:
             },
         )
 
-        assert "This email might be already in use" in response
+        assert "Registration unsuccessful" in response
 
         with pytest.raises(tk.ObjectNotFound):
             call_action("user_show", id="test_user_2")
@@ -319,7 +319,7 @@ class TestDatavicUserCreate:
             },
         )
 
-        assert "This email might be already in use" in response
+        assert "Registration unsuccessful" in response
 
 
 @pytest.mark.usefixtures("clean_db", "with_plugins", "with_request_context")

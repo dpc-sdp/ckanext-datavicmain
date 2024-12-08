@@ -1,5 +1,4 @@
 from __future__ import annotations
-from json import tool
 
 import math
 import os
@@ -14,19 +13,17 @@ from urllib.parse import urlsplit, urljoin
 
 from flask import Blueprint
 
-import ckan.plugins as plugins
 import ckan.model as model
 import ckan.authz as authz
 import ckan.plugins.toolkit as toolkit
 
 from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
-from ckanext.mailcraft.utils import get_mailer
 
 from . import utils, const, config as conf
 from ckanext.datavicmain.config import get_dtv_url, get_dtv_external_link
 
-mailer = get_mailer()
+
 log = logging.getLogger(__name__)
 WORKFLOW_STATUS_OPTIONS = [
     "draft",
@@ -559,7 +556,7 @@ def _group_tree_parents(id_, type_="organization"):
 
 
 def add_current_organisation(
-    avalable_organisations: list[dict[str, Any]], current_org: dict[str, Any]
+    available_organisations: list[dict[str, Any]], current_org: dict[str, Any]
 ):
     """When user doesn't have an access to an organisation, it won't be included
     for a list of available organisations. Include it there, but check if it's
@@ -567,19 +564,19 @@ def add_current_organisation(
 
     current_org_included = False
 
-    for organization in avalable_organisations:
+    for organization in available_organisations:
         if organization["id"] == current_org["id"]:
             current_org_included = True
             break
 
     if not current_org_included:
-        avalable_organisations.append(current_org)
+        available_organisations.append(current_org)
 
-    return avalable_organisations
+    return available_organisations
 
 
 def datavic_max_image_size():
-    """Return max size for image configurate for portal"""
+    """Return max size for image configuration for portal"""
     return toolkit.config["ckan.max_image_size"]
 
 

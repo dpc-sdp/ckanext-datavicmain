@@ -24,7 +24,6 @@ from ckanext.mailcraft.exception import MailerException
 
 from ckanext.datavicmain import helpers, utils, const, jobs
 from ckanext.datavicmain.logic import schema as vic_schema
-from ckanext.datavicmain import helpers, utils, const
 from ckanext.datavicmain.helpers import user_is_registering
 from ckanext.datavicmain.logic.schema import custom_user_create_schema
 
@@ -110,16 +109,17 @@ def organization_update(next_, context, data_dict):
                 file_data = f.read()
 
             patch['id'] = remote['id']
-            ckan.call_action('organization_patch', data_dict=patch, files={
+            return ckan.call_action('organization_patch', data_dict=patch, files={
                 "image_upload": (result['image_url'], file_data)})
         else:
-            ckan.action.organization_patch(id=remote["id"], **patch)
+            return ckan.action.organization_patch(id=remote["id"], **patch)
+
 
 def _is_org_changed(
-    old_org: dict[str, Any], new_org: dict[str, Any], tracked_fields: list[str]
+    old_org: model.Group, new_org: dict[str, Any], tracked_fields: list[str]
 ) -> bool:
     for field_name in tracked_fields:
-        if old_org.get(field_name) != new_org.get(field_name):
+        if old_org.__dict__.get(field_name) != new_org.get(field_name):
             return True
 
     return False
@@ -270,7 +270,7 @@ def _show_errors_in_sibling_resources(
             "list[type.ErrorDict]", valid_errors.error_dict['resources'])[-1]
     except (KeyError, IndexError):
         error_dict = valid_errors.error_dict
-    
+
     pkg_dict = toolkit.get_action("package_show")(
         context,
         {
@@ -347,6 +347,7 @@ def datavic_list_incomplete_resources(context, data_dict):
     pkg_type = data_dict.get("type", "dataset")
 
     try:
+        pkg_type = data_dict.get("type", "dataset")
         resource_schema = toolkit.h.scheming_get_dataset_schema(pkg_type)[
             "resource_fields"
         ]
