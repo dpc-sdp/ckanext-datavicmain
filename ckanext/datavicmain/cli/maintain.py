@@ -990,7 +990,12 @@ class ResourceFilesizeConvert:
         rebuild(package_ids=package_ids)
 
     @classmethod
-    def convert_to_byte_int(cls, size: Any) -> int:
+    def convert_to_byte_int(cls, size: Any) -> int | str:
+        """Convert a string size to bytes integer if possible.
+
+        If we can't calculate the size, we return an empty string, because
+        we have a custom logic, that will try to evaluate the size later.
+        """
         if isinstance(size, int):
             return cls.convert_int_to_byte_int(size)
         elif isinstance(size, str):
@@ -998,24 +1003,24 @@ class ResourceFilesizeConvert:
         elif isinstance(size, float):
             return int(size)
 
-        return 0
+        return ""
 
     @classmethod
-    def convert_int_to_byte_int(cls, size: int) -> int:
+    def convert_int_to_byte_int(cls, size: int) -> int | str:
         if size < 0:
-            return 0
+            return ""
 
         return size
 
     @classmethod
-    def convert_string_to_byte_int(cls, size: str) -> int:
+    def convert_string_to_byte_int(cls, size: str) -> int | str:
         size = size.lower()
 
         if not size:
-            return 0
+            return ""
 
         if "eg" in size:
-            return 0
+            return ""
 
         if size.isdigit():
             return int(size)
@@ -1031,7 +1036,7 @@ class ResourceFilesizeConvert:
             except ValueError:
                 pass
 
-        return 0
+        return ""
 
     @classmethod
     def convert_to_bytes(cls, size) -> int:
@@ -1049,6 +1054,7 @@ class ResourceFilesizeConvert:
         """
         size = size.strip().upper()
         size_units = {
+            "BYTES": 1,
             "KB": 1024,
             "MB": 1024**2,
             "GB": 1024**3,

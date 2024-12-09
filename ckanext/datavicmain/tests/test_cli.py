@@ -28,6 +28,7 @@ class TestResourceFilesizeConvert:
             ("24MB", False),
             ("10.2", False),
             ("7.4 KB", False),
+            ("117.0 bytes", False),
             ("N/A", False),
             ("", True),
         ],
@@ -46,19 +47,20 @@ class TestResourceFilesizeConvert:
             ("100 mb", 100 * 1024 * 1024),
             ("100mb", 100 * 1024 * 1024),
             ("0", 0),
-            ("eg 100kb", 0),
-            ("a lot", 0),
+            ("eg 100kb", ""),
+            ("a lot", ""),
             (1.7727, 1),
             (120, 120),
-            (-1, 0),
+            (-1, ""),
             ("20KB", 20 * 1024),
             ("24MB", 24 * 1024 * 1024),
             ("10.2", 10),
             ("7.4 KB", 7577),
-            ("N/A", 0),
+            ("N/A", ""),
             ("3.4     MB", 3565158),
             ("245.0 MB", 256901120),
             ("1.1 gb", 1181116006),
+            ("117.0 bytes", 117),
         ],
     )
     def test_convert_values(self, filesize: str, expected: int):
@@ -99,8 +101,10 @@ class TestResourceFilesizeConvert:
         dataset = call_action("package_show", id=dataset["id"])
 
         result = [resource["filesize"] for resource in dataset["resources"]]
-        expected = [0, 52224, 104857600]
-        assert sorted(result) == sorted(expected)
+
+        assert "" in result
+        assert 52224 in result
+        assert 104857600 in result
 
     def _update_resource_size(
         self, resource_id: str, size: Any, defer_commit=False
