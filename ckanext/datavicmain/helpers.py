@@ -674,7 +674,7 @@ def datavic_update_org_error_dict(
             (
                 "Image format is not supported. "
                 "Select an image in one of the following formats: "
-                "JPG, JPEG, GIF, PNG, BMP, SVG."
+                "JPG, JPEG, GIF, PNG, WEBP."
             )
         ]
 
