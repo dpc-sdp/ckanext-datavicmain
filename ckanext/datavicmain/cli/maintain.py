@@ -770,10 +770,8 @@ def recalculate_resource_size():
                     f"Resource does not exist with id: {resource.id}"
                 )
                 continue
-            size = stat(resource_path).st_size
-            updated_size = tk.h.localized_filesize(size)
             extras = copy.deepcopy(resource.extras or {})
-            extras["filesize"] = updated_size
+            extras["filesize"] = stat(resource_path).st_size
             resource.extras = extras
             packages.add(resource.package_id)
 
