@@ -757,29 +757,50 @@ def _get_datastore_tables_with_no_related_resource() -> list[str]:
 
 
 @maintain.command()
-def recalculate_resource_size():
+@click.option("--update", is_flag=True, type=click.BOOL, default=False)
+def recalculate_resource_size(update: bool):
     """Update file size for uploaded resources"""
 
     packages = set()
-    q = model.Session.query(model.Resource).filter_by(url_type="upload")
+    resources = model.Session.query(model.Resource).filter_by(url_type="upload").all()
 
-    with click.progressbar(q, length=q.count()) as bar:
-        for resource in bar:
-            resource_path = get_resource_uploader({}).get_path(resource.id)
-            if not path.exists(resource_path):
-                tk.error_shout(
-                    f"Resource does not exist with id: {resource.id}"
-                )
-                continue
-            size = stat(resource_path).st_size
-            updated_size = tk.h.localized_filesize(size)
-            extras = copy.deepcopy(resource.extras or {})
-            extras["filesize"] = updated_size
-            resource.extras = extras
-            packages.add(resource.package_id)
+    if not update:
+        click.secho(
+            "You're in a display mode."
+            " If you want to update the resources, please use the --update flag.",
+            fg="blue",
+            italic=True,
+        )
 
-    model.Session.commit()
-    rebuild(package_ids=packages)
+    click.secho("Found {} resource(s)".format(len(resources)), fg="green")
+
+    for resource in resources:
+        resource_path = get_resource_uploader({}).get_path(resource.id)
+        if not path.exists(resource_path):
+            tk.error_shout(
+                f"Resource does not exist with id: {resource.id}"
+            )
+            continue
+
+        size = stat(resource_path).st_size
+        old_size = resource.extras.get("filesize")
+        extras = copy.deepcopy(resource.extras or {})
+        extras["filesize"] = size
+
+        click.secho(
+            f"Resource {resource.name} ({resource.id}). Old size {old_size}, new size {size}",
+            fg="blue",
+        )
+
+        if not update:
+            continue
+
+        resource.extras = extras
+        packages.add(resource.package_id)
+
+    if update:
+        model.Session.commit()
+        rebuild(package_ids=packages)
 
 
 @maintain.command()
