@@ -61,10 +61,11 @@ def organization_update(next_, context, data_dict):
     Add organization fields synchronization logic.
     Add prohibition on changing the organization visibility field.
     """
-    model = context["model"]
-
-    old = model.Group.get(data_dict.get("id"))
-    old_name = old.name if old else None
+    old = toolkit.get_action("organization_show")(
+        {"ignore_auth": True},
+        {"id": data_dict["id"]}
+    )
+    old_name = old["name"] if old else None
     old_visibility = model.Group.get(data_dict["id"]).extras.get(
         const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
     )
