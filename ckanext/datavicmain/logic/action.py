@@ -112,6 +112,8 @@ def organization_update(next_, context, data_dict):
         else:
             ckan.action.organization_patch(id=remote["id"], **patch)
 
+    return result
+
 
 def _is_org_changed(
     old_org: dict[str, Any], new_org: dict[str, Any], tracked_fields: list[str]
