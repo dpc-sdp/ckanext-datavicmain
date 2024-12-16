@@ -114,10 +114,10 @@ def organization_update(next_, context, data_dict):
 
 
 def _is_org_changed(
-    old_org: model.Group, new_org: dict[str, Any], tracked_fields: list[str]
+    old_org: dict[str, Any], new_org: dict[str, Any], tracked_fields: list[str]
 ) -> bool:
     for field_name in tracked_fields:
-        if old_org.__dict__.get(field_name) != new_org.get(field_name):
+        if old_org.get(field_name) != new_org.get(field_name):
             return True
 
     return False
