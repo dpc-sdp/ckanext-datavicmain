@@ -286,7 +286,7 @@ dataset_fields:
   display_group: Security
   form_snippet: text.html
   form_placeholder: Source ICT System
-  display_snippet: link.html
+  display_snippet: text.html
 
 - field_name: record_disposal_category
   label: Record Disposal Category
