@@ -6,6 +6,7 @@
   {% set is_admin = h.has_user_capacity(pkg.organization.id, g.userobj.id, 'admin') %}
   {% set is_editor = h.has_user_capacity(pkg.organization.id, g.userobj.id, 'editor') %}
   {% if g.userobj.sysadmin or is_admin or is_editor %}
+    {{ h.build_nav_icon('dataset.groups', _('Categories'), id=pkg.name, icon=None) }}
     {{ h.build_nav_icon('activity.package_activity', _('Activity Stream'), id=pkg.name, icon=None) }}
   {% endif %}
 
