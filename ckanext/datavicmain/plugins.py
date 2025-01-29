@@ -318,7 +318,6 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
         if repr(toolkit.request) != '<LocalProxy unbound>' \
             and toolkit.get_endpoint()[0] in ['dataset', 'package', "datavic_dataset"]:
             if 'type' in pkg_dict and pkg_dict['type'] in ['dataset', 'package']:
-                helpers.add_package_to_group(pkg_dict, context)
                 # DATAVIC-251 - Create activity for private datasets
                 helpers.set_private_activity(pkg_dict, context, str('changed'))
 
