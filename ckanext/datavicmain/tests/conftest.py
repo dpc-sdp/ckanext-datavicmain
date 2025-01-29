@@ -43,6 +43,7 @@ class UserFactory(factories.UserWithToken):
 @register
 class OrganizationFactory(factories.Organization):
     visibility = const.ORG_UNRESTRICTED
+    url = factory.Faker("url")
 
 
 class SysadminFactory(factories.SysadminWithToken):

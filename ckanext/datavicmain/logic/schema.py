@@ -47,3 +47,12 @@ def delwp_data_request_schema(
         "message": [not_missing, unicode_safe],
         "package_id": [not_missing, unicode_safe, package_id_or_name_exists],
     }
+
+
+@validator_args
+def datatables_view_prioritize(not_empty):
+    return {
+        "resource_id": [
+            not_empty,
+        ],
+    }

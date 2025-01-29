@@ -61,10 +61,11 @@ def organization_update(next_, context, data_dict):
     Add organization fields synchronization logic.
     Add prohibition on changing the organization visibility field.
     """
-    model = context["model"]
-
-    old = model.Group.get(data_dict.get("id"))
-    old_name = old.name if old else None
+    old = toolkit.get_action("organization_show")(
+        {"ignore_auth": True},
+        {"id": data_dict["id"]}
+    )
+    old_name = old["name"] if old else None
     old_visibility = model.Group.get(data_dict["id"]).extras.get(
         const.ORG_VISIBILITY_FIELD, const.ORG_VISIBILITY_DEFAULT
     )
@@ -94,7 +95,10 @@ def organization_update(next_, context, data_dict):
         except ckanapi.NotFound:
             continue
 
-        patch = {f: result[f] for f in tracked_fields if f in result}
+        patch = {
+            f: result[f]
+            for f in tracked_fields if f in result
+        }
 
         if 'image_url' in tracked_fields and result.get('image_display_url'):
             grp_uloader: uploader.PUploader = uploader.get_uploader('group')
@@ -106,10 +110,7 @@ def organization_update(next_, context, data_dict):
             ckan.call_action('organization_patch', data_dict=patch, files={
                 "image_upload": (result['image_url'], file_data)})
         else:
-            ckan.action.organization_patch(
-                id=remote["id"],
-                **patch,
-            )
+            ckan.action.organization_patch(id=remote["id"], **patch)
 
     return result
 
@@ -151,13 +152,21 @@ def organization_list(
     """Restrict organisations. Force all_fields and include_extras, because we
     need visibility field to be here.
     Throw out extra fields later if it's not all_fields initially"""
-    all_fields = data_dict.pop("all_fields", False)
+    all_fields = data_dict.get("all_fields", False)
 
-    data_dict.update({"all_fields": True, "include_extras": True})
+    if all_fields:
+        data_dict.update({"include_extras": True})
 
     context["_skip_restriction_check"] = True
 
     org_list: types.ActionResult.OrganizationList = next_(context, data_dict)
+
+    if not all_fields:
+        orgs = model.Session.query(model.Group)\
+            .filter(model.Group.name.in_(org_list))
+
+        # Intead of all all_fields, lets get the ID from the Objet as it much faster
+        org_list = [{'id': org.id , 'name': org.name} for org in orgs]
 
     filtered_orgs = _hide_restricted_orgs(context, org_list)
 
@@ -221,7 +230,7 @@ def _show_errors_in_sibling_resources(
             "list[type.ErrorDict]", valid_errors.error_dict['resources'])[-1]
     except (KeyError, IndexError):
         error_dict = valid_errors.error_dict
-    
+
     pkg_dict = toolkit.get_action("package_show")(
         context, {"id": data_dict["package_id"]}
     )
@@ -362,3 +371,57 @@ def send_delwp_data_request(context, data_dict):
         return {"success": False}
 
     return {"success": True}
+
+
+@validate(vic_schema.datatables_view_prioritize)
+def datavic_datatables_view_prioritize(
+    context: Context, data_dict: DataDict
+) -> types.DataDict:
+    """Check if the datatables view is prioritized over the recline view.
+    If not, swap their order.
+    """
+    toolkit.check_access("vic_datatables_view_prioritize", context, data_dict)
+
+    resource_id = data_dict["resource_id"]
+    res_views = sorted(
+        model.Session.query(model.ResourceView)
+        .filter(model.ResourceView.resource_id == resource_id)
+        .all(),
+        key=lambda x: x.order,
+    )
+    datatables_views = _filter_views(res_views, "datatables_view")
+    recline_views = _filter_views(res_views, "recline_view")
+
+    if not (
+        datatables_views
+        and recline_views
+        and datatables_views[0].order > recline_views[0].order
+    ):
+        return {"updated": False}
+
+    datatables_views[0].order, recline_views[0].order = (
+        recline_views[0].order,
+        datatables_views[0].order,
+    )
+    order = [view.id for view in sorted(res_views, key=lambda x: x.order)]
+    toolkit.get_action("resource_view_reorder")(
+        {"ignore_auth": True}, {"id": resource_id, "order": order}
+    )
+    return {"updated": True}
+
+
+@toolkit.chained_action
+def resource_view_create(next_, context, data_dict):
+    result = next_(context, data_dict)
+    if data_dict["view_type"] == "datatables_view":
+        toolkit.get_action("datavic_datatables_view_prioritize")(
+            {"ignore_auth": True}, {"resource_id": data_dict["resource_id"]}
+        )
+    return result
+
+
+def _filter_views(
+    res_views: list[model.ResourceView], view_type: str
+) -> list[model.ResourceView]:
+    """Return a list of views with the given view type."""
+    return [view for view in res_views if view.view_type == view_type]

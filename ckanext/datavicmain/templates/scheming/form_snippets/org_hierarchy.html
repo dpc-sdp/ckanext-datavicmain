@@ -6,7 +6,11 @@
     {% set visibility = data.visibility or "unrestricted" %}
 {% endif %}
 
-{% call form.input_block("field-parent", label=_("Parent")) %}
+{% call form.input_block(
+    "field-parent",
+    label=_("Parent"),
+    is_required=h.scheming_field_required(field))
+%}
     <select id="field-parent" name="groups__0__name" data-module="autocomplete datavicmain-organization-visibility">
         {% set selected_parent = (data.get('groups') or [{'name': ''}])[0]['name'] %} {{ selected_parent }}
         <option value="" {% if not selected_parent %} selected="selected" {% endif %}>

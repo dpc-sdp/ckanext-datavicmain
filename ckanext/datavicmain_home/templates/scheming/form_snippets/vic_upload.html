@@ -1,0 +1,32 @@
+{% import 'macros/form.html' as form %}
+
+<div class="form-group control-medium">
+    <label for="upload" class="form-label">{{ _("File") }}</label>
+
+    {% if data.image_id %}
+        <div class="controls align-items-center d-flex mb-3" data-module="vic-entity-file" data-module-item-id="{{ data.id }}">
+            {% set file_info = h.files_link_details(data.image_id) %}
+
+            <div class="image-preview">
+                <img src="{{ file_info.href }}" alt="Uploaded Image" style="max-width: 200px;">
+                <button type="button" class="btn btn-danger vic-remove-image">{{ _("Remove") }}</button>
+            </div>
+
+            <input type="hidden" name="image_id" value="{{ data.image_id }}">
+
+        </div>
+    {% endif %}
+
+    <div class="controls">
+        <input type="file" name="upload" id="file" accept="image/*">
+
+        {%- if field.help_text -%}
+            {% set text = h.scheming_language_text(field.help_text) %}
+            {{- form.info(
+                text=text|safe if field.get('help_allow_html', false) else text,
+                inline=field.get('help_inline', false)
+                ) -}}
+        {%- endif -%}
+
+    </div>
+</div>

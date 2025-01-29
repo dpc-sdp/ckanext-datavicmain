@@ -22,9 +22,11 @@ dataset_fields:
 
 - field_name: alias
   preset: dataset_alias
+  display_group: General
 
 - field_name: notes
   label: Description
+  display_snippet: markdown.html
   form_snippet: markdown.html
   form_placeholder: eg. Some useful notes about the data
   required: true
@@ -152,6 +154,7 @@ dataset_fields:
       label: "Off"
   validators: default(true) boolean_validator
   output_validators: boolean_validator
+  display_group: General
 
   # Security fields
 
@@ -284,7 +287,7 @@ dataset_fields:
   display_group: Security
   form_snippet: text.html
   form_placeholder: Source ICT System
-  display_snippet: link.html
+  display_snippet: text.html
 
 - field_name: record_disposal_category
   label: Record Disposal Category
