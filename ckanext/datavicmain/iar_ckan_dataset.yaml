@@ -9,6 +9,7 @@ dataset_fields:
 - field_name: title
   label: Title
   preset: title
+  form_snippet: large_text.html
   form_placeholder: eg. A descriptive title
   display_group: General
   validators: not_empty unicode_safe
