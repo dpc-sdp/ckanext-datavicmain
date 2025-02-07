@@ -1,32 +1,34 @@
 from __future__ import annotations
 
-import csv
+import copy
 import datetime
 import logging
-import csv
-import openpyxl
 import mimetypes
 
+from os import path, stat
+from itertools import groupby
 from os import path
 from typing import Any
-from sqlalchemy.orm import Query
-from itertools import groupby
 from urllib.parse import urlparse
-
-import click
-import tqdm
 
 import ckan.logic.validators as validators
 import ckan.model as model
 import ckan.plugins.toolkit as tk
+
 import click
+import openpyxl
 import tqdm
 from ckan.lib.munge import munge_title_to_name
+from ckan.lib.search import rebuild, clear
+from ckan.lib.uploader import get_resource_uploader
 from ckan.model import Resource, ResourceView
 from ckan.types import Context
-from sqlalchemy.orm import Query
+from ckanext.datavicmain.helpers import field_choices
+from ckanext.harvest.model import HarvestObject, HarvestSource
+from ckanext.datastore.backend import get_all_resources_ids_in_datastore
 
 from ckanext.harvest.model import HarvestObject, HarvestSource
+from sqlalchemy.orm import Query
 
 log = logging.getLogger(__name__)
 
@@ -424,7 +426,7 @@ def list_delwp_wrong_names():
 
 
 def _get_query_delwp_datasets() -> Query[model.Package]:
-    """Get all DELWP datsets
+    """Get all DELWP datasets
 
     Returns:
         Query[model.Package]: Package model query object
@@ -450,9 +452,9 @@ def identify_resources_with_broken_recline():
             model.ResourceView.resource_id == model.Resource.id,
         )
         .filter(
-            model.ResourceView.view_type.in_([
-                "datatables_view", "recline_view"
-            ])
+            model.ResourceView.view_type.in_(
+                ["datatables_view", "recline_view"]
+            )
         )
     )
 
@@ -477,13 +479,160 @@ def identify_resources_with_broken_recline():
         )
 
 
-@maintain.command(u"update-broken-urls",
-                  short_help=u"Update resources with broken urls")
+@maintain.command
+@click.option("--patch", "-p", is_flag=True, help="Patch missing fields.")
+def handle_missing_mandatory_metadata(patch: bool):
+    """Searches for datasets with missing mandatory metadata and optionally patches them with default values."""
+
+    if not (incomplete_datasets := _search_incomplete_datasets()):
+        click.secho("No incomplete datasets found.", fg="green")
+        return
+
+    click.secho(
+        f"Found {len(incomplete_datasets)} incomplete datasets.", fg="green"
+    )
+
+    for dataset_name, missing_fields in incomplete_datasets.items():
+        click.secho(
+            f"Dataset name: {dataset_name}. Missing fields with patch values:"
+            f" {missing_fields}."
+        )
+
+    if not patch:
+        return
+
+    for dataset_name, missing_fields in tqdm.tqdm(incomplete_datasets.items()):
+        try:
+            tk.get_action("package_patch")(
+                {"ignore_auth": True},
+                {
+                    "id": dataset_name,
+                    **missing_fields,
+                },
+            )
+        except (tk.ValidationError, tk.ObjectNotFound) as e:
+            click.secho(
+                f"Error while patching the package {dataset_name}: {e}"
+            )
+
+
+def _search_incomplete_datasets() -> dict[str, dict[str, str]]:
+    """Identifies datasets with missing fields, preparing patch values to complete them."""
+    incomplete_datasets = {}
+
+    max_rows = tk.config["ckan.search.rows_max"]
+    start = 0
+    has_datasets = True
+
+    while has_datasets:
+        result = tk.get_action("package_search")(
+            {"ignore_auth": True},
+            {
+                "rows": max_rows,
+                "start": start,
+                "include_private": True,
+            },
+        )
+
+        datasets: list[dict[str, Any]] = result["results"]
+        incomplete_datasets.update(_search_in_batch(datasets))
+
+        start += len(datasets)
+        has_datasets = start < result["count"]
+
+    return incomplete_datasets
+
+
+def _search_in_batch(
+    datasets: list[dict[str, Any]],
+) -> dict[str, dict[str, str]]:
+    """Processes a batch of datasets to find and list those with missing fields,
+    providing default values for these fields.
+    """
+    incomplete_datasets = {}
+    for dataset in datasets:
+        missing_fields = {
+            field: _get_default_values_for_missing_fields(dataset, field)
+            for field in _missing_value_fields
+            if not dataset.get(field)
+        }
+
+        update_frequency = dataset.get("update_frequency")
+        choices = [
+            choice["value"] for choice in field_choices("update_frequency")
+        ]
+        if update_frequency and update_frequency not in choices:
+            missing_fields["update_frequency"] = "unknown"
+
+        if missing_fields:
+            incomplete_datasets[dataset["name"]] = missing_fields
+    return incomplete_datasets
+
+
+_missing_value_fields: list[str] = [
+    "date_created_data_asset",
+    "update_frequency",
+    "access",
+    "personal_information",
+    "protective_marking",
+    "category",
+]
+
+
+def _get_default_values_for_missing_fields(
+    dataset: dict[str, Any], field: str
+) -> str:
+    """Get values for missing fields"""
+    if field == "date_created_data_asset":
+        return _get_date_created(dataset)
+    elif field == "update_frequency":
+        return "unknown"
+    elif field == "access":
+        return "yes"
+    elif field == "personal_information":
+        return "no"
+    elif field == "protective_marking":
+        return "official"
+    elif field == "category":
+        return _get_category(dataset)
+    return ""
+
+
+def _get_date_created(pkg: dict[str, Any]) -> str:
+    """For 'date_created_data_asset' returns the oldest 'release_date' from the resources, or the 'metadata_created'
+    date if no 'release_date' are available.
+    """
+    min_release_date = min(
+        [
+            resource["release_date"]
+            for resource in pkg.get("resources", [])
+            if resource.get("release_date")
+        ],
+        default="",
+    )
+    if min_release_date:
+        return min_release_date
+    return pkg.get("metadata_created", "")
+
+
+def _get_category(pkg: dict[str, Any]) -> str:
+    """
+    For missing field 'category' set its value as group id related to this dataset
+    """
+    if groups := pkg.get("groups"):
+        return groups[0].get("id")
+    return ""
+
+
+@maintain.command(
+    "update-broken-urls", short_help="Update resources with broken urls"
+)
 def update_broken_urls():
     """Change resources urls' protocols from http to https listed in XLSX file"""
 
     file = path.join(
-        path.dirname(__file__), "data/DTF Content list bulk URL change 20231017.xlsx"
+        path.dirname(__file__),
+        "data/DTF Content list bulk URL change 20231017.xlsx",
     )
     wb = openpyxl.load_workbook(file)
     ws = wb.active
@@ -500,15 +649,14 @@ def update_broken_urls():
 
         if not resource:
             click.secho(
-                f"Resource <{title}> with URL <{url}> does not exist",
-                fg="red"
+                f"Resource <{title}> with URL <{url}> does not exist", fg="red"
             )
             continue
 
         resource.url = row[XLSX_IDX_NEW_URL].value
         click.secho(
             f"URL of resource <{title}> has been updated to <{resource.url}>",
-            fg="green"
+            fg="green",
         )
 
         model.Session.commit()
@@ -549,3 +697,400 @@ def _suggest_file_format(url: str | None) -> str:
 
     mimetype, _ = mimetypes.guess_type(url)
     return validators.clean_format(mimetype) if mimetype else "unknown"
+
+
+@maintain.command
+def delete_datastore_tables_with_no_related_resource():
+    """Delete from Datastore all tables that do not have a related resource."""
+    res_ids = _get_datastore_tables_with_no_related_resource()
+
+    if not res_ids:
+        click.secho(
+            "Nothing to delete. "
+            "All Datastore tables are associated with an existing resource",
+            fg="green",
+        )
+        return
+
+    for res_id in res_ids:
+        try:
+            click.secho(
+                f"Deleting Datastore table with ID {res_id}", fg="green"
+            )
+            tk.get_action("datastore_delete")(
+                {"ignore_auth": True}, {"resource_id": res_id, "force": True}
+            )
+        except tk.ObjectNotFound:
+            continue
+
+
+@maintain.command
+def list_datastore_tables_with_no_related_resource():
+    """Show all Datastore tables that do not have a related resource."""
+    res_ids = _get_datastore_tables_with_no_related_resource()
+
+    if not res_ids:
+        click.secho(
+            "All Datastore tables are associated with an existing resource",
+            fg="green",
+        )
+        return
+
+    for res_id in res_ids:
+        click.secho(f"{res_id}", fg="red")
+    click.secho(
+        f"Total number of Datastore tables that don't have a related resource is "
+        f"{len(res_ids)}",
+        fg="green",
+    )
+
+
+def _get_datastore_tables_with_no_related_resource() -> list[str]:
+    """Return a list of Datastore table names that are not associated with
+    the currently active resource."""
+    res_ids = []
+    for res_id in get_all_resources_ids_in_datastore():
+        res = model.Resource.get(res_id)
+        if not res or res.state == model.State.DELETED:
+            res_ids.append(res_id)
+    return res_ids
+
+
+@maintain.command()
+@click.option("--update", is_flag=True, type=click.BOOL, default=False)
+def recalculate_resource_size(update: bool):
+    """Update file size for uploaded resources"""
+
+    packages = set()
+    resources = model.Session.query(model.Resource).filter_by(url_type="upload").all()
+
+    if not update:
+        click.secho(
+            "You're in a display mode."
+            " If you want to update the resources, please use the --update flag.",
+            fg="blue",
+            italic=True,
+        )
+
+    click.secho("Found {} resource(s)".format(len(resources)), fg="green")
+
+    for resource in resources:
+        resource_path = get_resource_uploader({}).get_path(resource.id)
+        if not path.exists(resource_path):
+            tk.error_shout(
+                f"Resource does not exist with id: {resource.id}"
+            )
+            continue
+
+        size = stat(resource_path).st_size
+        old_size = resource.extras.get("filesize")
+        extras = copy.deepcopy(resource.extras or {})
+        extras["filesize"] = size
+
+        click.secho(
+            f"Resource {resource.name} ({resource.id}). Old size {old_size}, new size {size}",
+            fg="blue",
+        )
+
+        if not update:
+            continue
+
+        resource.extras = extras
+        packages.add(resource.package_id)
+
+    if update:
+        model.Session.commit()
+        rebuild(package_ids=packages)
+
+
+@maintain.command()
+@click.option(
+    "-e", "--empty", is_flag=True, help="Get resources with empty size"
+)
+@click.option(
+    "-l",
+    "--limit",
+    is_flag=True,
+    help="Get resources with size > max_content_length",
+)
+@click.option(
+    "-r",
+    "--restricted",
+    is_flag=True,
+    help="Get resources with restricted size autocalculation",
+)
+def get_resources_by_size(empty: bool, limit: bool, restricted: bool):
+    """
+    Get resources by file size.
+    Return all resources with not empty size by default
+    """
+
+    resources = model.Session.query(model.Resource).filter_by(state="active")
+    click.secho(
+        f"Total number of resources is {resources.count()}",
+        fg="green",
+    )
+    if empty:
+        resources = resources.filter(model.Resource.size.is_(None))
+    elif limit:
+        resources = resources.filter_by(size=-1)
+    elif restricted:
+        resources = resources.filter_by(size=0)
+    else:
+        resources = resources.filter(model.Resource.size.isnot(None))
+
+    click.secho(
+        "Searching for resources...",
+        fg="green",
+    )
+
+    if not resources:
+        return click.secho("No resources found.", fg="green")
+
+    for resource in resources:
+        if not empty:
+            click.secho(
+                f"Dataset ID {resource.package_id} - resource {resource.name}",
+                fg="green",
+            )
+
+    click.secho(
+        f"Found {resources.count()} resources...",
+        fg="green",
+    )
+
+
+@maintain.command("make-datatables-view-prioritized")
+def make_datatables_view_prioritized():
+    """Check if there are resources that have recline_view and datatables_view and
+    reorder them so that datatables_view is first."""
+    resources = model.Session.query(Resource).all()
+    number_reordered = 0
+    for resource in tqdm.tqdm(resources):
+        result = tk.get_action("datavic_datatables_view_prioritize")(
+            {"ignore_auth": True}, {"resource_id": resource.id}
+        )
+        if result.get("updated"):
+            number_reordered += 1
+    click.secho(f"Reordered {number_reordered} resources", fg="green")
+
+@maintain.command()
+@click.option("--update", is_flag=True, type=click.BOOL, default=False)
+def convert_resources_filesize(update: bool):
+    """Convert resources filesize from non-numeric values to bytes"""
+    if not update:
+        ResourceFilesizeConvert.list_broken_resources()
+    else:
+        ResourceFilesizeConvert.convert()
+
+
+class ResourceFilesizeConvert:
+    @classmethod
+    def list_broken_resources(cls):
+        """List resources with non-valid filesize"""
+        click.secho(
+            "This command will only show the resources with non-numeric filesize."
+            " If you want to update the resources, please use the --update flag.",
+            fg="blue",
+            italic=True,
+        )
+
+        click.secho(
+            "Searching for resources with non-numeric filesize...",
+            fg="blue",
+        )
+
+        resources = ResourceFilesizeConvert.get_broken_resources()
+
+        if not resources:
+            return click.secho(
+                "No resources found with non-numeric filesize.",
+                fg="blue",
+            )
+
+        for resource in ResourceFilesizeConvert.get_broken_resources():
+            old = resource.extras.get("filesize") or "empty"
+            new = cls.convert_to_byte_int(resource.extras.get("filesize"))
+            resource_url = tk.url_for(
+                "resource.read",
+                id=resource.package_id,
+                resource_id=resource.id,
+            )
+
+            click.secho(
+                click.style("Resource ")
+                + click.style(f"{resource_url}", fg="blue", italic=True)
+                + click.style(f" has non-numeric filesize: ")
+                + click.style(f"{old} → {new}", fg="blue", italic=True)
+            )
+
+    @classmethod
+    def get_broken_resources(cls) -> list[Resource]:
+        """Get resources with non-valid filesize"""
+        resources = (
+            model.Session.query(model.Resource)
+            .filter(model.Resource.state == model.State.ACTIVE)
+            .filter(model.Resource.extras.ilike("%filesize%"))
+            .all()
+        )
+
+        return [
+            resource
+            for resource in resources
+            if not cls.is_valid_size(resource.extras.get("filesize", ""))
+        ]
+
+    @classmethod
+    def is_valid_size(cls, size: str | int) -> bool:
+        """Check if the size is valid
+
+        Only integer >= 0 or empty string is valid
+
+        Args:
+            size (str | int): filesize
+
+        Returns:
+            True if the size is valid
+        """
+        if isinstance(size, int) and size >= 0:
+            return True
+
+        if isinstance(size, str) and size == "":
+            return True
+
+        return False
+
+    @classmethod
+    def convert(cls):
+        resources = cls.get_broken_resources()
+        package_ids = set()
+
+        if not resources:
+            return click.secho(
+                "No resources found with non-numeric filesize.",
+                fg="blue",
+            )
+
+        click.secho(
+            f"Total number of broken resources is {len(resources)}",
+            fg="blue",
+        )
+
+        for resource in resources:
+            package_ids.add(resource.package_id)
+
+            old_size = resource.extras.get("filesize")
+            new_size = cls.convert_to_byte_int(resource.extras.get("filesize"))
+
+            resource_url = tk.url_for(
+                "resource.read",
+                id=resource.package_id,
+                resource_id=resource.id,
+            )
+
+            click.secho(
+                click.style("Resource ")
+                + click.style(f"{resource_url}", fg="blue", italic=True)
+                + click.style(f" filesize updated ")
+                + click.style(
+                    f"{old_size} → {new_size}",
+                    fg="blue",
+                    italic=True,
+                )
+            )
+
+            extras = copy.deepcopy(resource.extras or {})
+            extras["filesize"] = new_size
+            resource.extras = extras
+
+        click.secho(
+            "Committing changes and rebuilding the search-index...", fg="blue"
+        )
+
+        model.Session.commit()
+        rebuild(package_ids=package_ids)
+
+    @classmethod
+    def convert_to_byte_int(cls, size: Any) -> int | str:
+        """Convert a string size to bytes integer if possible.
+
+        If we can't calculate the size, we return an empty string, because
+        we have a custom logic, that will try to evaluate the size later.
+        """
+        if isinstance(size, int):
+            return cls.convert_int_to_byte_int(size)
+        elif isinstance(size, str):
+            return cls.convert_string_to_byte_int(size)
+        elif isinstance(size, float):
+            return int(size)
+
+        return ""
+
+    @classmethod
+    def convert_int_to_byte_int(cls, size: int) -> int | str:
+        if size < 0:
+            return ""
+
+        return size
+
+    @classmethod
+    def convert_string_to_byte_int(cls, size: str) -> int | str:
+        size = size.lower()
+
+        if not size:
+            return ""
+
+        if "eg" in size:
+            return ""
+
+        if size.isdigit():
+            return int(size)
+
+        try:
+            return cls.convert_to_bytes(size)
+        except ValueError:
+            pass
+
+        if "." in size:
+            try:
+                return int(float(size))
+            except ValueError:
+                pass
+
+        return ""
+
+    @classmethod
+    def convert_to_bytes(cls, size) -> int:
+        """
+        Convert a human-readable file size string to bytes.
+
+        Args:
+            size (str): File size string (e.g., "7.4 KB", "24MB", "20KB").
+
+        Returns:
+            File size in bytes.
+
+        Raises:
+            ValueError: If the size_str format is invalid.
+        """
+        size = size.strip().upper()
+        size_units = {
+            "BYTES": 1,
+            "KB": 1024,
+            "MB": 1024**2,
+            "GB": 1024**3,
+            "TB": 1024**4,
+            "B": 1,
+        }
+
+        for unit, multiplier in size_units.items():
+            if not size.endswith(unit):
+                continue
+
+            try:
+                value = float(size.replace(unit, "").strip())
+                return int(value * multiplier)
+            except ValueError:
+                raise ValueError(f"Invalid size value: {size}")
+
+        raise ValueError(f"Unrecognized size unit in: {size}")

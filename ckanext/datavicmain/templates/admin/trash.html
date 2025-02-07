@@ -4,7 +4,7 @@
   {% set truncate = truncate or 180 %}
   {% set truncate_title = truncate_title or 80 %}
   <ul class="user-list">
-    {% for pkg in c.deleted_packages %}
+    {% for pkg in data.package %}
       {% set title = pkg.title or pkg.name %}
       <li>
         {{ h.link_to(title|truncate(truncate_title), h.url_for('dataset.read', id=pkg.name)) }}
@@ -13,19 +13,23 @@
         <a class="btn btn-danger" href="/dataset/purge/{{ pkg.id }}">Purge dataset</a>
         <hr />
       </li>
+    {% else %}
+        <li>
+            <em>{{ _('No datasets in trash') }}</em>
+        </li>
     {% endfor %}
 
   </ul>
-  <form method="POST" id="form-purge-packages">
-      {{ h.csrf_input() }}
 
-    <button
-      type="submit"
-      name="purge-packages"
-      value="purge"
-      class="btn btn-danger"
-      >
-      {% trans %}Purge ALL{% endtrans %}
+  <form method="POST" action="{{ h.url_for('datavic_dataset.purge_deleted_datasets') }}">
+    {{ h.csrf_input() }}
+
+    <button class="btn btn-danger purge-all"
+        type="submit"
+        data-module="confirm-action"
+        data-module-with-data=true
+        data-module-content="{{ _('Are you sure you want to purge all datasets?') }}">
+        {{ _('Purge all') }}
     </button>
   </form>
 {% endblock %}

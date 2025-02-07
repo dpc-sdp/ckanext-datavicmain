@@ -9,6 +9,7 @@ dataset_fields:
 - field_name: title
   label: Title
   preset: title
+  form_snippet: large_text.html
   form_placeholder: eg. A descriptive title
   display_group: General
   validators: not_empty unicode_safe
@@ -22,9 +23,11 @@ dataset_fields:
 
 - field_name: alias
   preset: dataset_alias
+  display_group: General
 
 - field_name: notes
   label: Description
+  display_snippet: markdown.html
   form_snippet: markdown.html
   form_placeholder: eg. Some useful notes about the data
   required: true
@@ -54,7 +57,7 @@ dataset_fields:
 - field_name: owner_org
   label: Organization
   display_group: General
-  preset: dataset_organization
+  preset: vic_dataset_organization
 
 - field_name: agency_program_domain
   label: Agency Program/Domain
@@ -152,6 +155,7 @@ dataset_fields:
       label: "Off"
   validators: default(true) boolean_validator
   output_validators: boolean_validator
+  display_group: General
 
   # Security fields
 
@@ -284,7 +288,7 @@ dataset_fields:
   display_group: Security
   form_snippet: text.html
   form_placeholder: Source ICT System
-  display_snippet: link.html
+  display_snippet: text.html
 
 - field_name: record_disposal_category
   label: Record Disposal Category
@@ -322,10 +326,11 @@ dataset_fields:
       label: Family
     - value: all
       label: All
+  validators: datavic_visibility_validator
 
 - field_name: private
   label: Public release
-  validators: boolean_validator
+  validators: boolean_validator datavic_private_validator
   form_snippet: public_release.html # custom select_workflow
   display_group: Workflow
 
@@ -379,7 +384,7 @@ resource_fields:
 
 - field_name: url
   label: URL
-  preset: vic_resource_url_upload
+  preset: resource_url_upload
 
 - field_name: name
   label: Name
@@ -393,7 +398,10 @@ resource_fields:
   validators: if_empty_guess_format not_empty clean_format unicode_safe
 
 - field_name: filesize
-  label: Filesize
+  label: File Size
+  display_snippet: filesize.html
+  validators: ignore_missing datavic_filesize_validator
+  help_text: File size in bytes. Leave blank to allow the platform to detect file size automatically.
 
 - field_name: release_date
   label: Release Date
@@ -415,3 +423,9 @@ resource_fields:
 - field_name: attribution
   label: Attribution Statement
   form_snippet: textarea.html
+
+- field_name: attributes
+  label: Attributes
+  form_snippet: vic_hidden.html
+  display_snippet: null
+  validators: ignore_missing

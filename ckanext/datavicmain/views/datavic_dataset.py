@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import logging
-from typing import Union
+from typing import Union, Any
 
 from flask import Blueprint
+from flask.views import MethodView
 
+import ckan.model as model
 import ckan.plugins.toolkit as tk
 import ckan.logic as logic
 import ckan.lib.navl.dictization_functions as dict_fns
@@ -12,7 +16,7 @@ from ckan.views.dataset import (
     _tag_string_to_list,
     EditView,
 )
-from ckan.types import Context, Response
+from ckan.types import Response, Query
 from ckan.lib.search import SearchIndexError
 
 tuplize_dict = logic.tuplize_dict
@@ -150,10 +154,9 @@ def delwp_request_data(package_type: str, package_id: str):
         tk.abort(403)
 
     data_dict = dict(tk.request.form)
-    data_dict.update({
-        "package_id": pkg_dict["name"],
-        "package_title": pkg_dict["title"]
-    })
+    data_dict.update(
+        {"package_id": pkg_dict["name"], "package_title": pkg_dict["title"]}
+    )
 
     try:
         result = tk.get_action("send_delwp_data_request")({}, data_dict)
@@ -183,12 +186,67 @@ def delwp_request_data(package_type: str, package_id: str):
     )
 
 
+class PurgeDeletedDatasetsView(MethodView):
+    """Custom purge view, cause we don't need to clear orgs and groups"""
+    def __init__(self):
+        self.deleted_packages = self._get_deleted_datasets()
+
+    def _get_deleted_datasets(
+        self,
+    ) -> Union[list[model.Package], list[Any]]:
+        if tk.config.get("ckan.search.remove_deleted_packages"):
+            return self._get_deleted_datasets_from_db()
+        else:
+            return self._get_deleted_datasets_from_search_index()
+
+    def _get_deleted_datasets_from_db(self) -> list[model.Package]:
+        return (
+            model.Session.query(model.Package)
+            .filter_by(state=model.State.DELETED)
+            .all()
+        )
+
+    def _get_deleted_datasets_from_search_index(self) -> list[Any]:
+        package_search = logic.get_action("package_search")
+        search_params = {
+            "fq": "+state:deleted",
+            "include_private": True,
+        }
+        base_results = package_search({"ignore_auth": True}, search_params)
+
+        return base_results["results"]
+
+    def post(self, package_type: str) -> Response:
+        if "cancel" in tk.request.form:
+            return tk.h.redirect_to("admin.trash")
+
+        self.purge_all()
+
+        return tk.h.redirect_to("admin.trash")
+
+    def purge_all(self):
+        for entity in self.deleted_packages:
+            ent_id = (
+                entity.id if hasattr(entity, "id") else entity["id"]  # type: ignore
+            )
+            logic.get_action("dataset_purge")(
+                {"user": tk.current_user.name}, {"id": ent_id}
+            )
+
+        model.Session.remove()
+        tk.h.flash_success(tk._("All datasets have been purged"))
+
+
 def register_datavicmain_plugin_rules(blueprint):
     blueprint.add_url_rule("/new", view_func=DatavicCreateView.as_view("new"))
     blueprint.add_url_rule(
         "/<package_id>/delwp_request_data",
         view_func=delwp_request_data,
         methods=("POST",),
+    )
+    blueprint.add_url_rule(
+        "/purge_deleted_datasets",
+        view_func=PurgeDeletedDatasetsView.as_view("purge_deleted_datasets"),
     )
 
 

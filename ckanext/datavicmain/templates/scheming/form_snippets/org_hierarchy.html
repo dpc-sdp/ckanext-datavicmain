@@ -1,0 +1,41 @@
+{% import 'macros/form.html' as form %}
+
+{% asset "ckanext-datavicmain/datavicmain-organization-visibility" %}
+
+{% if g.view == "edit" %}
+    {% set visibility = data.visibility or "unrestricted" %}
+{% endif %}
+
+{% call form.input_block(
+    "field-parent",
+    label=_("Parent"),
+    is_required=h.scheming_field_required(field))
+%}
+    <select id="field-parent" name="groups__0__name" data-module="autocomplete datavicmain-organization-visibility">
+        {% set selected_parent = (data.get('groups') or [{'name': ''}])[0]['name'] %} {{ selected_parent }}
+        <option value="" {% if not selected_parent %} selected="selected" {% endif %}>
+            {{ _('None - top level') }}
+        </option>
+
+        {% for group in h.datavic_allowable_parent_orgs(data.id) %}
+            {% set restricted = h.datavic_is_org_restricted(group.id) %}
+            {% if visibility == "restricted" %}
+                {% if restricted or group.name == selected_parent %}
+                    <option {% if restricted %}class="restricted"{% endif %} value="{{ group.name }}" {% if group.name == selected_parent %}selected="selected"{% endif %}>
+                        {{ group.title }}
+                    </option>
+                {% endif %}
+            {% elif visibility == "unrestricted" %}
+                {% if not restricted %}
+                    <option value="{{ group.name }}" {% if group.name == selected_parent %}selected="selected"{% endif %}>
+                        {{ group.title }}
+                    </option>
+                {% endif %}
+            {% else %}
+                <option {% if restricted %}class="restricted"{% endif %} value="{{ group.name }}" {% if group.name == selected_parent %}selected="selected"{% endif %}>
+                    {{ group.title }}
+                </option>
+            {% endif %}
+        {% endfor %}
+    </select>
+{% endcall  %}

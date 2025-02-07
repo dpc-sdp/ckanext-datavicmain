@@ -1,0 +1,8 @@
+Dear {{ username }},
+
+{{ username }} has requested {{ role }} access for {{ org_name }} in the VPS Data Directory.
+
+Click here to approve or deny this request: {{ link }}
+
+Kind regards,
+{{ requester }}

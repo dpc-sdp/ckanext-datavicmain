@@ -2,8 +2,13 @@
 
 {% block content_primary_nav %}
   {{ h.build_nav_icon('dataset.read', _('Dataset'), id=pkg.name, icon=None) }}
-  {{ h.build_nav_icon('dataset.groups', _('Categories'), id=pkg.name, icon=None) }}
-  {{ h.build_nav_icon('activity.package_activity', _('Activity Stream'), id=pkg.name, icon=None) }}
+
+  {% set is_admin = h.has_user_capacity(pkg.organization.id, g.userobj.id, 'admin') %}
+  {% set is_editor = h.has_user_capacity(pkg.organization.id, g.userobj.id, 'editor') %}
+  {% if g.userobj.sysadmin or is_admin or is_editor %}
+    {{ h.build_nav_icon('dataset.groups', _('Categories'), id=pkg.name, icon=None) }}
+    {{ h.build_nav_icon('activity.package_activity', _('Activity Stream'), id=pkg.name, icon=None) }}
+  {% endif %}
 
   {% if h.group_resources_by_temporal_range(pkg.resources) | length > 1 %}
     {{ h.build_nav_icon('datavicmain.historical', _('Historical Data and Resources'), package_type=pkg.type, package_id=pkg.name, icon=None) }}
