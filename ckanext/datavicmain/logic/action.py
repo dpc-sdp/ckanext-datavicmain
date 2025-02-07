@@ -115,12 +115,14 @@ def organization_update(next_, context, data_dict):
         else:
             return ckan.action.organization_patch(id=remote["id"], **patch)
 
+    return result
+
 
 def _is_org_changed(
-    old_org: model.Group, new_org: dict[str, Any], tracked_fields: list[str]
+    old_org: dict[str, Any], new_org: dict[str, Any], tracked_fields: list[str]
 ) -> bool:
     for field_name in tracked_fields:
-        if old_org.__dict__.get(field_name) != new_org.get(field_name):
+        if old_org.get(field_name) != new_org.get(field_name):
             return True
 
     return False
@@ -228,12 +230,8 @@ def resource_update(
 
         result = next_(context, data_dict)
         return result
-    except ValidationError as e:
-        if "Virus checker" in e.error_dict:
-            # If the error is due to a virus check, return the error
-            raise e
-
-        _show_errors_in_sibling_resources(context, data_dict, e)
+    except ValidationError as valid_errors:
+        _show_errors_in_sibling_resources(context, data_dict, valid_errors)
 
 
 @toolkit.chained_action
@@ -243,23 +241,8 @@ def resource_create(
     try:
         result = next_(context, data_dict)
         return result
-    except ValidationError as e:
-        if "Virus checker" in e.error_dict:
-            # If the error is due to a virus check, return the error
-            raise e
-
-        _show_errors_in_sibling_resources(context, data_dict, e)
-
-
-@toolkit.chained_action
-def resource_delete(
-    next_: Action, context: Context, data_dict: DataDict
-) -> ActionResult.ResourceDelete:
-    try:
-        result = next_(context, data_dict)
-        return result
-    except ValidationError as e:
-        _show_errors_in_sibling_resources(context, data_dict, e)
+    except ValidationError as valid_errors:
+        _show_errors_in_sibling_resources(context, data_dict, valid_errors)
 
 
 def _show_errors_in_sibling_resources(

@@ -15,7 +15,9 @@ import ckan.lib.authenticator as authenticator
 import ckan.lib.captcha as captcha
 import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
-from ckan import authz
+
+from ckan.common import _, g, request
+from ckan import authz, plugins
 from ckan.lib import signals
 
 from ckanext.mailcraft.utils import get_mailer
