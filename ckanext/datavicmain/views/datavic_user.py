@@ -14,6 +14,12 @@ import ckan.lib.authenticator as authenticator
 import ckan.lib.captcha as captcha
 import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
+
+from flask import Blueprint
+from flask.views import MethodView
+from ckan.common import _, g, request
+from ckan import authz, plugins
+
 from ckan import authz
 from ckan.lib import signals
 
@@ -615,6 +621,30 @@ class RegisterView(MethodView):
         return tk.render("user/new.html", extra_vars)
 
 
+@datavicuser.before_request
+def before_request() -> None:
+    _, action = toolkit.get_endpoint()
+
+    # Skip recaptcha check for login if 2FA is enabled, it will be checked with ckanext-auth
+    if (
+        action == "login"
+        and plugins.plugin_loaded("auth")
+        and toolkit.h.is_2fa_enabled()
+    ):
+        return
+
+    if (
+        request.method == "POST"
+        and action in ["login", "register", "request_reset"]
+        and not config.get("debug")
+    ):
+        try:
+            captcha.check_recaptcha(request)
+        except captcha.CaptchaError:
+            h.flash_error(toolkit._("Bad Captcha. Please try again."))
+            return h.redirect_to(request.url)
+
+
 def register_datavicuser_plugin_rules(blueprint):
     _edit_view = DataVicUserEditView.as_view(str("edit"))
 
@@ -634,6 +664,9 @@ def register_datavicuser_plugin_rules(blueprint):
     blueprint.add_url_rule("/user/me", view_func=me)
     blueprint.add_url_rule(
         "/user/register", view_func=RegisterView.as_view(str("register"))
+    )
+    blueprint.add_url_rule(
+        "/user/login", view_func=user.login, methods=("GET", "POST")
     )
 
 

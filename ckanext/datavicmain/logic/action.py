@@ -245,7 +245,7 @@ def _show_errors_in_sibling_resources(
         "package_update",
     )
 
-    resources_errors = errors.pop("resources", [])
+    resources_errors = errors.get("resources", [])
 
     for i, resource_error in enumerate(resources_errors):
         if not resource_error or data_dict.get("id") == pkg_dict["resources"][i]["id"]:
