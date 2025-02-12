@@ -15,12 +15,9 @@ import ckan.lib.captcha as captcha
 import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
 
-from flask import Blueprint
-from flask.views import MethodView
-from ckan.common import _, g, request
+from ckan.common import request
 from ckan import authz, plugins
 
-from ckan import authz
 from ckan.lib import signals
 
 from ckanext.mailcraft.utils import get_mailer
@@ -441,7 +438,7 @@ def approve(user_id: str):
         return tk.h.redirect_to("user.read", id=user["name"])
     except tk.NotAuthorized:
         tk.abort(403, tk._("Unauthorized to activate user."))
-    except tk.ObjectNotFound as e:
+    except tk.ObjectNotFound:
         tk.abort(404, tk._("User not found"))
     except dictization_functions.DataError:
         tk.abort(400, tk._("Integrity Error"))
@@ -494,7 +491,7 @@ def deny(id):
         return tk.h.redirect_to("user.read", id=user["name"])
     except tk.NotAuthorized:
         tk.abort(403, tk._("Unauthorized to reject user."))
-    except tk.ObjectNotFound as e:
+    except tk.ObjectNotFound:
         tk.abort(404, tk._("User not found"))
     except dictization_functions.DataError:
         tk.abort(400, tk._("Integrity Error"))
@@ -623,26 +620,26 @@ class RegisterView(MethodView):
 
 @datavicuser.before_request
 def before_request() -> None:
-    _, action = toolkit.get_endpoint()
+    _, action = tk.get_endpoint()
 
     # Skip recaptcha check for login if 2FA is enabled, it will be checked with ckanext-auth
     if (
         action == "login"
         and plugins.plugin_loaded("auth")
-        and toolkit.h.is_2fa_enabled()
+        and tk.h.is_2fa_enabled()
     ):
         return
 
     if (
         request.method == "POST"
         and action in ["login", "register", "request_reset"]
-        and not config.get("debug")
+        and not tk.config.get("debug")
     ):
         try:
             captcha.check_recaptcha(request)
         except captcha.CaptchaError:
-            h.flash_error(toolkit._("Bad Captcha. Please try again."))
-            return h.redirect_to(request.url)
+            tk.h.flash_error(tk._("Bad Captcha. Please try again."))
+            return tk.h.redirect_to(request.url)
 
 
 def register_datavicuser_plugin_rules(blueprint):
