@@ -16,8 +16,7 @@ import ckan.lib.captcha as captcha
 import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
 
-from ckan.common import _, g, request
-from ckan import authz, plugins
+from ckan import authz
 from ckan.lib import signals
 
 from ckanext.mailcraft.utils import get_mailer
@@ -25,7 +24,6 @@ from ckanext.mailcraft.exception import MailerException
 
 import ckanext.datavicmain.utils as utils
 import ckanext.datavicmain.helpers as helpers
-import ckanext.datavicmain.utils as utils
 
 log = logging.getLogger(__name__)
 
@@ -439,7 +437,7 @@ def approve(user_id: str):
         return tk.h.redirect_to("user.read", id=user["name"])
     except tk.NotAuthorized:
         tk.abort(403, tk._("Unauthorized to activate user."))
-    except tk.ObjectNotFound as e:
+    except tk.ObjectNotFound:
         tk.abort(404, tk._("User not found"))
     except dictization_functions.DataError:
         tk.abort(400, tk._("Integrity Error"))
@@ -492,7 +490,7 @@ def deny(id):
         return tk.h.redirect_to("user.read", id=user["name"])
     except tk.NotAuthorized:
         tk.abort(403, tk._("Unauthorized to reject user."))
-    except tk.ObjectNotFound as e:
+    except tk.ObjectNotFound:
         tk.abort(404, tk._("User not found"))
     except dictization_functions.DataError:
         tk.abort(400, tk._("Integrity Error"))
@@ -633,7 +631,7 @@ def before_request() -> None:
         try:
             captcha.check_recaptcha(tk.request)
         except captcha.CaptchaError:
-            tk.h.flash_error(tk._(u'Bad Captcha. Please try again.'))
+            tk.h.flash_error(tk._(u"Bad Captcha. Please try again."))
             return tk.h.redirect_to(tk.request.url)
 
 
