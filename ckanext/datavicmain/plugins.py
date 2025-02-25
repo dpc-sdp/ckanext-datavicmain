@@ -4,9 +4,10 @@ from __future__ import annotations
 import time
 import calendar
 import logging
-
-from typing import Any
+from typing import Any, Optional
 from datetime import datetime
+
+from flask import Response, session
 
 import ckan.authz as authz
 import ckan.model as model
@@ -421,3 +422,11 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             else:
                 resource["filesize"] = get_resource_size(resource["url"])
             toolkit.get_action("resource_update")(context, resource)
+
+    # IAuthenticator
+
+    def login(self) -> Optional[Response]:
+        session.regenerate_id()
+
+    def logout(self) -> Optional[Response]:
+        session.regenerate_id()
