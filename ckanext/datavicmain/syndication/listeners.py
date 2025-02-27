@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-import os
 import logging
+import os
 from typing import Any
-from werkzeug.datastructures import FileStorage as FlaskFileStorage
-import requests
 
-import ckan.plugins.toolkit as tk
-import ckan.model as model
-from ckan.lib.uploader import get_resource_uploader
 import ckanapi
+import requests
+from werkzeug.datastructures import FileStorage as FlaskFileStorage
+
+import ckan.model as model
+import ckan.plugins.toolkit as tk
+from ckan.lib.uploader import get_resource_uploader
 
 import ckanext.syndicate.signals as signals
 from ckanext.syndicate.utils import get_target
@@ -103,8 +104,8 @@ def _synchronize_views(res: dict[str, Any], ckan: ckanapi.RemoteCKAN):
     )
 
     if len(remote) == len(local) and all(
-            _view_data(left) == _view_data(right)
-            for left, right in zip(local, remote)
+        _view_data(left) == _view_data(right)
+        for left, right in zip(local, remote)
     ):
         log.debug("Skip view synchronization because views are identical")
         return

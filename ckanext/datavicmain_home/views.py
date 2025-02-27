@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 import logging
-from typing import Union, Any, cast
+from typing import Any, Union
 
-from flask.views import MethodView
 from flask import Blueprint, jsonify
+from flask.views import MethodView
 
-from ckan import types, model
+from ckan import types
+from ckan.lib.navl.dictization_functions import convert
+from ckan.logic import parse_params
 from ckan.plugins import toolkit as tk
 from ckan.types import Response
-from ckan.logic import parse_params
-from ckan.lib.navl.dictization_functions import convert
-
-from ckanext.scheming.validation import validators_from_string
 
 from ckanext.datavicmain_home import utils
+from ckanext.scheming.validation import validators_from_string
 
 log = logging.getLogger(__name__)
 

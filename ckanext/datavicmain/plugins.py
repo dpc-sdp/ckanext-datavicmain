@@ -1,11 +1,11 @@
 # Plugins for ckanext-datavicmain
 from __future__ import annotations
 
-import time
 import calendar
 import logging
-from typing import Any, Optional
+import time
 from datetime import datetime
+from typing import Any, Optional
 
 from flask import Response, session
 
@@ -13,20 +13,18 @@ import ckan.authz as authz
 import ckan.model as model
 import ckan.plugins as p
 import ckan.plugins.toolkit as toolkit
-
 from ckan.types import Context
 
 from ckanext.datavic_harvester.harvesters.base import get_resource_size
-from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.oidc_pkce.interfaces import IOidcPkce
+from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.transmute.interfaces import ITransmute
 
-from ckanext.datavicmain import helpers, cli
+from ckanext.datavicmain import cli, helpers
+from ckanext.datavicmain.implementation import PermissionLabels
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.transmutators import get_transmutators
-
-from ckanext.datavicmain.implementation import PermissionLabels
-
+from ckanext.datavicmain.views import get_blueprints
 
 config = toolkit.config
 request = toolkit.request
@@ -37,15 +35,16 @@ workflow_enabled = False
 CONFIG_EXTRA_ALLOWED = "ckanext.datavicmain.extra_allowed_routes"
 
 # Conditionally import the the workflow extension helpers if workflow extension enabled in .ini
-if "workflow" in config.get('ckan.plugins', False):
+if "workflow" in config.get("ckan.plugins", False):
     from ckanext.workflow import helpers as workflow_helpers
+
     workflow_enabled = True
 
 
 def parse_date(date_str):
     try:
         return calendar.timegm(time.strptime(date_str, "%Y-%m-%d"))
-    except Exception as e:
+    except Exception:
         return None
 
 
@@ -56,10 +55,14 @@ def release_date(pkg_dict):
     :return:
     """
     dates = []
-    dates.append(pkg_dict['metadata_created'])
-    for resource in pkg_dict['resources']:
-        if 'release_date' in resource and resource['release_date'] != '' and resource['release_date'] != '1970-01-01':
-            dates.append(resource['release_date'])
+    dates.append(pkg_dict["metadata_created"])
+    for resource in pkg_dict["resources"]:
+        if (
+            "release_date" in resource
+            and resource["release_date"] != ""
+            and resource["release_date"] != "1970-01-01"
+        ):
+            dates.append(resource["release_date"])
     dates.sort()
     return dates[0].split("T")[0]
 
@@ -68,10 +71,13 @@ def release_date(pkg_dict):
 @toolkit.blanket.actions
 @toolkit.blanket.validators
 @toolkit.blanket.config_declarations
-class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetForm):
-    ''' A plugin that provides some metadata fields and
+class DatasetForm(
+    PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetForm
+):
+    """A plugin that provides some metadata fields and
     overrides the default dataset form
-    '''
+    """
+
     p.implements(p.ITemplateHelpers)
     p.implements(p.IConfigurer, inherit=True)
     p.implements(p.IPackageController, inherit=True)
@@ -82,10 +88,9 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
     p.implements(IOidcPkce, inherit=True)
     p.implements(ITransmute, inherit=True)
 
-
     # IBlueprint
     def get_blueprint(self):
-        return helpers._register_blueprints()
+        return get_blueprints()
 
     # IOidcPkce
 
@@ -94,34 +99,38 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
         if not toolkit.h.is_user_account_pending_review(user.id):
             return None
 
-        toolkit.h.flash_success(toolkit._('Your requested account has been submitted for review'))
-        return toolkit.h.redirect_to('home.index')
+        toolkit.h.flash_success(
+            toolkit._("Your requested account has been submitted for review")
+        )
+        return toolkit.h.redirect_to("home.index")
 
     @classmethod
     def organization_list_objects(cls, org_names=[]):
-        ''' Make a action-api call to fetch the a list of full dict objects (for each organization) '''
+        """Make a action-api call to fetch the a list of full dict objects (for each organization)"""
         context = {
-            'model': model,
-            'session': model.Session,
-            'user': toolkit.g.user,
+            "model": model,
+            "session": model.Session,
+            "user": toolkit.g.user,
         }
 
-        options = {'all_fields': True}
+        options = {"all_fields": True}
         if org_names and len(org_names):
             t = type(org_names[0])
             if t is str:
-                options['organizations'] = org_names
+                options["organizations"] = org_names
             elif t is dict:
-                options['organizations'] = map(lambda org: org.get('name'), org_names)
+                options["organizations"] = map(
+                    lambda org: org.get("name"), org_names
+                )
 
-        return get_action('organization_list')(context, options)
+        return get_action("organization_list")(context, options)
 
     @classmethod
     def organization_dict_objects(cls, org_names=[]):
-        ''' Similar to organization_list_objects but returns a dict keyed to the organization name. '''
+        """Similar to organization_list_objects but returns a dict keyed to the organization name."""
         results = {}
         for org in cls.organization_list_objects(org_names):
-            results[org['name']] = org
+            results[org["name"]] = org
         return results
 
     @classmethod
@@ -132,7 +141,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
                 return True
             else:
                 role = workflow_helpers.role_in_org(owner_org, user.name)
-                if role == 'admin':
+                if role == "admin":
                     return True
 
     def is_sysadmin(self):
@@ -148,19 +157,18 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
 
         def parse_date(date_str: str | None) -> datetime:
             return (
-                datetime.strptime(date_str, "%Y-%m-%d") if date_str else datetime.min
+                datetime.strptime(date_str, "%Y-%m-%d")
+                if date_str
+                else datetime.min
             )
 
-        grouped_resources: dict[
-            tuple[datetime], list[dict[str, Any]]
-        ] = {}
+        grouped_resources: dict[tuple[datetime], list[dict[str, Any]]] = {}
 
         for resource in resource_list:
             end_date = parse_date(resource.get("period_end"))
 
             grouped_resources.setdefault((end_date,), [])
             grouped_resources[(end_date,)].append(resource)
-
 
         sorted_grouped_resources = dict(
             sorted(
@@ -180,144 +188,186 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
         ]
 
     def is_historical(self):
-        if toolkit.get_endpoint()[1] == 'historical':
+        if toolkit.get_endpoint()[1] == "historical":
             return True
 
     def get_formats(self, limit=100):
         try:
             # Get any additional formats added in the admin settings
-            additional_formats = [x.strip() for x in config.get('ckan.datavic.authorised_resource_formats', []).split(',')]
-            q = request.GET.get('q', '')
-            list_of_formats = [x.encode('utf-8') for x in
-                               get_action('format_autocomplete')({}, {'q': q, 'limit': limit}) if x] + additional_formats
+            additional_formats = [
+                x.strip()
+                for x in config.get(
+                    "ckan.datavic.authorised_resource_formats", []
+                ).split(",")
+            ]
+            q = request.GET.get("q", "")
+            list_of_formats = [
+                x.encode("utf-8")
+                for x in get_action("format_autocomplete")(
+                    {}, {"q": q, "limit": limit}
+                )
+                if x
+            ] + additional_formats
             list_of_formats = sorted(list(set(list_of_formats)))
             dict_of_formats = []
             for item in list_of_formats:
-                if item == ' ' or item == '':
+                if item == " " or item == "":
                     continue
                 else:
-                    dict_of_formats.append({'value': item.lower(), 'text': item.upper()})
-            dict_of_formats.insert(0, {'value': '', 'text': 'Please select'})
+                    dict_of_formats.append(
+                        {"value": item.lower(), "text": item.upper()}
+                    )
+            dict_of_formats.insert(0, {"value": "", "text": "Please select"})
 
-        except Exception as e:
+        except Exception:
             return []
         else:
             return dict_of_formats
 
     def repopulate_user_role(self):
-        if 'submit' in request.args:
-            return request.args['role']
+        if "submit" in request.args:
+            return request.args["role"]
         else:
-            return 'member'
+            return "member"
 
     ## ITemplateHelpers interface ##
 
     def get_helpers(self):
-        ''' Return a dict of named helper functions (as defined in the ITemplateHelpers interface).
+        """Return a dict of named helper functions (as defined in the ITemplateHelpers interface).
         These helpers will be available under the 'h' thread-local global object.
-        '''
+        """
         return {
-            'organization_list_objects': self.organization_list_objects,
-            'organization_dict_objects': self.organization_dict_objects,
-            'dataset_extra_fields': helpers.dataset_fields,
-            'resource_extra_fields': helpers.resource_fields,
-            'workflow_status_options': helpers.workflow_status_options,
-            'is_admin': self.is_admin,
-            'workflow_status_pretty': helpers.workflow_status_pretty,
-            'group_resources_by_temporal_range': self.group_resources_by_temporal_range,
-            'ungroup_temporal_resources': self.ungroup_temporal_resources,
-            'is_historical': self.is_historical,
-            'get_formats': self.get_formats,
-            'is_sysadmin': self.is_sysadmin,
-            'repopulate_user_role': self.repopulate_user_role,
-            'group_list': helpers.group_list,
-            'autoselect_workflow_status_option': helpers.autoselect_workflow_status_option,
-            'release_date': release_date,
-            'is_dataset_harvested': helpers.is_dataset_harvested,
-            'is_user_account_pending_review': helpers.is_user_account_pending_review,
-            'option_value_to_label': helpers.option_value_to_label,
-            'field_choices': helpers.field_choices,
-            'user_org_can_upload': helpers.user_org_can_upload,
-            'is_ready_for_publish': helpers.is_ready_for_publish,
-            'get_digital_twin_resources': helpers.get_digital_twin_resources,
-            'url_for_dtv_config': helpers.url_for_dtv_config,
+            "organization_list_objects": self.organization_list_objects,
+            "organization_dict_objects": self.organization_dict_objects,
+            "dataset_extra_fields": helpers.dataset_fields,
+            "resource_extra_fields": helpers.resource_fields,
+            "workflow_status_options": helpers.workflow_status_options,
+            "is_admin": self.is_admin,
+            "workflow_status_pretty": helpers.workflow_status_pretty,
+            "group_resources_by_temporal_range": (
+                self.group_resources_by_temporal_range
+            ),
+            "ungroup_temporal_resources": self.ungroup_temporal_resources,
+            "is_historical": self.is_historical,
+            "get_formats": self.get_formats,
+            "is_sysadmin": self.is_sysadmin,
+            "repopulate_user_role": self.repopulate_user_role,
+            "group_list": helpers.group_list,
+            "autoselect_workflow_status_option": (
+                helpers.autoselect_workflow_status_option
+            ),
+            "release_date": release_date,
+            "is_dataset_harvested": helpers.is_dataset_harvested,
+            "is_user_account_pending_review": (
+                helpers.is_user_account_pending_review
+            ),
+            "option_value_to_label": helpers.option_value_to_label,
+            "field_choices": helpers.field_choices,
+            "user_org_can_upload": helpers.user_org_can_upload,
+            "is_ready_for_publish": helpers.is_ready_for_publish,
+            "get_digital_twin_resources": helpers.get_digital_twin_resources,
+            "url_for_dtv_config": helpers.url_for_dtv_config,
             "datavic_org_uploads_allowed": helpers.datavic_org_uploads_allowed,
             "get_group": helpers.get_group,
             "dtv_exceeds_max_size_limit": helpers.dtv_exceeds_max_size_limit,
-            "datavic_user_is_a_member_of_org": helpers.datavic_user_is_a_member_of_org,
-            "datavic_is_pending_request_to_join_org": helpers.datavic_is_pending_request_to_join_org,
+            "datavic_user_is_a_member_of_org": (
+                helpers.datavic_user_is_a_member_of_org
+            ),
+            "datavic_is_pending_request_to_join_org": (
+                helpers.datavic_is_pending_request_to_join_org
+            ),
             "datavic_is_org_restricted": helpers.datavic_is_org_restricted,
-            "datavic_org_has_restricted_parents": helpers.datavic_org_has_restricted_parents,
-            "datavic_restrict_hierarchy_tree": helpers.datavic_restrict_hierarchy_tree,
-            "datavic_org_has_unrestricted_child": helpers.datavic_org_has_unrestricted_child,
+            "datavic_org_has_restricted_parents": (
+                helpers.datavic_org_has_restricted_parents
+            ),
+            "datavic_restrict_hierarchy_tree": (
+                helpers.datavic_restrict_hierarchy_tree
+            ),
+            "datavic_org_has_unrestricted_child": (
+                helpers.datavic_org_has_unrestricted_child
+            ),
             "group_tree_parents": helpers.group_tree_parents,
             "add_current_organisation": helpers.add_current_organisation,
             "datavic_max_image_size": helpers.datavic_max_image_size,
-            "get_user_organizations": helpers.get_user_organizations,
             "datavic_get_dtv_url": helpers.datavic_get_dtv_url,
+            "get_user_organizations": helpers.get_user_organizations,
             "localized_filesize": helpers.localized_filesize,
-            "datavic_update_org_error_dict": helpers.datavic_update_org_error_dict,
+            "datavic_update_org_error_dict": (
+                helpers.datavic_update_org_error_dict
+            ),
             "datavic_get_org_roles": helpers.datavic_get_org_roles,
-            "datavic_get_user_roles_in_org": helpers.datavic_get_user_roles_in_org,
-            "datavic_allowable_parent_orgs": helpers.datavic_allowable_parent_orgs,
+            "datavic_get_user_roles_in_org": (
+                helpers.datavic_get_user_roles_in_org
+            ),
+            "datavic_allowable_parent_orgs": (
+                helpers.datavic_allowable_parent_orgs
+            ),
             "has_user_capacity": helpers.has_user_capacity,
         }
 
     ## IConfigurer interface ##
     def update_config_schema(self, schema):
-        schema.update({
-            'ckan.datavic.authorised_resource_formats': [
-                toolkit.get_validator('ignore_missing'),
-                toolkit.get_validator('unicode_safe'),
-
-            ],
-            'ckan.datavic.request_access_review_emails': [
-                toolkit.get_validator('ignore_missing'),
-                toolkit.get_validator('unicode_safe'),
-            ]
-        })
+        schema.update(
+            {
+                "ckan.datavic.authorised_resource_formats": [
+                    toolkit.get_validator("ignore_missing"),
+                    toolkit.get_validator("unicode_safe"),
+                ],
+                "ckan.datavic.request_access_review_emails": [
+                    toolkit.get_validator("ignore_missing"),
+                    toolkit.get_validator("unicode_safe"),
+                ],
+            }
+        )
 
         return schema
 
     def update_config(self, config):
-        ''' Setup the (fanstatic) resource library, public and template directory '''
-        p.toolkit.add_public_directory(config, 'public')
-        p.toolkit.add_template_directory(config, 'templates')
-        p.toolkit.add_resource('public', 'ckanext-datavicmain')
-        p.toolkit.add_resource('webassets', 'ckanext-datavicmain')
-        p.toolkit.add_ckan_admin_tab(
-            p.toolkit.config,
-            'datavicmain.admin_report',
-            'Admin Report',
-            icon='user-o'
-        )
+        """Setup the (fanstatic) resource library, public and template directory"""
+        p.toolkit.add_public_directory(config, "public")
+        p.toolkit.add_template_directory(config, "templates")
+        p.toolkit.add_resource("public", "ckanext-datavicmain")
+        p.toolkit.add_resource("webassets", "ckanext-datavicmain")
 
     # IPackageController
 
     def after_dataset_create(self, context, pkg_dict):
         # Only add packages to groups when being created via the CKAN UI
         # (i.e. not during harvesting)
-        if repr(toolkit.request) != '<LocalProxy unbound>' \
-            and toolkit.get_endpoint()[0] in ['dataset', 'package', "datavic_dataset"]:
+        if repr(
+            toolkit.request
+        ) != "<LocalProxy unbound>" and toolkit.get_endpoint()[0] in [
+            "dataset",
+            "package",
+            "datavic_dataset",
+        ]:
             # Add the package to the group ("category")
-            pkg_group = pkg_dict.get('category', None)
-            pkg_name = pkg_dict.get('name', None)
-            pkg_type = pkg_dict.get('type', None)
-            if pkg_group and pkg_type in ['dataset', 'package']:
+            pkg_group = pkg_dict.get("category", None)
+            pkg_name = pkg_dict.get("name", None)
+            pkg_type = pkg_dict.get("type", None)
+            if pkg_group and pkg_type in ["dataset", "package"]:
                 group = model.Group.get(pkg_group)
                 group.add_package_by_name(pkg_name)
                 # DATAVIC-251 - Create activity for private datasets
-                helpers.set_private_activity(pkg_dict, context, str('new'))
+                helpers.set_private_activity(pkg_dict, context, str("new"))
         pass
 
     def after_dataset_update(self, context, pkg_dict):
         # Only add packages to groups when being updated via the CKAN UI
         # (i.e. not during harvesting)
-        if repr(toolkit.request) != '<LocalProxy unbound>' \
-            and toolkit.get_endpoint()[0] in ['dataset', 'package', "datavic_dataset"]:
-            if 'type' in pkg_dict and pkg_dict['type'] in ['dataset', 'package']:
+        if repr(
+            toolkit.request
+        ) != "<LocalProxy unbound>" and toolkit.get_endpoint()[0] in [
+            "dataset",
+            "package",
+            "datavic_dataset",
+        ]:
+            if "type" in pkg_dict and pkg_dict["type"] in [
+                "dataset",
+                "package",
+            ]:
                 # DATAVIC-251 - Create activity for private datasets
-                helpers.set_private_activity(pkg_dict, context, str('changed'))
+                helpers.set_private_activity(pkg_dict, context, str("changed"))
 
     def before_dataset_index(self, pkg_dict: dict[str, Any]) -> dict[str, Any]:
         if pkg_dict.get("res_format"):
@@ -326,8 +376,9 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
                 for res_format in pkg_dict["res_format"]
             ]
 
-        if pkg_dict.get("res_format") and self._is_all_api_format(pkg_dict):
-            pkg_dict.get("res_format").append("ALL_API")
+            if self._is_all_api_format(pkg_dict):
+                pkg_dict["res_format"].append("ALL_API")
+
         return pkg_dict
 
     def _is_all_api_format(self, pkg_dict: dict[str, Any]) -> bool:
@@ -335,9 +386,13 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
         This involves determining if the format of the resource is CSV and if this resource exists in the datastore
         or matches a format inside a predefined list.
         """
-        for resource in toolkit.get_action("package_show")({"ignore_auth": True}, {"id": pkg_dict["id"]}).get(
-                "resources", []):
-            if resource["format"].upper() == "CSV" and resource["datastore_active"]:
+        for resource in toolkit.get_action("package_show")(
+            {"ignore_auth": True}, {"id": pkg_dict["id"]}
+        ).get("resources", []):
+            if (
+                resource["format"].upper() == "CSV"
+                and resource.get("datastore_active")
+            ):
                 return True
 
         if [
@@ -361,14 +416,14 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
         return cli.get_commands()
 
     # ISyndicate
-    def _requires_public_removal(self, pkg: model.Package, profile: Profile) -> bool:
-        """Decide, whether the package must be deleted from Discover.
-        """
+    def _requires_public_removal(
+        self, pkg: model.Package, profile: Profile
+    ) -> bool:
+        """Decide, whether the package must be deleted from Discover."""
         is_syndicated = bool(pkg.extras.get(profile.field_id))
         is_deleted = pkg.state == "deleted"
         is_archived = pkg.extras.get("workflow_status") == "archived"
         return is_syndicated and (is_deleted or is_archived)
-
 
     def prepare_package_for_syndication(self, package_id, data_dict, profile):
         if profile.id == "odp":
@@ -386,11 +441,17 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
         self, package: model.Package, profile: Profile
     ) -> bool:
         if toolkit.h.datavic_is_org_restricted(package.owner_org):
-            log.debug("Do not syndicate %s because its organisation is restricted", package.id)
+            log.debug(
+                "Do not syndicate %s because its organisation is restricted",
+                package.id,
+            )
             return True
 
         if package.type == "harvest":
-            log.debug("Do not syndicate %s because it is a harvest source", package.id)
+            log.debug(
+                "Do not syndicate %s because it is a harvest source",
+                package.id,
+            )
             return True
 
         if self._requires_public_removal(package, profile):
@@ -401,8 +462,10 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             log.debug("Do not syndicate %s because it is private", package.id)
             return True
 
-        if  'published' != package.extras.get("workflow_status"):
-            log.debug("Do not syndicate %s because it is not published", package.id)
+        if "published" != package.extras.get("workflow_status"):
+            log.debug(
+                "Do not syndicate %s because it is not published", package.id
+            )
             return True
 
         return False
@@ -415,7 +478,8 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
     # IResourceController
 
     def after_resource_create(
-            self, context: Context, resource: dict[str, Any]) -> None:
+        self, context: Context, resource: dict[str, Any]
+    ) -> None:
         if not resource.get("filesize"):
             if resource["url_type"] == "upload":
                 resource["filesize"] = resource["size"]
@@ -426,7 +490,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
     # IAuthenticator
 
     def login(self) -> Optional[Response]:
-        session.regenerate_id()
+        session.modified = True
 
     def logout(self) -> Optional[Response]:
-        session.regenerate_id()
+        session.modified = True

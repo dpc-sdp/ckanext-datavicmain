@@ -3,13 +3,13 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from ckan import model
-from ckan.model.types import make_uuid
-from ckan.plugins import toolkit as tk
 from sqlalchemy import Boolean, Column, DateTime, Integer, Text
 from sqlalchemy.orm import Query
 from typing_extensions import Self
 
+from ckan import model
+from ckan.model.types import make_uuid
+from ckan.plugins import toolkit as tk
 
 log = logging.getLogger(__name__)
 

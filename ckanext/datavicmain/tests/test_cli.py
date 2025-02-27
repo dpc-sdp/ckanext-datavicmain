@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Callable, Any
+from typing import Any, Callable
 
 import pytest
 
-import ckanext.datavicmain.cli as cli
-
 import ckan.model as model
 from ckan.tests.helpers import call_action
+
+import ckanext.datavicmain.cli as cli
 
 
 class TestResourceFilesizeConvert:

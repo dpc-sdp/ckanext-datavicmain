@@ -78,5 +78,5 @@ class TestOrganizationCreate(object):
             context=context,
             name=factories.Organization.stub().name,
         )
-        
+
         assert result

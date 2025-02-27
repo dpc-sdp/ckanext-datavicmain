@@ -1,23 +1,23 @@
 from __future__ import annotations
 
 import logging
-from typing import Union, Any
+from typing import Any, Union
 
 from flask import Blueprint
 from flask.views import MethodView
 
+import ckan.lib.navl.dictization_functions as dict_fns
+import ckan.logic as logic
 import ckan.model as model
 import ckan.plugins.toolkit as tk
-import ckan.logic as logic
-import ckan.lib.navl.dictization_functions as dict_fns
+from ckan.lib.search import SearchIndexError
+from ckan.types import Response
 from ckan.views.dataset import (
     CreateView,
+    EditView,
     _form_save_redirect,
     _tag_string_to_list,
-    EditView,
 )
-from ckan.types import Response, Query
-from ckan.lib.search import SearchIndexError
 
 tuplize_dict = logic.tuplize_dict
 clean_dict = logic.clean_dict
@@ -150,7 +150,7 @@ class DatavicCreateView(CreateView):
 def delwp_request_data(package_type: str, package_id: str):
     try:
         pkg_dict = tk.get_action("package_show")({}, {"id": package_id})
-    except (tk.ObjectNotFound, tk.NotAuthorized) as e:
+    except (tk.ObjectNotFound, tk.NotAuthorized):
         tk.abort(403)
 
     data_dict = dict(tk.request.form)
@@ -188,6 +188,7 @@ def delwp_request_data(package_type: str, package_id: str):
 
 class PurgeDeletedDatasetsView(MethodView):
     """Custom purge view, cause we don't need to clear orgs and groups"""
+
     def __init__(self):
         self.deleted_packages = self._get_deleted_datasets()
 

@@ -3,12 +3,12 @@ from __future__ import annotations
 import logging
 from typing import Any, TypedDict
 
-import ckan.types as types
 import ckan.model as model
 import ckan.plugins.toolkit as tk
+import ckan.types as types
 
-from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.mailer import MailerException
+from ckanext.mailcraft.utils import get_mailer
 
 import ckanext.datavicmain.const as const
 
