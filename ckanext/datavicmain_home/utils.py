@@ -4,7 +4,7 @@ from typing import Any
 
 
 def get_config_schema() -> dict[Any, Any]:
-    from ckanext.scheming.plugins import _load_schemas, _expand_schemas
+    from ckanext.scheming.plugins import _expand_schemas, _load_schemas
 
     schemas = _load_schemas(
         ["ckanext.datavicmain_home:config_schema.yaml"], "schema_id"

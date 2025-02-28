@@ -1,23 +1,26 @@
 from __future__ import annotations
 
-import pytest
 from unittest import mock
 
-import ckan.plugins.toolkit as tk
+import pytest
+
 import ckan.model as model
-from ckan.tests.helpers import call_action
+import ckan.plugins.toolkit as tk
 from ckan.plugins.toolkit import url_for
+from ckan.tests.helpers import call_action
 
 import ckanext.datavicmain.utils as vic_utils
 
 
-@pytest.mark.usefixtures("clean_db", "with_plugins", "with_request_context")
+@pytest.mark.usefixtures("clean_db", "with_plugins")
 class TestDatavicUserEndpoints:
     def test_user_approve(self, app, user, sysadmin):
-        url = url_for("datavicuser.approve", user_id=user["id"])
-        env = {"Authorization": sysadmin["token"]}
-
-        app.get(url=url, extra_environ=env, status=302, follow_redirects=False)
+        app.get(
+            url_for("datavicuser.approve", user_id=user["id"]),
+            headers={"Authorization": sysadmin["token"]},
+            status=302,
+            follow_redirects=False,
+        )
 
         assert (
             call_action("user_show", id=user["id"])["state"]
@@ -25,18 +28,20 @@ class TestDatavicUserEndpoints:
         )
 
     def test_user_approve_not_authorized(self, app, user):
-        url = url_for("datavicuser.approve", user_id=user["id"])
-        env = {"Authorization": user["token"]}
 
-        response = app.get(url=url, extra_environ=env, status=403)
+        response = app.get(
+            url_for("datavicuser.approve", user_id=user["id"]),
+            headers={"Authorization": user["token"]},
+            status=403,
+        )
 
         assert "Unauthorized to activate user" in response
 
     def test_user_deny(self, app, sysadmin, user):
-        url = url_for("datavicuser.deny", id=user["id"])
-        env = {"Authorization": sysadmin["token"]}
-
-        app.get(url=url, extra_environ=env, status=302, follow_redirects=False)
+        app.get(
+            url_for("datavicuser.deny", id=user["id"]),
+            headers={"Authorization": sysadmin["token"]},
+        )
 
         assert (
             call_action("user_show", id=user["id"])["state"]
@@ -47,17 +52,17 @@ class TestDatavicUserEndpoints:
         url = url_for("datavicuser.deny", id=user["id"])
         env = {"Authorization": user["token"]}
 
-        response = app.get(url=url, extra_environ=env, status=403)
+        response = app.get(url=url, headers=env, status=403)
 
         assert "Unauthorized to reject user" in response
 
 
-@pytest.mark.usefixtures("clean_db", "with_plugins", "with_request_context")
+@pytest.mark.usefixtures("clean_db", "with_plugins")
 class TestDatavicUserUpdate:
     def test_regular_user_update_wrong_old(self, app, user):
         response = app.post(
             url=url_for("datavicuser.edit"),
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
             status=200,
             data={
                 "save": "",
@@ -75,7 +80,7 @@ class TestDatavicUserUpdate:
     def test_regular_user_update_proper_old(self, app, user):
         app.post(
             url=url_for("datavicuser.edit"),
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
             status=302,
             data={
                 "save": "",
@@ -93,7 +98,7 @@ class TestDatavicUserUpdate:
     ):
         app.post(
             url=url_for("datavicuser.edit", id=user["name"]),
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
             data={
                 "save": "",
                 "email": user["email"],
@@ -107,7 +112,7 @@ class TestDatavicUserUpdate:
     def test_sysadmin_need_old_for_themselves(self, app, sysadmin):
         response = app.post(
             url=url_for("datavicuser.edit", id=sysadmin["name"]),
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
             data={
                 "save": "",
                 "email": sysadmin["email"],
@@ -123,7 +128,7 @@ class TestDatavicUserUpdate:
     def test_sysadmin_update_with_old_pass(self, app, sysadmin):
         app.post(
             url=url_for("datavicuser.edit", id=sysadmin["name"]),
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
             data={
                 "save": "",
                 "email": sysadmin["email"],
@@ -149,7 +154,7 @@ class TestDatavicUserUpdate:
                 call_action("user_update", **user)
 
 
-@pytest.mark.usefixtures("clean_db", "with_plugins", "with_request_context")
+@pytest.mark.usefixtures("clean_db", "with_plugins")
 @pytest.mark.ckan_config(
     "ckan.datavic.request_access_review_emails", "test@gmail.com"
 )
@@ -240,7 +245,7 @@ class TestDatavicUserCreate:
 
         app.get(
             url=url_for("datavicuser.approve", user_id=user_dict["id"]),
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
             status=302,
             follow_redirects=False,
         )
@@ -322,7 +327,7 @@ class TestDatavicUserCreate:
         assert "Registration unsuccessful" in response
 
 
-@pytest.mark.usefixtures("clean_db", "with_plugins", "with_request_context")
+@pytest.mark.usefixtures("clean_db", "with_plugins")
 @mock.patch("ckanext.datavicmain.utils.notify_about_org_join_request")
 class TestDatavicOrgRequestJoin:
     """Test that user is able to request to join into the org"""
@@ -333,7 +338,7 @@ class TestDatavicOrgRequestJoin:
                 "datavic_org.request_join",
                 org_id=organization["name"],
             ),
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
             data={"organisation_role": "member"},
             follow_redirects=False,
         )
@@ -353,7 +358,7 @@ class TestDatavicOrgRequestJoin:
                 "datavic_org.request_join",
                 org_id=organization["name"],
             ),
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
             data={"organisation_role": "member"},
             follow_redirects=False,
         )
@@ -363,7 +368,7 @@ class TestDatavicOrgRequestJoin:
                 "datavic_org.request_join",
                 org_id=organization["name"],
             ),
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
             data={"organisation_role": "member"},
             follow_redirects=False,
         )
@@ -393,7 +398,7 @@ class TestDatavicOrgRequestJoin:
                 "datavic_org.request_join",
                 org_id=organization["id"],
             ),
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
             data={"organisation_role": "member"},
         )
 
@@ -420,7 +425,7 @@ class TestDatavicOrgRequestJoin:
                 "datavic_org.request_join",
                 org_id=organization["id"],
             ),
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
             data={"organisation_role": "member"},
         )
 
@@ -432,7 +437,7 @@ class TestDatavicOrgRequestJoin:
         )
 
 
-@pytest.mark.usefixtures("clean_db", "with_plugins", "with_request_context")
+@pytest.mark.usefixtures("clean_db", "with_plugins")
 class TestDatavicOrgRequestList:
     def test_regular_user(self, app, user, organization):
         resp = app.get(
@@ -440,7 +445,7 @@ class TestDatavicOrgRequestList:
                 "datavic_org.request_list",
                 org_id=organization["name"],
             ),
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
         )
 
         assert resp.status_code == 403
@@ -451,7 +456,7 @@ class TestDatavicOrgRequestList:
                 "datavic_org.request_list",
                 org_id=organization["name"],
             ),
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
         )
 
         assert resp.status_code == 200
@@ -474,7 +479,7 @@ class TestDatavicOrgRequestList:
                 "datavic_org.request_list",
                 org_id=organization["name"],
             ),
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
         )
 
         assert resp.status_code == status_code
@@ -485,7 +490,7 @@ class TestDatavicOrgRequestList:
                 "datavic_org.request_list",
                 org_id=organization["name"],
             ),
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
         )
 
         assert "No pending access requests" in resp.body
@@ -499,7 +504,7 @@ class TestDatavicOrgRequestList:
                 "datavic_org.request_join",
                 org_id=organization["name"],
             ),
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
             data={"organisation_role": "member"},
             follow_redirects=False,
         )
@@ -509,7 +514,7 @@ class TestDatavicOrgRequestList:
                 "datavic_org.request_list",
                 org_id=organization["name"],
             ),
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
         )
 
         assert "No pending access requests" not in resp.body

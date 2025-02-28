@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from hmac import new
 import logging
-from typing import Any, cast, TypedDict
+from typing import Any, TypedDict, cast
 
 from flask import Blueprint
 
-import ckan.types as types
-import ckan.model as model
 import ckan.logic as logic
+import ckan.model as model
 import ckan.plugins.toolkit as tk
-from ckan.lib.search import rebuild, commit
+import ckan.types as types
+from ckan.lib.search import commit, rebuild
 from ckan.views.user import delete as core_delete
 
 log = logging.getLogger(__name__)
@@ -158,7 +157,9 @@ def get_new_member_options(
 ) -> list[dict[str, Any]]:
     return [
         {
-            "text": f"{member['user'].display_name} <{member['user'].email}> ({member['role']})",
+            "text": (
+                f"{member['user'].display_name} <{member['user'].email}> ({member['role']})"
+            ),
             "value": member["user"].id,
         }
         for member in member_list

@@ -1,12 +1,13 @@
 from __future__ import annotations
+
+import logging
+import os
 from itertools import chain
 
-import os
 import requests
-import logging
 
 from ckan import model
-from ckan.lib.search import rebuild, commit
+from ckan.lib.search import commit, rebuild
 
 log = logging.getLogger(__name__)
 
@@ -34,15 +35,17 @@ def _get_related_package_ids(org: model.Group) -> list[str]:
     ]
 
     child_package_ids = list(
-        chain.from_iterable([
+        chain.from_iterable(
             [
-                pkg.id
-                for pkg in model.Session.query(model.Package.id).filter_by(
-                    owner_org=org[0]
-                )
+                [
+                    pkg.id
+                    for pkg in model.Session.query(model.Package.id).filter_by(
+                        owner_org=org[0]
+                    )
+                ]
+                for org in child_groups
             ]
-            for org in child_groups
-        ])
+        )
     )
 
     return package_ids + child_package_ids
@@ -52,14 +55,14 @@ def ckan_worker_job_monitor():
     monitor_url = os.environ.get("MONITOR_URL_JOBWORKER")
     try:
         if monitor_url:
-            log.info(f"Sending notification for CKAN worker job monitor")
+            log.info("Sending notification for CKAN worker job monitor")
             requests.get(monitor_url, timeout=10)
             log.info(
-                f"Successfully sent notification for CKAN worker job monitor"
+                "Successfully sent notification for CKAN worker job monitor"
             )
         else:
             log.error(
-                f"The env variable MONITOR_URL_JOBWORKER is not set for CKAN worker job monitor"
+                "The env variable MONITOR_URL_JOBWORKER is not set for CKAN worker job monitor"
             )
     except requests.RequestException as e:
         log.error(

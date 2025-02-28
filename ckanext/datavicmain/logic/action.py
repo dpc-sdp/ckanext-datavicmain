@@ -4,28 +4,24 @@ import logging
 from typing import Any, cast
 
 import ckanapi
+from requests.exceptions import RequestException
 from sqlalchemy import or_
 
-from ckan.lib import uploader
 import ckan.lib.plugins as lib_plugins
 import ckan.model as model
-import ckan.types as types
 import ckan.plugins.toolkit as toolkit
-
-from ckan.common import g
+import ckan.types as types
+from ckan.lib import uploader
 from ckan.logic import validate
 from ckan.types import Action, Context, DataDict, ErrorDict
-from ckan.types.logic import ActionResult
 
 from ckanext.datavic_harvester.harvesters.base import get_resource_size
-from ckanext.syndicate.utils import get_profiles, get_target
-from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
+from ckanext.mailcraft.utils import get_mailer
+from ckanext.syndicate.utils import get_profiles, get_target
 
-from ckanext.datavicmain import helpers, utils, const, jobs
+from ckanext.datavicmain import const, helpers, jobs, utils
 from ckanext.datavicmain.logic import schema as vic_schema
-from ckanext.datavicmain.helpers import user_is_registering
-from ckanext.datavicmain.logic.schema import custom_user_create_schema
 
 
 log = logging.getLogger(__name__)
@@ -65,8 +61,7 @@ def organization_update(next_, context, data_dict):
     Add prohibition on changing the organization visibility field.
     """
     old = toolkit.get_action("organization_show")(
-        {"ignore_auth": True},
-        {"id": data_dict["id"]}
+        {"ignore_auth": True}, {"id": data_dict["id"]}
     )
     old_name = old["name"] if old else None
     old_visibility = model.Group.get(data_dict["id"]).extras.get(
@@ -97,21 +92,28 @@ def organization_update(next_, context, data_dict):
             remote = ckan.action.organization_show(id=old_name)
         except ckanapi.NotFound:
             continue
+        except RequestException as e:
+            log.error(
+                f"Error updating organization {old_name} in {profile.ckan_url}: {e}"
+            )
+            continue
 
-        patch = {
-            f: result[f]
-            for f in tracked_fields if f in result
-        }
+        patch = {f: result[f] for f in tracked_fields if f in result}
 
-        if 'image_url' in tracked_fields and result.get('image_display_url'):
-            grp_uloader: uploader.PUploader = uploader.get_uploader('group')
+        if "image_url" in tracked_fields and result.get("image_display_url"):
+            grp_uloader: uploader.PUploader = uploader.get_uploader("group")
             file_data = None
-            with open(grp_uloader.storage_path + '/' + result['image_url'], 'rb') as f:
+            with open(
+                grp_uloader.storage_path + "/" + result["image_url"], "rb"
+            ) as f:
                 file_data = f.read()
 
-            patch['id'] = remote['id']
-            return ckan.call_action('organization_patch', data_dict=patch, files={
-                "image_upload": (result['image_url'], file_data)})
+            patch["id"] = remote["id"]
+            return ckan.call_action(
+                "organization_patch",
+                data_dict=patch,
+                files={"image_upload": (result["image_url"], file_data)},
+            )
         else:
             return ckan.action.organization_patch(id=remote["id"], **patch)
 
@@ -186,11 +188,12 @@ def organization_list(
     org_list: types.ActionResult.OrganizationList = next_(context, data_dict)
 
     if not all_fields:
-        orgs = model.Session.query(model.Group)\
-            .filter(model.Group.name.in_(org_list))
+        orgs = model.Session.query(model.Group).filter(
+            model.Group.name.in_(org_list)
+        )
 
         # Intead of all all_fields, lets get the ID from the Objet as it much faster
-        org_list = [{'id': org.id , 'name': org.name} for org in orgs]
+        org_list = [{"id": org.id, "name": org.name} for org in orgs]
 
     filtered_orgs = _hide_restricted_orgs(context, org_list)
 
@@ -251,15 +254,18 @@ def _show_errors_in_sibling_resources(
     """Retrieves and raises validation errors for resources within the same package."""
     try:
         error_dict = cast(
-            "list[type.ErrorDict]", valid_errors.error_dict['resources'])[-1]
+            "list[type.ErrorDict]", valid_errors.error_dict["resources"]
+        )[-1]
     except (KeyError, IndexError):
         error_dict = valid_errors.error_dict
 
     pkg_dict = toolkit.get_action("package_show")(
         context,
         {
-            "id": data_dict.get("package_id")
-            or model.Resource.get(data_dict["id"]).package_id  # type: ignore
+            "id": (
+                data_dict.get("package_id")
+                or model.Resource.get(data_dict["id"]).package_id
+            )  # type: ignore
         },
     )
 
@@ -276,7 +282,10 @@ def _show_errors_in_sibling_resources(
     resources_errors = errors.pop("resources", [])
 
     for i, resource_error in enumerate(resources_errors):
-        if not resource_error or data_dict.get("id") == pkg_dict["resources"][i]["id"]:
+        if (
+            not resource_error
+            or data_dict.get("id") == pkg_dict["resources"][i]["id"]
+        ):
             continue
         error_dict.update(
             {

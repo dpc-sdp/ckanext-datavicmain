@@ -1,21 +1,15 @@
 from __future__ import annotations
 
-from ckan.views.feed import organization
-from ckanext.files.model import owner
-import py
 import pytest
 
-import ckan.plugins.toolkit as tk
 import ckan.model as model
+import ckan.plugins.toolkit as tk
 import ckan.tests.helpers as helpers
 
 import ckanext.datavicmain.views.datavic_member as datavic_member
 
 
-@pytest.mark.usefixtures(
-    "reset_db_once",
-    "with_plugins",
-)
+@pytest.mark.usefixtures("reset_db_once", "with_plugins")
 class TestGetUserPackagesForOrganisation:
     def test_user_is_not_a_member_of_organisation(self, user, organization):
         result = datavic_member.get_user_packages_for_organisation(
@@ -63,10 +57,7 @@ class TestGetUserPackagesForOrganisation:
         assert result[0].id == dataset["id"]
 
 
-@pytest.mark.usefixtures(
-    "reset_db_once",
-    "with_plugins",
-)
+@pytest.mark.usefixtures("reset_db_once", "with_plugins")
 class TestGetUserPackages:
     def test_user_has_no_packages(self, user):
         result = datavic_member.get_user_packages(user["id"])
@@ -83,10 +74,7 @@ class TestGetUserPackages:
         assert isinstance(result[0], model.Package)
 
 
-@pytest.mark.usefixtures(
-    "reset_db_once",
-    "with_plugins",
-)
+@pytest.mark.usefixtures("clean_db", "with_plugins")
 class TestGetOrganisationEditorsAndAdmins:
     def test_organisation_does_not_exist(self):
         result = datavic_member.get_organisation_editors_and_admins(
@@ -158,10 +146,7 @@ class TestGetOrganisationEditorsAndAdmins:
         )
 
 
-@pytest.mark.usefixtures(
-    "reset_db_once",
-    "with_plugins",
-)
+@pytest.mark.usefixtures("clean_db", "with_plugins")
 class TestReassignUserPackagesInOrganisation:
     def test_target_user_doesnt_exist(self, user, organization):
         with pytest.raises(tk.ObjectNotFound):
@@ -232,15 +217,13 @@ class TestReassignUserPackagesInOrganisation:
             )
 
 
-@pytest.mark.usefixtures(
-    "reset_db_once", "with_plugins", "with_request_context"
-)
+@pytest.mark.usefixtures("clean_db", "with_plugins")
 class TestRemoveMemberView:
     def test_regular_user(self, app, user, organization):
         resp = app.post(
             url=tk.h.url_for("datavic_member.remove_member"),
             data={"org_id": organization["id"], "user_id": user["id"]},
-            extra_environ={"Authorization": user["token"]},
+            headers={"Authorization": user["token"]},
         )
 
         assert resp.status_code == 403
@@ -261,7 +244,7 @@ class TestRemoveMemberView:
         resp = app.post(
             url=tk.h.url_for("datavic_member.remove_member"),
             data={"org_id": organization["id"], "user_id": user["id"]},
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
             follow_redirects=False,
         )
 
@@ -296,7 +279,7 @@ class TestRemoveMemberView:
                 "user_id": user1["id"],
                 "new_member": user2["id"],
             },
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
             follow_redirects=False,
         )
 
@@ -309,15 +292,13 @@ class TestRemoveMemberView:
         )
 
 
-@pytest.mark.usefixtures(
-    "reset_db_once", "with_plugins", "with_request_context"
-)
+@pytest.mark.usefixtures("clean_db", "with_plugins")
 class TestRemoveUserView:
     def test_remove_user_without_packages(self, app, user, sysadmin):
         resp = app.post(
             url=tk.h.url_for("datavic_member.remove_user"),
             data={"user_id": user["id"]},
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
             follow_redirects=False,
         )
 
@@ -340,7 +321,7 @@ class TestRemoveUserView:
         resp = app.post(
             url=tk.h.url_for("datavic_member.remove_user"),
             data={"user_id": user["id"]},
-            extra_environ={"Authorization": sysadmin["token"]},
+            headers={"Authorization": sysadmin["token"]},
             follow_redirects=False,
         )
 

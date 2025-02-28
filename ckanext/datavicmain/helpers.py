@@ -1,28 +1,23 @@
 from __future__ import annotations
 
-import math
-import os
-import pkgutil
-import inspect
-import logging
-import json
 import base64
+import json
+import logging
+import math
 from typing import Any, Optional
+from urllib.parse import urljoin, urlsplit
 
-from urllib.parse import urlsplit, urljoin
-
-from flask import Blueprint
-
-import ckan.model as model
 import ckan.authz as authz
+import ckan.model as model
 import ckan.plugins.toolkit as toolkit
 
-from ckanext.harvest.model import HarvestObject
 from ckanext.activity.model.activity import Activity
+from ckanext.harvest.model import HarvestObject
 
-from . import utils, const, config as conf
-from ckanext.datavicmain.config import get_dtv_url, get_dtv_external_link
+from ckanext.datavicmain.config import get_dtv_external_link, get_dtv_url
 
+from . import config as conf
+from . import const, utils
 
 log = logging.getLogger(__name__)
 WORKFLOW_STATUS_OPTIONS = [
@@ -114,23 +109,6 @@ def set_private_activity(pkg_dict, context, activity_type):
 
 def user_is_registering():
     return toolkit.get_endpoint() == ("datavicuser", "register")
-
-
-def _register_blueprints():
-    """Return all blueprints defined in the `views` folder"""
-    blueprints = []
-
-    def is_blueprint(mm):
-        return isinstance(mm, Blueprint)
-
-    path = os.path.join(os.path.dirname(__file__), "views")
-
-    for loader, name, _ in pkgutil.iter_modules([path]):
-        module = loader.find_module(name).load_module(name)
-        for blueprint in inspect.getmembers(module, is_blueprint):
-            blueprints.append(blueprint[1])
-            log.info("Registered blueprint: {0!r}".format(blueprint[0]))
-    return blueprints
 
 
 def dataset_fields(dataset_type="dataset"):
@@ -362,6 +340,43 @@ def datavic_org_uploads_allowed(org_id: str) -> bool:
         return False
 
     return flake["data"].get(org.id, False)
+
+
+def get_group(
+    group: Optional[str] = None, include_datasets: bool = False
+) -> dict[str, Any]:
+    if group is None:
+        return {}
+    try:
+        return toolkit.get_action("group_show")(
+            {}, {"id": group, "include_datasets": include_datasets}
+        )
+    except (toolkit.NotFound, toolkit.ValidationError, toolkit.NotAuthorized):
+        return {}
+
+
+def dtv_exceeds_max_size_limit(resource_id: str) -> bool:
+    """Check if DTV resource exceeds the maximum file size limit
+
+    Args:
+        resource_id (str): DTV resource id
+
+    Returns:
+        bool: return True if dtv resource exceeds maximum file size limit set
+            in ckan config "ckanext.datavicmain.dtv.max_size_limit",
+            otherwise - False
+    """
+    try:
+        resource = toolkit.get_action("resource_show")({}, {"id": resource_id})
+    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
+        return True
+
+    limit = conf.get_dtv_max_size_limit()
+    filesize = resource.get("filesize")
+    if filesize and int(filesize) >= int(limit):
+        return True
+
+    return False
 
 
 def datavic_get_org_roles() -> list[str]:
@@ -596,23 +611,9 @@ def datavic_get_dtv_url(ext_link: bool = False) -> str:
     return url
 
 
-def get_group(group: Optional[str] = None,
-              include_datasets: bool = False) -> dict[str, Any]:
-    if group is None:
-        return {}
-    try:
-        return toolkit.get_action("group_show")(
-            {},
-            {"id": group, "include_datasets": include_datasets}
-        )
-    except (toolkit.NotFound, toolkit.ValidationError, toolkit.NotAuthorized):
-        return {}
-
-
 def has_user_capacity(
-    org_id: str,
-    current_user_id: str,
-    capacity: Optional[str] = None) -> bool:
+    org_id: str, current_user_id: str, capacity: Optional[str] = None
+) -> bool:
     """Check if the current user has an appropriate capacity in the certain organization
 
     Args:
@@ -627,8 +628,7 @@ def has_user_capacity(
     """
     try:
         members = toolkit.get_action("member_list")(
-            {},
-            {"id": org_id, "object_type": "user", "capacity": capacity}
+            {}, {"id": org_id, "object_type": "user", "capacity": capacity}
         )
         members_id = [member[0] for member in members]
         if current_user_id in members_id:
@@ -664,30 +664,6 @@ def localized_filesize(size_bytes: Any) -> str:
     return f"{s} {size_name[i]}"
 
 
-def dtv_exceeds_max_size_limit(resource_id: str) -> bool:
-    """Check if DTV resource exceeds the maximum file size limit
-
-    Args:
-        resource_id (str): DTV resource id
-
-    Returns:
-        bool: return True if dtv resource exceeds maximum file size limit set
-            in ckan config "ckanext.datavicmain.dtv.max_size_limit",
-            otherwise - False
-    """
-    try:
-        resource = toolkit.get_action("resource_show")({}, {"id": resource_id})
-    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
-        return True
-
-    limit = conf.get_dtv_max_size_limit()
-    filesize = resource.get("filesize")
-    if filesize and int(filesize) >= int(limit):
-        return True
-
-    return False
-
-
 def datavic_get_org_members(org_id: str) -> list[dict[str, Any]]:
     """Get organization members"""
     return toolkit.get_action("member_list")(
@@ -703,9 +679,7 @@ def datavic_update_org_error_dict(
     to show it as an error on the Logo field."""
     if error_dict.pop("upload", "") == ["File upload too large"]:
         error_dict["Logo"] = [
-            (
-                f"File size is too large. Select an image which is no larger than {datavic_max_image_size()}MB."
-            )
+            f"File size is too large. Select an image which is no larger than {datavic_max_image_size()}MB."
         ]
     elif "Unsupported upload type" in error_dict.pop("image_upload", [""])[0]:
         error_dict["Logo"] = [
@@ -724,8 +698,9 @@ def datavic_allowable_parent_orgs(org_id: str = None) -> list[dict[str, Any]]:
     user_id = toolkit.current_user.id
     orgs = []
     for org in all_orgs:
-        if datavic_is_org_restricted(org.id) and \
-        not datavic_user_is_a_member_of_org(user_id, org.id):
+        if datavic_is_org_restricted(
+            org.id
+        ) and not datavic_user_is_a_member_of_org(user_id, org.id):
             continue
         orgs.append(org)
     return orgs

@@ -6,10 +6,10 @@ from typing import Any, Optional
 
 import requests
 
-import ckan.types as types
 import ckan.authz as authz
-import ckan.plugins.toolkit as tk
 import ckan.lib.navl.dictization_functions as df
+import ckan.plugins.toolkit as tk
+import ckan.types as types
 
 log = logging.getLogger(__name__)
 
@@ -219,8 +219,9 @@ def datavic_organization_parent_validator(
     parent = model.Group.get(value)
     if parent:
         is_restricted = tk.h.datavic_is_org_restricted(parent.id)
-        if (is_restricted and not visibility) or \
-            (not is_restricted and visibility):
+        if (is_restricted and not visibility) or (
+            not is_restricted and visibility
+        ):
             errors[("parent",)].append(
                 """Incorrect value - restricted organization can't be assigned
                 as a child of unrestricted one or vice versa"""

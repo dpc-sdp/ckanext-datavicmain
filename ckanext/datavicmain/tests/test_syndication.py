@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
 import ckanapi
+import pytest
 
 from ckan.tests.helpers import call_action
 
@@ -35,6 +35,9 @@ class TestOrgSyndication:
         ckan.action.organization_show = mocker.Mock()
         ckan.action.organization_show.return_value = {"id": "xxx"}
         ckan.action.organization_patch = mocker.Mock()
+        ckan.action.organization_patch.return_value = {
+            "id": organization["id"]
+        }
 
         call_action(
             "organization_patch",
@@ -71,6 +74,9 @@ class TestOrgSyndication:
         ckan.action.organization_show = mocker.Mock()
         ckan.action.organization_show.return_value = {"id": "xxx"}
         ckan.action.organization_patch = mocker.Mock()
+        ckan.action.organization_patch.return_value = {
+            "id": organization["id"]
+        }
 
         call_action(
             "organization_patch",

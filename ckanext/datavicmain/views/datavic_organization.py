@@ -7,12 +7,12 @@ from flask import Blueprint, Response
 from flask.views import MethodView
 
 import ckan.model as model
-import ckan.types as types
 import ckan.plugins.toolkit as tk
+import ckan.types as types
 from ckan.logic import parse_params
 
-from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
+from ckanext.mailcraft.utils import get_mailer
 
 import ckanext.datavicmain.utils as vicmain_utils
 
@@ -209,7 +209,9 @@ class ApproveRequestView(MethodView):
 
         try:
             mailer.mail_recipients(
-                tk._(f"Request for {role.title()} - {organization.title} access approved"),
+                tk._(
+                    f"Request for {role.title()} - {organization.title} access approved"
+                ),
                 [data_dict["email"]],
                 body=tk.render(
                     "mailcraft/emails/organisation_access_request_approved/body.txt",
@@ -299,7 +301,9 @@ class DenyRequestView(MethodView):
 
         try:
             mailer.mail_recipients(
-                tk._(f"Request for {role.title()} - {organization.title} access denied"),
+                tk._(
+                    f"Request for {role.title()} - {organization.title} access denied"
+                ),
                 [data_dict["email"]],
                 body=tk.render(
                     "mailcraft/emails/organisation_access_request_denied/body.txt",

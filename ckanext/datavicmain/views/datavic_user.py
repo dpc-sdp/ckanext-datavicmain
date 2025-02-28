@@ -1,29 +1,28 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, cast, Union
+from typing import Any, Union, cast
 
 from flask import Blueprint, Response
 from flask.views import MethodView
 
-import ckan.plugins as plugins
-import ckan.types as types
-import ckan.plugins.toolkit as tk
-import ckan.logic as logic
-import ckan.model as model
 import ckan.lib.authenticator as authenticator
 import ckan.lib.captcha as captcha
-import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
-
+import ckan.logic as logic
+import ckan.model as model
+import ckan.plugins as plugins
+import ckan.plugins.toolkit as tk
+import ckan.types as types
+import ckan.views.user as user
 from ckan import authz
 from ckan.lib import signals
 
-from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
+from ckanext.mailcraft.utils import get_mailer
 
-import ckanext.datavicmain.utils as utils
 import ckanext.datavicmain.helpers as helpers
+import ckanext.datavicmain.utils as utils
 
 log = logging.getLogger(__name__)
 
@@ -316,11 +315,7 @@ class DataVicUserEditView(user.EditView):
         context, id = self._prepare(id)
         data_dict = {"id": id}
         is_myself = id in (
-            (
-                ""
-                if tk.current_user.is_anonymous
-                else tk.current_user.id
-            ),
+            ("" if tk.current_user.is_anonymous else tk.current_user.id),
             tk.current_user.name,
         )
 
@@ -631,7 +626,7 @@ def before_request() -> None:
         try:
             captcha.check_recaptcha(tk.request)
         except captcha.CaptchaError:
-            tk.h.flash_error(tk._(u"Bad Captcha. Please try again."))
+            tk.h.flash_error(tk._("Bad Captcha. Please try again."))
             return tk.h.redirect_to(tk.request.url)
 
 
