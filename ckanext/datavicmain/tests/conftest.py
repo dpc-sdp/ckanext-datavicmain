@@ -14,6 +14,7 @@ def clean_db(reset_db, migrate_db_for, with_plugins):
     migrate_db_for("flakes")
     migrate_db_for("datavicmain_home")
     migrate_db_for("pages")
+    migrate_db_for("harvest")
 
 
 @register

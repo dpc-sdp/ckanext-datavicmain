@@ -8,7 +8,7 @@ filterwarnings = [
     "ignore::sqlalchemy.exc.SAWarning",
     "ignore::DeprecationWarning"
 ]
-addopts = "--ckan-ini test.ini"
+addopts = "--ckan-ini test_config/test.ini -m 'not benchmark and not playwright'"
 
 [tool.isort]
 profile = "black"
