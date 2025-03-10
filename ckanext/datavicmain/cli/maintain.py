@@ -762,7 +762,9 @@ def recalculate_resource_size(update: bool):
     """Update file size for uploaded resources"""
 
     packages = set()
-    resources = model.Session.query(model.Resource).filter_by(url_type="upload").all()
+    resources = (
+        model.Session.query(model.Resource).filter_by(url_type="upload").all()
+    )
 
     if not update:
         click.secho(
@@ -777,9 +779,7 @@ def recalculate_resource_size(update: bool):
     for resource in resources:
         resource_path = get_resource_uploader({}).get_path(resource.id)
         if not path.exists(resource_path):
-            tk.error_shout(
-                f"Resource does not exist with id: {resource.id}"
-            )
+            tk.error_shout(f"Resource does not exist with id: {resource.id}")
             continue
 
         size = stat(resource_path).st_size
@@ -873,6 +873,7 @@ def make_datatables_view_prioritized():
         if result.get("updated"):
             number_reordered += 1
     click.secho(f"Reordered {number_reordered} resources", fg="green")
+
 
 @maintain.command()
 @click.option("--update", is_flag=True, type=click.BOOL, default=False)
@@ -1094,3 +1095,73 @@ class ResourceFilesizeConvert:
                 raise ValueError(f"Invalid size value: {size}")
 
         raise ValueError(f"Unrecognized size unit in: {size}")
+
+
+@maintain.command()
+@click.option("--delete", is_flag=True, type=click.BOOL, default=False)
+def delete_detached_delwp_datasets(delete: bool):
+    """Delete DELWP datasets that are not attached to a harvest object"""
+    if not delete:
+        DeleteDetachedDelwpDatasets.list_detached_datasets()
+    else:
+        DeleteDetachedDelwpDatasets.purge_datasets()
+
+
+class DeleteDetachedDelwpDatasets:
+    def __init__(self, delete: bool):
+        self.delete = delete
+
+    @classmethod
+    def list_detached_datasets(cls) -> None:
+        click.secho("Listing detached datasets...", fg="blue")
+
+        datasets = cls.get_datasets()
+
+        for dataset in datasets:
+            url = tk.url_for("dataset.read", id=dataset.name, _external=True)
+            click.secho(f"Dataset {url} is detached", fg="red")
+
+        click.secho(f"Found {len(datasets)} detached datasets", fg="blue")
+        click.secho(f"Use --delete flag to delete them", fg="blue")
+
+    @classmethod
+    def get_datasets(cls) -> set[model.Package]:
+        package = model.Package
+        extras = model.PackageExtra
+
+        packages_with_harvest_objects = {
+            row[0]
+            for row in model.Session.query(HarvestObject.package_id).all()  # type: ignore
+        }
+
+        result = set()
+
+        for package in (
+            model.Session.query(package)
+            .join(extras, package.id == extras.package_id)
+            .filter(extras.key == "harvest_source_type")
+            .filter(extras.value == "delwp")
+            .filter(package.state == model.State.ACTIVE)
+            .all()
+        ):
+            if package.id in packages_with_harvest_objects:
+                continue
+
+            result.add(package)
+
+        return result - packages_with_harvest_objects
+
+    @classmethod
+    def purge_datasets(cls) -> None:
+        datasets = cls.get_datasets()
+
+        click.secho(f"Purging {len(datasets)} datasets...", fg="blue")
+
+        for dataset in datasets:
+            click.secho(f"Purging dataset {dataset.name}...", fg="blue")
+
+            tk.get_action("dataset_purge")(
+                {"ignore_auth": True}, {"id": dataset.id}
+            )
+
+        click.secho(f"Done. {len(datasets)} datasets purged", fg="blue")
