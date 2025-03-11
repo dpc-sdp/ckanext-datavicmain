@@ -548,12 +548,6 @@ class RegisterView(MethodView):
             tk.abort(400, tk._("Integrity Error"))
 
         context["message"] = data_dict.get("log_message", "")
-        try:
-            captcha.check_recaptcha(tk.request)
-        except captcha.CaptchaError:
-            error_msg = tk._("Bad Captcha. Please try again.")
-            tk.h.flash_error(error_msg)
-            return self.get(data_dict)
 
         try:
             tk.get_action("user_create")(context, data_dict)
@@ -638,7 +632,7 @@ def before_request() -> None:
         try:
             captcha.check_recaptcha(request)
         except captcha.CaptchaError:
-            tk.h.flash_error(tk._("Bad Captcha. Please try again."))
+            tk.h.flash_error(tk._("CAPTCHA verification failed. Please try again."))
             return tk.h.redirect_to(request.url)
 
 
