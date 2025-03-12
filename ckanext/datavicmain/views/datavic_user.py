@@ -626,7 +626,7 @@ def before_request() -> None:
         try:
             captcha.check_recaptcha(tk.request)
         except captcha.CaptchaError:
-            tk.h.flash_error(tk._("Bad Captcha. Please try again."))
+            tk.h.flash_error(tk._("CAPTCHA verification failed. Please try again."))
             return tk.h.redirect_to(tk.request.url)
 
 
