@@ -1,4 +1,4 @@
-ckan.module('-custom-auth-login', function ($){
+ckan.module('-datavic-auth-login-form', function ($){
     const authLoginFormModule = ckan.module.registry["auth-login-form"];
     if (!authLoginFormModule) return;
 
