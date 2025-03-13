@@ -84,6 +84,7 @@ class DatasetForm(
     p.implements(p.IResourceController, inherit=True)
     p.implements(p.IBlueprint)
     p.implements(p.IClick)
+    p.implements(p.IAuthenticator, inherit=True)
     p.implements(ISyndicate, inherit=True)
     p.implements(IOidcPkce, inherit=True)
     p.implements(ITransmute, inherit=True)
