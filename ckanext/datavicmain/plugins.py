@@ -13,8 +13,9 @@ import ckan.authz as authz
 import ckan.model as model
 import ckan.plugins as p
 import ckan.plugins.toolkit as toolkit
-from ckan.types import Context
+from ckan.types import Context, SignalMapping
 
+import ckanext.syndicate.signals as signals
 from ckanext.datavic_harvester.harvesters.base import get_resource_size
 from ckanext.oidc_pkce.interfaces import IOidcPkce
 from ckanext.syndicate.interfaces import ISyndicate, Profile
@@ -25,6 +26,8 @@ from ckanext.datavicmain.implementation import PermissionLabels
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.transmutators import get_transmutators
 from ckanext.datavicmain.views import get_blueprints
+from ckanext.datavicmain.syndication import listeners
+
 
 config = toolkit.config
 request = toolkit.request
@@ -88,6 +91,7 @@ class DatasetForm(
     p.implements(ISyndicate, inherit=True)
     p.implements(IOidcPkce, inherit=True)
     p.implements(ITransmute, inherit=True)
+    p.implements(p.ISignal, inherit=True)
 
     # IBlueprint
     def get_blueprint(self):
@@ -494,3 +498,10 @@ class DatasetForm(
 
     def logout(self) -> Optional[Response]:
         session.modified = True
+
+    # ISignal
+
+    def get_signal_subscriptions(self) -> SignalMapping:
+        return {
+            signals.after_syndication: [listeners.after_syndication_listener]
+        }
