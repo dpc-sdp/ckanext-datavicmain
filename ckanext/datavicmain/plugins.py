@@ -12,8 +12,9 @@ import ckan.model as model
 import ckan.plugins as p
 import ckan.plugins.toolkit as toolkit
 
-from ckan.types import Context
+from ckan.types import Context, SignalMapping
 
+import ckanext.syndicate.signals as signals
 from ckanext.datavic_harvester.harvesters.base import get_resource_size
 from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.oidc_pkce.interfaces import IOidcPkce
@@ -23,6 +24,7 @@ from ckanext.datavicmain import helpers, cli
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.transmutators import get_transmutators
 
+from ckanext.datavicmain.syndication import listeners
 from ckanext.datavicmain.implementation import PermissionLabels
 
 
@@ -79,6 +81,7 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
     p.implements(ISyndicate, inherit=True)
     p.implements(IOidcPkce, inherit=True)
     p.implements(ITransmute, inherit=True)
+    p.implements(p.ISignal, inherit=True)
 
 
     # IBlueprint
@@ -420,3 +423,10 @@ class DatasetForm(PermissionLabels, p.SingletonPlugin, toolkit.DefaultDatasetFor
             else:
                 resource["filesize"] = get_resource_size(resource["url"])
             toolkit.get_action("resource_update")(context, resource)
+
+    # ISignal
+
+    def get_signal_subscriptions(self) -> SignalMapping:
+        return {
+            signals.after_syndication: [listeners.after_syndication_listener]
+        }
