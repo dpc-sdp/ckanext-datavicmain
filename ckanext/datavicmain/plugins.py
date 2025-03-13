@@ -490,7 +490,7 @@ class DatasetForm(
     # IAuthenticator
 
     def login(self) -> Optional[Response]:
-        session.modified = True
+        session.regenerate_id() # type: ignore
 
     def logout(self) -> Optional[Response]:
-        session.modified = True
+        session.regenerate_id() # type: ignore
