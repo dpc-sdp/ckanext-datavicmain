@@ -88,7 +88,6 @@ class DatasetForm(
     p.implements(ISyndicate, inherit=True)
     p.implements(IOidcPkce, inherit=True)
     p.implements(ITransmute, inherit=True)
-    p.implements(p.IAuthenticator, inherit=True)
 
     # IBlueprint
     def get_blueprint(self):
