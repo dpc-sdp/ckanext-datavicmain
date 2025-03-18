@@ -16,6 +16,7 @@ datavicmain-js:
   output: ckanext-datavicmain/%(version)s_datavicmain.js
   contents:
     - datavicmain-toggle-tooltip.js
+    - datavicmain-2fa-error-messages.js
   extra:
     preload:
       - base/main
