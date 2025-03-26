@@ -425,3 +425,14 @@ def _filter_views(
 ) -> list[model.ResourceView]:
     """Return a list of views with the given view type."""
     return [view for view in res_views if view.view_type == view_type]
+
+
+@toolkit.chained_action
+def auth_2fa_user_login(next_: Action, context: Context, data_dict: DataDict):
+    """Updates the error message for failed 2FA verification."""
+    response = next_(context, data_dict)
+
+    if response["error"]:  
+        response["error"] = "Invalid verification code. Please request a new one."
+
+    return response
