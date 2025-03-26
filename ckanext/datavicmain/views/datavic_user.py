@@ -14,7 +14,10 @@ import ckan.lib.authenticator as authenticator
 import ckan.lib.captcha as captcha
 import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
-from ckan import authz
+
+from ckan.common import request
+from ckan import authz, plugins
+
 from ckan.lib import signals
 
 from ckanext.mailcraft.utils import get_mailer
@@ -435,7 +438,7 @@ def approve(user_id: str):
         return tk.h.redirect_to("user.read", id=user["name"])
     except tk.NotAuthorized:
         tk.abort(403, tk._("Unauthorized to activate user."))
-    except tk.ObjectNotFound as e:
+    except tk.ObjectNotFound:
         tk.abort(404, tk._("User not found"))
     except dictization_functions.DataError:
         tk.abort(400, tk._("Integrity Error"))
@@ -488,7 +491,7 @@ def deny(id):
         return tk.h.redirect_to("user.read", id=user["name"])
     except tk.NotAuthorized:
         tk.abort(403, tk._("Unauthorized to reject user."))
-    except tk.ObjectNotFound as e:
+    except tk.ObjectNotFound:
         tk.abort(404, tk._("User not found"))
     except dictization_functions.DataError:
         tk.abort(400, tk._("Integrity Error"))
@@ -545,12 +548,6 @@ class RegisterView(MethodView):
             tk.abort(400, tk._("Integrity Error"))
 
         context["message"] = data_dict.get("log_message", "")
-        try:
-            captcha.check_recaptcha(tk.request)
-        except captcha.CaptchaError:
-            error_msg = tk._("Bad Captcha. Please try again.")
-            tk.h.flash_error(error_msg)
-            return self.get(data_dict)
 
         try:
             tk.get_action("user_create")(context, data_dict)
@@ -615,6 +612,30 @@ class RegisterView(MethodView):
         return tk.render("user/new.html", extra_vars)
 
 
+@datavicuser.before_request
+def before_request() -> None:
+    _, action = tk.get_endpoint()
+
+    # Skip recaptcha check for login if 2FA is enabled, it will be checked with ckanext-auth
+    if (
+        action == "login"
+        and plugins.plugin_loaded("auth")
+        and tk.h.is_2fa_enabled()
+    ):
+        return
+
+    if (
+        request.method == "POST"
+        and action in ["login", "register", "request_reset"]
+        and not tk.config.get("debug")
+    ):
+        try:
+            captcha.check_recaptcha(request)
+        except captcha.CaptchaError:
+            tk.h.flash_error(tk._("CAPTCHA verification failed. Please try again."))
+            return tk.h.redirect_to(request.url)
+
+
 def register_datavicuser_plugin_rules(blueprint):
     _edit_view = DataVicUserEditView.as_view(str("edit"))
 
@@ -634,6 +655,9 @@ def register_datavicuser_plugin_rules(blueprint):
     blueprint.add_url_rule("/user/me", view_func=me)
     blueprint.add_url_rule(
         "/user/register", view_func=RegisterView.as_view(str("register"))
+    )
+    blueprint.add_url_rule(
+        "/user/login", view_func=user.login, methods=("GET", "POST")
     )
 
 
