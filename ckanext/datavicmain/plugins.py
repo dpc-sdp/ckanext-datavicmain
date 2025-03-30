@@ -28,7 +28,6 @@ from ckanext.datavicmain.transmutators import get_transmutators
 from ckanext.datavicmain.views import get_blueprints
 from ckanext.datavicmain.syndication import listeners
 
-
 config = toolkit.config
 request = toolkit.request
 get_action = toolkit.get_action
@@ -493,26 +492,33 @@ class DatasetForm(
 
     # ISignal
 
-
     def get_signal_subscriptions(self) -> SignalMapping:
         mapping: SignalMapping = {
             signals.after_syndication: [listeners.after_syndication_listener]
         }
 
         if toolkit.check_ckan_version("2.11"):
-            mapping.update({
-                toolkit.signals.ckan.signal("user_logged_in"): [self.refresh_session_id],
-                toolkit.signals.ckan.signal("user_logged_out"): [self.refresh_session_id],
-            })
+            mapping.update(
+                {
+                    toolkit.signals.ckan.signal("user_logged_in"): [
+                        self.refresh_session_id
+                    ],
+                    toolkit.signals.ckan.signal("user_logged_out"): [
+                        self.refresh_session_id
+                    ],
+                }
+            )
 
             return mapping
 
         from flask_login.signals import user_logged_in, user_logged_out
 
-        mapping.update({
-            user_logged_in: [self.refresh_session_id],
-            user_logged_out: [self.refresh_session_id],
-        })
+        mapping.update(
+            {
+                user_logged_in: [self.refresh_session_id],
+                user_logged_out: [self.refresh_session_id],
+            }
+        )
 
         return mapping
 
@@ -522,4 +528,4 @@ class DatasetForm(
         if toolkit.check_ckan_version("2.11"):
             session.modified = True
         else:
-            session.regenerate_id() # type: ignore
+            session.regenerate_id()  # type: ignore
