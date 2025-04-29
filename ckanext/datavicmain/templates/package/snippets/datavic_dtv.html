@@ -1,4 +1,4 @@
-{% set dtv_resources = h.get_digital_twin_resources(pkg.id)|map(attribute="id")|list %}
+{% set dtv_resources = h.get_digital_twin_resources(pkg)|map(attribute="id")|list %}
 {% set dtv_preview = pkg.dtv_preview %}
 {% set dtv_url = h.datavic_get_dtv_url() %}
 {% set dtv_external_link = h.datavic_get_dtv_url(ext_link=True) %}
