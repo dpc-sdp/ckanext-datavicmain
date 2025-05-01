@@ -269,7 +269,7 @@ def is_ready_for_publish(pkg):
     return False
 
 
-def get_digital_twin_resources(pkg_id: str) -> list[dict[str, Any]]:
+def get_digital_twin_resources(pkg: dict[str, Any]) -> list[dict[str, Any]]:
     """Select resource suitable for DTV(Digital Twin Visualization).
 
     Additional info:
@@ -281,13 +281,6 @@ def get_digital_twin_resources(pkg_id: str) -> list[dict[str, Any]]:
             toolkit.config.get(CONFIG_DTV_FQ, DEFAULT_DTV_FQ)
         )
     }
-
-    try:
-        pkg = toolkit.get_action("package_show")(
-            {"ignore_auth": True}, {"id": pkg_id}
-        )
-    except (toolkit.ObjectNotFound, toolkit.NotAuthorized):
-        return []
 
     # Additional info #2
     if pkg["state"] != "active":
