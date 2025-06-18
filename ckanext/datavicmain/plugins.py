@@ -26,6 +26,7 @@ from ckanext.datavicmain import cli, helpers
 from ckanext.datavicmain.implementation import PermissionLabels
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.transmutators import get_transmutators
+from ckanext.datavicmain.views import get_blueprints
 
 from ckanext.datavicmain.syndication import listeners
 from ckanext.datavicmain.implementation import PermissionLabels
