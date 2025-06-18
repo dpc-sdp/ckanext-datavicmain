@@ -3,18 +3,20 @@ from __future__ import annotations
 
 import calendar
 import logging
-import time
+from typing import Any
 from datetime import datetime
 from typing import Any, Optional
 
-from flask import Response, session
+from flask import session
 
 import ckan.authz as authz
 import ckan.model as model
 import ckan.plugins as p
 import ckan.plugins.toolkit as toolkit
-from ckan.types import Context
 
+from ckan.types import Context, SignalMapping
+
+import ckanext.syndicate.signals as signals
 from ckanext.datavic_harvester.harvesters.base import get_resource_size
 from ckanext.oidc_pkce.interfaces import IOidcPkce
 from ckanext.syndicate.interfaces import ISyndicate, Profile
@@ -24,7 +26,10 @@ from ckanext.datavicmain import cli, helpers
 from ckanext.datavicmain.implementation import PermissionLabels
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
 from ckanext.datavicmain.transmutators import get_transmutators
-from ckanext.datavicmain.views import get_blueprints
+
+from ckanext.datavicmain.syndication import listeners
+from ckanext.datavicmain.implementation import PermissionLabels
+
 
 config = toolkit.config
 request = toolkit.request
@@ -84,9 +89,11 @@ class DatasetForm(
     p.implements(p.IResourceController, inherit=True)
     p.implements(p.IBlueprint)
     p.implements(p.IClick)
+    p.implements(p.ISignal, inherit=True)
     p.implements(ISyndicate, inherit=True)
     p.implements(IOidcPkce, inherit=True)
     p.implements(ITransmute, inherit=True)
+    p.implements(p.ISignal, inherit=True)
 
     # IBlueprint
     def get_blueprint(self):
@@ -487,10 +494,34 @@ class DatasetForm(
                 resource["filesize"] = get_resource_size(resource["url"])
             toolkit.get_action("resource_update")(context, resource)
 
-    # IAuthenticator
+    # ISignal
 
-    def login(self) -> Optional[Response]:
-        session.regenerate_id() # type: ignore
+    def get_signal_subscriptions(self) -> SignalMapping:
+        mapping: SignalMapping = {
+            signals.after_syndication: [listeners.after_syndication_listener]
+        }
 
-    def logout(self) -> Optional[Response]:
-        session.regenerate_id() # type: ignore
+        if toolkit.check_ckan_version("2.11"):
+            mapping.update({
+                toolkit.signals.ckan.signal("user_logged_in"): [self.refresh_session_id],
+                toolkit.signals.ckan.signal("user_logged_out"): [self.refresh_session_id],
+            })
+
+            return mapping
+
+        from flask_login.signals import user_logged_in, user_logged_out
+
+        mapping.update({
+            user_logged_in: [self.refresh_session_id],
+            user_logged_out: [self.refresh_session_id],
+        })
+
+        return mapping
+
+    @staticmethod
+    def refresh_session_id(sender, user, **extra):
+        """Refresh the session ID when a user logs in or out."""
+        if toolkit.check_ckan_version("2.11"):
+            session.modified = True
+        else:
+            session.regenerate_id() # type: ignore

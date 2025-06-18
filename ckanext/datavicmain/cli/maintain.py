@@ -1094,3 +1094,73 @@ class ResourceFilesizeConvert:
                 raise ValueError(f"Invalid size value: {size}")
 
         raise ValueError(f"Unrecognized size unit in: {size}")
+
+
+@maintain.command()
+@click.option("--delete", is_flag=True, type=click.BOOL, default=False)
+def delete_detached_delwp_datasets(delete: bool):
+    """Delete DELWP datasets that are not attached to a harvest object"""
+    if not delete:
+        DeleteDetachedDelwpDatasets.list_detached_datasets()
+    else:
+        DeleteDetachedDelwpDatasets.purge_datasets()
+
+
+class DeleteDetachedDelwpDatasets:
+    def __init__(self, delete: bool):
+        self.delete = delete
+
+    @classmethod
+    def list_detached_datasets(cls) -> None:
+        click.secho("Listing detached datasets...", fg="blue")
+
+        datasets = cls.get_datasets()
+
+        for dataset in datasets:
+            url = tk.url_for("dataset.read", id=dataset.name, _external=True)
+            click.secho(f"Dataset {url} is detached", fg="red")
+
+        click.secho(f"Found {len(datasets)} detached datasets", fg="blue")
+        click.secho(f"Use --delete flag to delete them", fg="blue")
+
+    @classmethod
+    def get_datasets(cls) -> set[model.Package]:
+        package = model.Package
+        extras = model.PackageExtra
+
+        packages_with_harvest_objects = {
+            row[0]
+            for row in model.Session.query(HarvestObject.package_id).all()  # type: ignore
+        }
+
+        result = set()
+
+        for package in (
+            model.Session.query(package)
+            .join(extras, package.id == extras.package_id)
+            .filter(extras.key == "harvest_source_type")
+            .filter(extras.value == "delwp")
+            .filter(package.state == model.State.ACTIVE)
+            .all()
+        ):
+            if package.id in packages_with_harvest_objects:
+                continue
+
+            result.add(package)
+
+        return result - packages_with_harvest_objects
+
+    @classmethod
+    def purge_datasets(cls) -> None:
+        datasets = cls.get_datasets()
+
+        click.secho(f"Purging {len(datasets)} datasets...", fg="blue")
+
+        for dataset in datasets:
+            click.secho(f"Purging dataset {dataset.name}...", fg="blue")
+
+            tk.get_action("dataset_purge")(
+                {"ignore_auth": True}, {"id": dataset.id}
+            )
+
+        click.secho(f"Done. {len(datasets)} datasets purged", fg="blue")
