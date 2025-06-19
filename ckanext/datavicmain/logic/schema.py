@@ -33,7 +33,13 @@ def custom_user_create_schema() -> Schema:
         }
     )  # type: ignore
 
-    schema["email"].append(tk.get_validator("datavic_email_validator"))
+    schema["email"] = [
+        tk.get_validator("not_empty"),
+        tk.get_validator("strip_value"),
+        tk.get_validator("email_validator"),
+        tk.get_validator("datavic_email_validator"),
+        tk.get_validator("unicode_safe"),
+    ]
 
     return schema
 
