@@ -220,7 +220,7 @@ def user_org_can_upload(pkg_id):
 
     if pkg_id is not None:
         dataset = toolkit.get_action("package_show")(
-            {"user": user}, {"name_or_id": pkg_id}
+            {"user": user}, {"id": pkg_id}
         )
         org_name = dataset.get("organization").get("name")
 
