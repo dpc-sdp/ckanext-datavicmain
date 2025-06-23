@@ -19,7 +19,6 @@ import ckanext.datavicmain.utils as vicmain_utils
 log = logging.getLogger(__name__)
 
 bp = Blueprint("datavic_org", __name__, url_prefix="/organization")
-mailer = get_mailer()
 
 
 def restricted_pages() -> None:
@@ -208,7 +207,7 @@ class ApproveRequestView(MethodView):
         }
 
         try:
-            mailer.mail_recipients(
+            get_mailer().mail_recipients(
                 tk._(
                     f"Request for {role.title()} - {organization.title} access approved"
                 ),
@@ -300,7 +299,7 @@ class DenyRequestView(MethodView):
         }
 
         try:
-            mailer.mail_recipients(
+            get_mailer().mail_recipients(
                 tk._(
                     f"Request for {role.title()} - {organization.title} access denied"
                 ),
