@@ -5,7 +5,7 @@ import json
 import logging
 import math
 from typing import Any, Optional
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin, urlsplit, quote
 
 import ckan.authz as authz
 import ckan.model as model
@@ -308,10 +308,11 @@ def url_for_dtv_config(ids: list[str], embedded: bool = True) -> str:
     )
 
     encoded = base64.urlsafe_b64encode(bytes(json.dumps(ids), "utf8"))
+    encoded_string = quote(encoded, safe='')
     return urljoin(
         base_url,
         toolkit.url_for(
-            "datavicmain.dtv_config", encoded=encoded, embedded=embedded
+            "datavicmain.dtv_config", encoded=encoded_string, embedded=embedded
         ),
     )
 
