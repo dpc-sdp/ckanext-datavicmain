@@ -12,7 +12,6 @@ from ckanext.mailcraft.utils import get_mailer
 
 import ckanext.datavicmain.const as const
 
-mailer = get_mailer()
 log = logging.getLogger(__name__)
 PENDING_USERS_FLAKE_NAME = "datavic:organization:join_request"
 
@@ -174,7 +173,7 @@ def notify_about_pending_user(data_dict: dict[str, Any]) -> None:
     }
 
     try:
-        mailer.mail_recipients(
+        get_mailer().mail_recipients(
             tk._("New account requested"),
             emails,
             body=tk.render(
@@ -209,6 +208,7 @@ def notify_about_org_join_request(
 
     recipients = [model.User.get(user[0]) for user in org_admins]
     org_title = model.Group.get(orgname).title
+    mailer = get_mailer()
 
     for org_admin in recipients:
         # should not happen, but just in case
