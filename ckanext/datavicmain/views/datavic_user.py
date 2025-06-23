@@ -27,7 +27,6 @@ import ckanext.datavicmain.utils as utils
 log = logging.getLogger(__name__)
 
 datavicuser = Blueprint("datavicuser", __name__)
-mailer = get_mailer()
 
 
 class DataVicRequestResetView(user.RequestResetView):
@@ -87,6 +86,8 @@ class DataVicRequestResetView(user.RequestResetView):
                     user_id
                 )
             )
+
+        mailer = get_mailer()
 
         for user_obj in user_objs:
             log.info("Emailing reset link to user: {}".format(user_obj.name))
@@ -151,7 +152,7 @@ class DataVicPerformResetView(user.PerformResetView):
 
         tk.g.reset_key = tk.request.args.get("key")
 
-        if not mailer.verify_reset_link(user_obj, tk.g.reset_key):
+        if not get_mailer().verify_reset_link(user_obj, tk.g.reset_key):
             tk.h.flash_error(tk._("Invalid reset key. Please try again."))
             tk.abort(403)
 
@@ -192,7 +193,7 @@ class DataVicPerformResetView(user.PerformResetView):
                     {"id": user_dict["id"], "state": model.State.ACTIVE},
                 )
 
-            mailer.create_reset_key(context["user_obj"])
+            get_mailer().create_reset_key(context["user_obj"])
             signals.perform_password_reset.send(
                 username, user=context["user_obj"]
             )
@@ -400,7 +401,7 @@ def approve(user_id: str):
         }
 
         try:
-            mailer.mail_recipients(
+            get_mailer().mail_recipients(
                 tk._("New account approved"),
                 [user.get("email", "")],
                 body=tk.render(
@@ -461,7 +462,7 @@ def deny(id):
         }
 
         try:
-            mailer.mail_recipients(
+            get_mailer().mail_recipients(
                 tk._("New account denied"),
                 [user.get("email", "")],
                 body=tk.render(
