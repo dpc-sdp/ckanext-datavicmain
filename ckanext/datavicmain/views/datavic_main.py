@@ -2,6 +2,7 @@ import base64
 import csv
 import json
 from io import StringIO
+from urllib.parse import unquote_to_bytes
 
 from flask import Blueprint, jsonify, make_response
 
@@ -155,6 +156,7 @@ def toggle_organization_uploads(id: str) -> Response:
 
 
 def dtv_config(encoded: str, embedded: bool):
+    encoded = unquote_to_bytes(encoded)
     try:
         ids: list[str] = json.loads(base64.urlsafe_b64decode(encoded))
     except ValueError:
