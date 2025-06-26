@@ -16,7 +16,6 @@ import ckan.plugins.toolkit as tk
 import ckan.types as types
 import ckan.views.user as user
 from ckan import authz
-from ckan.common import request
 from ckan.lib import signals
 
 from ckanext.mailcraft.exception import MailerException
@@ -281,6 +280,7 @@ class DataVicUserEditView(user.EditView):
                 identity = {
                     "login": tk.current_user.name,
                     "password": data_dict["old_password"],
+                    "check_captcha": False,
                 }
                 auth_user = authenticator.ckan_authenticator(identity)
                 auth_username = auth_user.name if auth_user else ""
@@ -621,17 +621,17 @@ def before_request() -> None:
         return
 
     if (
-        request.method == "POST"
+        tk.request.method == "POST"
         and action in ["login", "register", "request_reset"]
         and not tk.config.get("debug")
     ):
         try:
-            captcha.check_recaptcha(request)
+            captcha.check_recaptcha(tk.request)
         except captcha.CaptchaError:
             tk.h.flash_error(
                 tk._("CAPTCHA verification failed. Please try again.")
             )
-            return tk.h.redirect_to(request.url)
+            return tk.h.redirect_to(tk.request.url)
 
 
 def register_datavicuser_plugin_rules(blueprint):
