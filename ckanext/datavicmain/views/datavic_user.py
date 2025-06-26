@@ -280,6 +280,7 @@ class DataVicUserEditView(user.EditView):
                 identity = {
                     "login": tk.current_user.name,
                     "password": data_dict["old_password"],
+                    "check_captcha": False,
                 }
                 auth_user = authenticator.ckan_authenticator(identity)
                 auth_username = auth_user.name if auth_user else ""
@@ -627,7 +628,9 @@ def before_request() -> None:
         try:
             captcha.check_recaptcha(tk.request)
         except captcha.CaptchaError:
-            tk.h.flash_error(tk._("CAPTCHA verification failed. Please try again."))
+            tk.h.flash_error(
+                tk._("CAPTCHA verification failed. Please try again.")
+            )
             return tk.h.redirect_to(tk.request.url)
 
 
