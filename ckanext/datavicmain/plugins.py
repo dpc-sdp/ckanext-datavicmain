@@ -28,6 +28,10 @@ from ckanext.datavicmain.transmutators import get_transmutators
 from ckanext.datavicmain.views import get_blueprints
 from ckanext.datavicmain.syndication import listeners
 
+from ckanext.datavicmain.syndication import listeners
+from ckanext.datavicmain.implementation import PermissionLabels
+
+
 config = toolkit.config
 request = toolkit.request
 get_action = toolkit.get_action

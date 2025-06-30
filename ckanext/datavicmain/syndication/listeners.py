@@ -152,7 +152,18 @@ _view_fields = [
 
 def _view_data(view: dict[str, Any]) -> dict[str, Any]:
     """Extract fields allowed by view_create schema."""
-    return {f: view[f] for f in _view_fields if f in view}
+    return {
+        f: view[f]
+        for f in [
+            "description",
+            "filter_fields",
+            "filter_values",
+            "resource_id",
+            "title",
+            "view_type",
+        ]
+        if f in view
+    }
 
 
 def _charts_view_data(view: dict[str, Any]) -> dict[str, Any]:
