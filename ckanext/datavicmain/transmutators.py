@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Callable, Any
 import json
+from typing import Any, Callable
 
 import ckan.plugins.toolkit as tk
 
@@ -49,6 +49,6 @@ def to_json_string(field: Field) -> Field:
     try:
         field.value = json.dumps(field.value)
     except (ValueError, TypeError) as e:
-        raise tk.Invalid(tk._('Invalid JSON object: {}').format(e))
+        raise tk.Invalid(tk._("Invalid JSON object: {}").format(e))
 
     return field

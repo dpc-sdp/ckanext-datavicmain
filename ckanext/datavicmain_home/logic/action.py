@@ -3,13 +3,13 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-import ckan.types as types
 import ckan.model as model
 import ckan.plugins.toolkit as tk
+import ckan.types as types
 from ckan.logic import validate
 
-from ckanext.datavicmain_home.model import HomeSectionItem
 from ckanext.datavicmain_home.logic import schema
+from ckanext.datavicmain_home.model import HomeSectionItem
 
 
 @validate(schema.create_section_item)

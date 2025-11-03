@@ -1,34 +1,33 @@
 from __future__ import annotations
 
 import copy
+import csv
 import datetime
 import logging
 import mimetypes
-
-from os import path, stat
 from itertools import groupby
-from os import path
+from os import path, stat
 from typing import Any
 from urllib.parse import urlparse
-
-import ckan.logic.validators as validators
-import ckan.model as model
-import ckan.plugins.toolkit as tk
 
 import click
 import openpyxl
 import tqdm
+from sqlalchemy.orm import Query
+
+import ckan.logic.validators as validators
+import ckan.model as model
+import ckan.plugins.toolkit as tk
 from ckan.lib.munge import munge_title_to_name
-from ckan.lib.search import rebuild, clear
+from ckan.lib.search import rebuild
 from ckan.lib.uploader import get_resource_uploader
 from ckan.model import Resource, ResourceView
 from ckan.types import Context
-from ckanext.datavicmain.helpers import field_choices
-from ckanext.harvest.model import HarvestObject, HarvestSource
-from ckanext.datastore.backend import get_all_resources_ids_in_datastore
 
+from ckanext.datastore.backend import get_all_resources_ids_in_datastore
 from ckanext.harvest.model import HarvestObject, HarvestSource
-from sqlalchemy.orm import Query
+
+from ckanext.datavicmain.helpers import field_choices
 
 log = logging.getLogger(__name__)
 
@@ -682,7 +681,7 @@ def ckan_iar_resources_format_fix():
         )
     model.Session.commit()
     click.secho(
-        f"All formats was corrected.",
+        "All formats was corrected.",
         fg="green",
     )
 
@@ -921,7 +920,7 @@ class ResourceFilesizeConvert:
             click.secho(
                 click.style("Resource ")
                 + click.style(f"{resource_url}", fg="blue", italic=True)
-                + click.style(f" has non-numeric filesize: ")
+                + click.style(" has non-numeric filesize: ")
                 + click.style(f"{old} → {new}", fg="blue", italic=True)
             )
 
@@ -992,7 +991,7 @@ class ResourceFilesizeConvert:
             click.secho(
                 click.style("Resource ")
                 + click.style(f"{resource_url}", fg="blue", italic=True)
-                + click.style(f" filesize updated ")
+                + click.style(" filesize updated ")
                 + click.style(
                     f"{old_size} → {new_size}",
                     fg="blue",

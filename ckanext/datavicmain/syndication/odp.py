@@ -14,7 +14,8 @@ def prepare_package_for_odp(package_id, data_dict):
         # don't synchronize hash, because it will prevent resource's ingestion
         # into datastore
         dict(res, hash="")
-        for res in resources if not tk.asbool(res.get("private"))
+        for res in resources
+        if not tk.asbool(res.get("private"))
     ]
 
     ## Update resources
@@ -24,15 +25,15 @@ def prepare_package_for_odp(package_id, data_dict):
         if "datastore_active" in res:
             res["datastore_active"] = False
 
-    data_dict.pop('resources')
-    data_dict['resources'] = resources
+    data_dict.pop("resources")
+    data_dict["resources"] = resources
 
     ## Update groups
-    groups = data_dict.pop('groups')
-    data_dict['groups'] = []
+    groups = data_dict.pop("groups")
+    data_dict["groups"] = []
     for group in groups:
-        group.pop('id')
-        data_dict['groups'].append(group)
+        group.pop("id")
+        data_dict["groups"].append(group)
 
     return data_dict
 

@@ -2,15 +2,14 @@ from __future__ import annotations
 
 from io import BytesIO
 
-import pytest
 import factory
+import pytest
 from pytest_factoryboy import register
-
 
 from ckan.tests.factories import CKANFactory
 
 from ckanext.datavicmain_home.model import HomeSectionItem
-from ckanext.datavicmain_home.tests.helpers import MockFileStorage, PNG_IMAGE
+from ckanext.datavicmain_home.tests.helpers import PNG_IMAGE, MockFileStorage
 
 
 @pytest.fixture()
