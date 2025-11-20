@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import TypedDict
 from io import BytesIO
+from typing import TypedDict
 
 import pytest
 
@@ -9,7 +9,7 @@ import ckan.plugins.toolkit as tk
 from ckan.tests.helpers import call_action
 
 from ckanext.datavicmain_home.model import HomeSectionItem
-from ckanext.datavicmain_home.tests.helpers import MockFileStorage, PNG_IMAGE
+from ckanext.datavicmain_home.tests.helpers import PNG_IMAGE, MockFileStorage
 
 
 class HomeSectionData(TypedDict):
@@ -42,7 +42,7 @@ class TestHomeSectionItemCreate:
         assert home_section_item["weight"] == 0
         assert home_section_item["created_at"]
         assert home_section_item["modified_at"]
-        assert home_section_item["url_in_new_tab"] == False
+        assert not home_section_item["url_in_new_tab"]
         assert home_section_item["section_type"]
 
     def test_create_with_invalid_url(self, home_section_item_factory):
@@ -116,7 +116,7 @@ class TestHomeSectionItemUpdate:
         assert result["state"] == new_state
         assert result["section_type"] == new_section_type
         assert result["weight"] == new_weight
-        assert result["url_in_new_tab"] == True
+        assert result["url_in_new_tab"]
 
     def test_update_with_invalid_url(self, home_section_item_factory):
         home_section_item = home_section_item_factory()

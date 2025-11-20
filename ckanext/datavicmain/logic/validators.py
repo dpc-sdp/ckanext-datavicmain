@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Optional
 import logging
 import mimetypes
+from typing import Any, Optional
 
-import ckan.types as types
+import requests
+
 import ckan.authz as authz
 import ckan.lib.navl.dictization_functions as df
 import ckan.plugins.toolkit as tk
-import requests
+import ckan.types as types
 
 log = logging.getLogger(__name__)
 
@@ -200,6 +201,54 @@ def datavic_email_validator(
             errors[("registration",)] = [
                 "<strong>406 Registration unsuccessful.</strong> Please email <a href='mailto:datavic@dpc.vic.gov.au'>datavic@dpc.vic.gov.au</a> for assistance"
             ]
+        return
+
+
+def datavic_organization_parent_validator(
+    key: types.FlattenKey,
+    data: types.FlattenDataDict,
+    errors: types.FlattenErrorDict,
+    context: types.Context,
+) -> Any:
+    """
+    Restricted organization can't be assigned as a child of unrestricted one
+    or vice versa
+    """
+    value = data.get(("groups", 0, "name"))
+    visibility = data.get(("visibility",)) == "restricted"
+    model = context["model"]
+    parent = model.Group.get(value)
+    if parent:
+        is_restricted = tk.h.datavic_is_org_restricted(parent.id)
+        if (is_restricted and not visibility) or (
+            not is_restricted and visibility
+        ):
+            errors[("parent",)].append(
+                """Incorrect value - restricted organization can't be assigned
+                as a child of unrestricted one or vice versa"""
+            )
+            return
+
+
+def datavic_set_org_visibility_if_new(
+    key: types.FlattenKey,
+    data: types.FlattenDataDict,
+    errors: types.FlattenErrorDict,
+    context: types.Context,
+) -> Any:
+    """
+    The field can be set at creation stage only
+    """
+    blueprint, endpoint = tk.get_endpoint()
+    if blueprint == "organization" and endpoint == "edit":
+        model = context["model"]
+        old_value = model.Group.get(data[("name",)]).extras.get("visibility")
+        new_value = data[key]
+        if old_value != new_value:
+            errors[key].append(
+                """Incorrect value - the field can be set at creation stage only"""
+            )
+            return
 
 
 def datavic_filesize_validator(

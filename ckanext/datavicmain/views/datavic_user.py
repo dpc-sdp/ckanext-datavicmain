@@ -1,35 +1,32 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, cast, Union
+from typing import Any, Union, cast
 
 from flask import Blueprint, Response
 from flask.views import MethodView
 
-import ckan.types as types
-import ckan.plugins.toolkit as tk
-import ckan.logic as logic
-import ckan.model as model
 import ckan.lib.authenticator as authenticator
 import ckan.lib.captcha as captcha
-import ckan.views.user as user
 import ckan.lib.navl.dictization_functions as dictization_functions
-
-from ckan.common import request
-from ckan import authz, plugins
-
+import ckan.logic as logic
+import ckan.model as model
+import ckan.plugins as plugins
+import ckan.plugins.toolkit as tk
+import ckan.types as types
+import ckan.views.user as user
+from ckan import authz
 from ckan.lib import signals
 
-from ckanext.mailcraft.utils import get_mailer
 from ckanext.mailcraft.exception import MailerException
+from ckanext.mailcraft.utils import get_mailer
 
-import ckanext.datavicmain.utils as utils
 import ckanext.datavicmain.helpers as helpers
+import ckanext.datavicmain.utils as utils
 
 log = logging.getLogger(__name__)
 
 datavicuser = Blueprint("datavicuser", __name__)
-mailer = get_mailer()
 
 
 class DataVicRequestResetView(user.RequestResetView):
@@ -89,6 +86,8 @@ class DataVicRequestResetView(user.RequestResetView):
                     user_id
                 )
             )
+
+        mailer = get_mailer()
 
         for user_obj in user_objs:
             log.info("Emailing reset link to user: {}".format(user_obj.name))
@@ -153,7 +152,7 @@ class DataVicPerformResetView(user.PerformResetView):
 
         tk.g.reset_key = tk.request.args.get("key")
 
-        if not mailer.verify_reset_link(user_obj, tk.g.reset_key):
+        if not get_mailer().verify_reset_link(user_obj, tk.g.reset_key):
             tk.h.flash_error(tk._("Invalid reset key. Please try again."))
             tk.abort(403)
 
@@ -194,7 +193,7 @@ class DataVicPerformResetView(user.PerformResetView):
                     {"id": user_dict["id"], "state": model.State.ACTIVE},
                 )
 
-            mailer.create_reset_key(context["user_obj"])
+            get_mailer().create_reset_key(context["user_obj"])
             signals.perform_password_reset.send(
                 username, user=context["user_obj"]
             )
@@ -281,6 +280,7 @@ class DataVicUserEditView(user.EditView):
                 identity = {
                     "login": tk.current_user.name,
                     "password": data_dict["old_password"],
+                    "check_captcha": False,
                 }
                 auth_user = authenticator.ckan_authenticator(identity)
                 auth_username = auth_user.name if auth_user else ""
@@ -317,11 +317,7 @@ class DataVicUserEditView(user.EditView):
         context, id = self._prepare(id)
         data_dict = {"id": id}
         is_myself = id in (
-            (
-                ""
-                if tk.current_user.is_anonymous
-                else tk.current_user.id
-            ),
+            ("" if tk.current_user.is_anonymous else tk.current_user.id),
             tk.current_user.name,
         )
 
@@ -406,7 +402,7 @@ def approve(user_id: str):
         }
 
         try:
-            mailer.mail_recipients(
+            get_mailer().mail_recipients(
                 tk._("New account approved"),
                 [user.get("email", "")],
                 body=tk.render(
@@ -467,7 +463,7 @@ def deny(id):
         }
 
         try:
-            mailer.mail_recipients(
+            get_mailer().mail_recipients(
                 tk._("New account denied"),
                 [user.get("email", "")],
                 body=tk.render(
@@ -625,15 +621,17 @@ def before_request() -> None:
         return
 
     if (
-        request.method == "POST"
+        tk.request.method == "POST"
         and action in ["login", "register", "request_reset"]
         and not tk.config.get("debug")
     ):
         try:
-            captcha.check_recaptcha(request)
+            captcha.check_recaptcha(tk.request)
         except captcha.CaptchaError:
-            tk.h.flash_error(tk._("CAPTCHA verification failed. Please try again."))
-            return tk.h.redirect_to(request.url)
+            tk.h.flash_error(
+                tk._("CAPTCHA verification failed. Please try again.")
+            )
+            return tk.h.redirect_to(tk.request.url)
 
 
 def register_datavicuser_plugin_rules(blueprint):

@@ -3,6 +3,7 @@ import logging
 import click
 
 from ckan.plugins.toolkit import enqueue_job
+
 from ckanext.datavicmain import jobs
 
 from . import maintain
@@ -16,11 +17,15 @@ def datavic_main():
     pass
 
 
-@datavic_main.command(u"ckan-job-worker-monitor")
+@datavic_main.command("ckan-job-worker-monitor")
 def ckan_worker_job_monitor():
     try:
-        enqueue_job(jobs.ckan_worker_job_monitor, title="CKAN job worker monitor")
-        click.secho(u"CKAN job worker monitor added to worker queue", fg=u"green")
+        enqueue_job(
+            jobs.ckan_worker_job_monitor, title="CKAN job worker monitor"
+        )
+        click.secho(
+            "CKAN job worker monitor added to worker queue", fg="green"
+        )
     except Exception as e:
         log.error(e)
 
