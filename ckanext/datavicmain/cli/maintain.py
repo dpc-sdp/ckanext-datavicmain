@@ -1126,14 +1126,16 @@ class DeleteDetachedDelwpDatasets:
         click.secho(f"Found {len(datasets)} detached datasets", fg="blue")
         click.secho(f"Use --delete flag to delete them", fg="blue")
 
-        if datasets and os.environ.get("DELWP_BETTERUPTIME_DETACHED_DATASETS_URL"):
-            notify_url = os.environ["DELWP_BETTERUPTIME_DETACHED_DATASETS_URL"].strip()
-            if notify_url:
-                try:
-                    requests.get(notify_url, timeout=10)
-                    click.secho(f"Notified BetterUpTime of {len(datasets)} detached dataset(s)", fg="green")
-                except RequestException as e:
-                    click.secho(f"Failed to ping BetterUpTime: {e}", fg="red")
+        notify_url = (os.environ.get("MONITOR_DELWP_DETACHED_DATASETS_URL") or "").strip().rstrip("/")
+        if notify_url:
+            # Send failure notification if there are detached datasets.
+            target = f"{notify_url}/fail" if len(datasets) > 0 else notify_url
+            try:
+                click.secho(f"Monitoring service target: {target}", fg="green")
+                requests.get(target, timeout=10)
+                click.secho(f"Successfully notified monitoring service", fg="green")
+            except RequestException as e:
+                click.secho(f"Failed to notify monitoring service: {e}", fg="red")
 
     @classmethod
     def get_datasets(cls) -> set[model.Package]:
