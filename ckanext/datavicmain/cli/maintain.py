@@ -5,12 +5,15 @@ import csv
 import datetime
 import logging
 import mimetypes
+import os
 from itertools import groupby
 from os import path, stat
 from typing import Any
 from urllib.parse import urlparse
 
 import click
+import requests
+from requests.exceptions import RequestException
 import openpyxl
 import tqdm
 from sqlalchemy.orm import Query
@@ -1123,6 +1126,17 @@ class DeleteDetachedDelwpDatasets:
         click.secho(f"Found {len(datasets)} detached datasets", fg="blue")
         click.secho(f"Use --delete flag to delete them", fg="blue")
 
+        notify_url = (os.environ.get("MONITOR_DELWP_DETACHED_DATASETS_URL") or "").strip().rstrip("/")
+        if notify_url:
+            # Send failure notification if there are detached datasets.
+            target = f"{notify_url}/fail" if len(datasets) > 0 else notify_url
+            try:
+                click.secho(f"Monitoring service target: {target}", fg="green")
+                requests.get(target, timeout=10)
+                click.secho(f"Successfully notified monitoring service", fg="green")
+            except RequestException as e:
+                click.secho(f"Failed to notify monitoring service: {e}", fg="red")
+
     @classmethod
     def get_datasets(cls) -> set[model.Package]:
         package = model.Package
@@ -1154,13 +1168,16 @@ class DeleteDetachedDelwpDatasets:
     def purge_datasets(cls) -> None:
         datasets = cls.get_datasets()
 
-        click.secho(f"Purging {len(datasets)} datasets...", fg="blue")
+        click.secho(f"Soft-deleting then purging {len(datasets)} datasets...", fg="blue")
+
+        site_user = tk.get_action("get_site_user")({"ignore_auth": True}, {})
+        context = {"ignore_auth": True, "user": site_user["name"]}
 
         for dataset in datasets:
-            click.secho(f"Purging dataset {dataset.name}...", fg="blue")
+            click.secho(f"Soft-deleting dataset {dataset.name}...", fg="blue")
+            tk.get_action("package_delete")(context, {"id": dataset.id})
 
-            tk.get_action("dataset_purge")(
-                {"ignore_auth": True}, {"id": dataset.id}
-            )
+            click.secho(f"Purging dataset {dataset.name}...", fg="blue")
+            tk.get_action("dataset_purge")(context, {"id": dataset.id})
 
         click.secho(f"Done. {len(datasets)} datasets purged", fg="blue")
