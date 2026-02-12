@@ -1171,20 +1171,35 @@ class DeleteDetachedDelwpDatasets:
     def purge_datasets(cls) -> None:
         datasets = cls.get_datasets()
 
-        click.secho(f"Soft-deleting then purging {len(datasets)} datasets...", fg="blue")
+        # Collect IDs and names upfront. The Package objects will become
+        # detached from the SQLAlchemy session after dataset_purge commits
+        # and removes the session scope, causing DetachedInstanceError
+        # on lazy-loaded attributes (like .extras) in subsequent iterations.
+        dataset_refs = [(d.id, d.name) for d in datasets]
+
+        click.secho(f"Soft-deleting then purging {len(dataset_refs)} datasets...", fg="blue")
 
         site_user = tk.get_action("get_site_user")({"ignore_auth": True}, {})
-        context = {"ignore_auth": True, "user": site_user["name"]}
 
-        for dataset in datasets:
-            click.secho(f"Soft-deleting dataset {dataset.name}...", fg="blue")
-            tk.get_action("package_delete")(context, {"id": dataset.id})
+        for dataset_id, dataset_name in dataset_refs:
+            click.secho(f"Soft-deleting dataset {dataset_name}...", fg="blue")
+            tk.get_action("package_delete")(
+                {"ignore_auth": True, "user": site_user["name"]},
+                {"id": dataset_id},
+            )
 
-            for profile in syndicate_utils.profiles_for(dataset):
-                click.secho(f"Sync soft deleted dataset to portal {profile.id}...", fg="blue")
-                syndicate_sync_package(dataset.id, SyndicateTopic.update, profile)
+            # Re-fetch after package_delete to get a session-bound instance
+            # with up-to-date state for syndication.
+            dataset = model.Package.get(dataset_id)
+            if dataset:
+                for profile in syndicate_utils.profiles_for(dataset):
+                    click.secho(f"Sync soft deleted dataset to portal {profile.id}...", fg="blue")
+                    syndicate_sync_package(dataset_id, SyndicateTopic.update, profile)
 
-            click.secho(f"Purging dataset {dataset.name}...", fg="blue")
-            tk.get_action("dataset_purge")(context, {"id": dataset.id})
+            click.secho(f"Purging dataset {dataset_name}...", fg="blue")
+            tk.get_action("dataset_purge")(
+                {"ignore_auth": True, "user": site_user["name"]},
+                {"id": dataset_id},
+            )
 
-        click.secho(f"Done. {len(datasets)} datasets purged", fg="blue")
+        click.secho(f"Done. {len(dataset_refs)} datasets purged", fg="blue")
