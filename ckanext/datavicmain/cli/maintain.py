@@ -31,6 +31,9 @@ from ckanext.datastore.backend import get_all_resources_ids_in_datastore
 from ckanext.harvest.model import HarvestObject, HarvestSource
 
 from ckanext.datavicmain.helpers import field_choices
+from ckanext.syndicate.tasks import sync_package as syndicate_sync_package
+from ckanext.syndicate.types import Topic as SyndicateTopic
+from ckanext.syndicate import utils as syndicate_utils
 
 log = logging.getLogger(__name__)
 
@@ -1176,6 +1179,10 @@ class DeleteDetachedDelwpDatasets:
         for dataset in datasets:
             click.secho(f"Soft-deleting dataset {dataset.name}...", fg="blue")
             tk.get_action("package_delete")(context, {"id": dataset.id})
+
+            for profile in syndicate_utils.profiles_for(dataset):
+                click.secho(f"Sync soft deleted dataset to portal {profile.id}...", fg="blue")
+                syndicate_sync_package(dataset.id, SyndicateTopic.update, profile)
 
             click.secho(f"Purging dataset {dataset.name}...", fg="blue")
             tk.get_action("dataset_purge")(context, {"id": dataset.id})
