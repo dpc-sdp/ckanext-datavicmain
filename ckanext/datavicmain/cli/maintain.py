@@ -5,6 +5,7 @@ import csv
 import datetime
 import logging
 import mimetypes
+import os
 from itertools import groupby
 from os import path, stat
 from typing import Any
@@ -13,12 +14,14 @@ from urllib.parse import urlparse
 import click
 import openpyxl
 import tqdm
+from sqlalchemy import or_
 from sqlalchemy.orm import Query
 
 import ckan.logic.validators as validators
 import ckan.model as model
 import ckan.plugins.toolkit as tk
 from ckan.lib.munge import munge_title_to_name
+from ckan.lib.search import clear as search_clear
 from ckan.lib.search import rebuild
 from ckan.lib.uploader import get_resource_uploader
 from ckan.model import Resource, ResourceView
@@ -1098,12 +1101,19 @@ class ResourceFilesizeConvert:
 
 @maintain.command()
 @click.option("--delete", is_flag=True, type=click.BOOL, default=False)
-def delete_detached_delwp_datasets(delete: bool):
+@click.option(
+    "--csv-path",
+    default=None,
+    type=click.Path(),
+    help="Path for the CSV audit report.  "
+    "Defaults to /app/filestore/purge_reports/dd_delwp_purged_<timestamp>.csv",
+)
+def delete_detached_delwp_datasets(delete: bool, csv_path: str | None):
     """Delete DELWP datasets that are not attached to a harvest object"""
     if not delete:
         DeleteDetachedDelwpDatasets.list_detached_datasets()
     else:
-        DeleteDetachedDelwpDatasets.purge_datasets()
+        DeleteDetachedDelwpDatasets.purge_datasets(csv_path=csv_path)
 
 
 class DeleteDetachedDelwpDatasets:
@@ -1116,12 +1126,34 @@ class DeleteDetachedDelwpDatasets:
 
         datasets = cls.get_datasets()
 
+        active_count = 0
+        deleted_count = 0
+        other_count = 0
+
         for dataset in datasets:
             url = tk.url_for("dataset.read", id=dataset.name, _external=True)
-            click.secho(f"Dataset {url} is detached", fg="red")
+            click.secho(f"Dataset {url} is detached (state={dataset.state})", fg="red")
 
-        click.secho(f"Found {len(datasets)} detached datasets", fg="blue")
-        click.secho(f"Use --delete flag to delete them", fg="blue")
+            if dataset.state == model.State.ACTIVE:
+                active_count += 1
+            elif dataset.state == model.State.DELETED:
+                deleted_count += 1
+            else:
+                other_count += 1
+
+        click.secho(
+            f"Found {len(datasets)} detached datasets"
+            f" (active={active_count}, deleted={deleted_count}"
+            + (f", other={other_count}" if other_count else "")
+            + ")",
+            fg="blue",
+        )
+        click.secho("Use --delete flag to delete them", fg="blue")
+
+        # Exit with non-zero status when detached datasets are found so the
+        # calling shell script can report to the monitoring service.
+        if datasets:
+            raise SystemExit(1)
 
     @classmethod
     def get_datasets(cls) -> set[model.Package]:
@@ -1135,12 +1167,15 @@ class DeleteDetachedDelwpDatasets:
 
         result = set()
 
+        # No state filter — detached DELWP datasets should be purged
+        # regardless of whether they are active, deleted, or in any other
+        # state.  They have no harvest object linking them to a source so
+        # they serve no purpose.
         for package in (
             model.Session.query(package)
             .join(extras, package.id == extras.package_id)
             .filter(extras.key == "harvest_source_type")
             .filter(extras.value == "delwp")
-            .filter(package.state == model.State.ACTIVE)
             .all()
         ):
             if package.id in packages_with_harvest_objects:
@@ -1151,16 +1186,214 @@ class DeleteDetachedDelwpDatasets:
         return result - packages_with_harvest_objects
 
     @classmethod
-    def purge_datasets(cls) -> None:
+    def purge_datasets(cls, csv_path: str | None = None) -> None:
+        import sys
+
         datasets = cls.get_datasets()
+        dataset_refs = [(d.id, d.name, d.state) for d in datasets]
 
-        click.secho(f"Purging {len(datasets)} datasets...", fg="blue")
+        if not dataset_refs:
+            click.secho("No detached DELWP datasets found.", fg="green")
+            return
 
-        for dataset in datasets:
-            click.secho(f"Purging dataset {dataset.name}...", fg="blue")
-
-            tk.get_action("dataset_purge")(
-                {"ignore_auth": True}, {"id": dataset.id}
+        # Collect syndicated_id extras for DD→DV cross-reference audit trail.
+        syndicated_ids: dict[str, str] = dict(
+            model.Session.query(
+                model.PackageExtra.package_id, model.PackageExtra.value
             )
+            .filter(model.PackageExtra.key == "syndicated_id")
+            .filter(
+                model.PackageExtra.package_id.in_(
+                    [d[0] for d in dataset_refs]
+                )
+            )
+            .all()
+        )
 
-        click.secho(f"Done. {len(datasets)} datasets purged", fg="blue")
+        # Resolve CSV path — default to persistent filestore.
+        if not csv_path:
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            csv_path = (
+                f"/app/filestore/purge_reports/dd_delwp_purged_{ts}.csv"
+            )
+        csv_dir = os.path.dirname(csv_path)
+        if csv_dir:
+            os.makedirs(csv_dir, exist_ok=True)
+
+        active_count = sum(
+            1 for _, _, s in dataset_refs if s == model.State.ACTIVE
+        )
+        deleted_count = sum(
+            1 for _, _, s in dataset_refs if s == model.State.DELETED
+        )
+        other_count = len(dataset_refs) - active_count - deleted_count
+
+        click.secho(
+            f"Purging {len(dataset_refs)} detached DELWP datasets"
+            f" (active={active_count}, deleted={deleted_count}"
+            + (f", other={other_count}" if other_count else "")
+            + f", {len(syndicated_ids)} have DV syndicated_id)...",
+            fg="blue",
+        )
+        sys.stdout.flush()
+
+        purged = 0
+        failed = 0
+
+        for dataset_id, dataset_name, _initial_state in dataset_refs:
+            try:
+                dv_id = syndicated_ids.get(dataset_id, "")
+                click.secho(
+                    f"  Purging {dataset_name}"
+                    + (f" (DV={dv_id})" if dv_id else ""),
+                    fg="blue",
+                )
+                sys.stdout.flush()
+
+                # 1. Clear from Solr index (works without package in DB).
+                search_clear(dataset_id)
+
+                # 2. Delete child rows that do NOT have DB-level
+                #    ON DELETE CASCADE.
+                #
+                #    Tables with DB-level CASCADE (auto-handled):
+                #      resource_view  → cascades from resource
+                #      user_following_dataset → cascades from package
+                #      harvest_object → cascades from package (migration)
+                model.Session.query(model.Resource).filter_by(
+                    package_id=dataset_id
+                ).delete()
+                model.Session.query(model.PackageExtra).filter_by(
+                    package_id=dataset_id
+                ).delete()
+                model.Session.query(model.PackageTag).filter_by(
+                    package_id=dataset_id
+                ).delete()
+                model.Session.query(model.PackageRelationship).filter(
+                    or_(
+                        model.PackageRelationship.subject_package_id
+                        == dataset_id,
+                        model.PackageRelationship.object_package_id
+                        == dataset_id,
+                    )
+                ).delete(synchronize_session="fetch")
+                model.Session.query(model.Member).filter(
+                    model.Member.table_id == dataset_id,
+                    model.Member.table_name == "package",
+                ).delete()
+                model.Session.query(model.PackageMember).filter_by(
+                    package_id=dataset_id
+                ).delete()
+
+                # 3. Delete the package row — triggers DB CASCADE for
+                #    resource_view, user_following_dataset, harvest_object.
+                model.Session.query(model.Package).filter_by(
+                    id=dataset_id
+                ).delete()
+                model.Session.commit()
+                purged += 1
+
+            except Exception as e:
+                click.secho(
+                    f"  ERROR purging {dataset_name}: {e}", fg="red"
+                )
+                log.error(
+                    "Failed to purge dataset %s (%s): %s",
+                    dataset_name,
+                    dataset_id,
+                    e,
+                )
+                model.Session.rollback()
+                failed += 1
+
+        # -- Post-purge: Solr orphan cleanup (safety net) ----------------
+        click.secho("\nCleaning up Solr orphaned entries...", fg="blue")
+        sys.stdout.flush()
+        try:
+            from ckan.cli.search_index import get_orphans
+
+            orphans = get_orphans()
+            for orphan_id in orphans:
+                search_clear(orphan_id)
+            if orphans:
+                click.secho(
+                    f"  Cleared {len(orphans)} orphaned Solr entries",
+                    fg="green",
+                )
+            else:
+                click.secho("  No orphaned Solr entries found", fg="green")
+        except Exception as e:
+            click.secho(
+                f"  WARNING: Solr orphan cleanup failed: {e}", fg="yellow"
+            )
+            log.warning("Solr orphan cleanup failed: %s", e)
+
+        # -- Post-purge: datastore orphan cleanup ------------------------
+        click.secho("Cleaning up orphaned datastore tables...", fg="blue")
+        sys.stdout.flush()
+        try:
+            site_user = tk.get_action("get_site_user")(
+                {"ignore_auth": True}, {}
+            )
+            ds_dropped = 0
+            for resid in get_all_resources_ids_in_datastore():
+                try:
+                    tk.get_action("resource_show")(
+                        {"user": site_user["name"]}, {"id": resid}
+                    )
+                except (tk.ObjectNotFound, KeyError):
+                    try:
+                        tk.get_action("datastore_delete")(
+                            {"user": site_user["name"]},
+                            {"resource_id": resid, "force": True},
+                        )
+                        ds_dropped += 1
+                    except Exception:
+                        pass
+            if ds_dropped:
+                click.secho(
+                    f"  Dropped {ds_dropped} orphaned datastore tables",
+                    fg="green",
+                )
+            else:
+                click.secho(
+                    "  No orphaned datastore tables found", fg="green"
+                )
+        except Exception as e:
+            click.secho(
+                f"  WARNING: datastore cleanup failed: {e}", fg="yellow"
+            )
+            log.warning("Datastore cleanup failed: %s", e)
+
+        # -- CSV audit report ------------------------------------------------
+        try:
+            with open(csv_path, "w", newline="") as fh:
+                writer = csv.writer(fh)
+                writer.writerow(
+                    ["dd_id", "dd_name", "dd_state", "dv_syndicated_id"]
+                )
+                for did, dname, dstate in dataset_refs:
+                    writer.writerow(
+                        [did, dname, dstate, syndicated_ids.get(did, "")]
+                    )
+            click.secho(f"\nCSV report written to {csv_path}", fg="green")
+        except Exception as e:
+            click.secho(
+                f"\nWARNING: failed to write CSV report: {e}", fg="yellow"
+            )
+            log.warning("Failed to write CSV report to %s: %s", csv_path, e)
+
+        # -- Summary -----------------------------------------------------
+        click.secho(
+            f"\nDone. {purged} datasets purged, {failed} failed.",
+            fg="green" if failed == 0 else "yellow",
+        )
+        if syndicated_ids:
+            click.secho(
+                f"\nDD→DV cross-reference"
+                f" ({len(syndicated_ids)} syndicated datasets):",
+                fg="blue",
+            )
+            for dd_id, dv_id in sorted(syndicated_ids.items()):
+                click.secho(f"  DD {dd_id} → DV {dv_id}", fg="blue")
+        sys.stdout.flush()
