@@ -12,8 +12,6 @@ from typing import Any
 from urllib.parse import urlparse
 
 import click
-import requests
-from requests.exceptions import RequestException
 import openpyxl
 import tqdm
 from sqlalchemy import or_
@@ -1152,16 +1150,10 @@ class DeleteDetachedDelwpDatasets:
         )
         click.secho("Use --delete flag to delete them", fg="blue")
 
-        notify_url = (os.environ.get("MONITOR_DELWP_DETACHED_DATASETS_URL") or "").strip().rstrip("/")
-        if notify_url:
-            # Send failure notification if there are detached datasets.
-            target = f"{notify_url}/fail" if len(datasets) > 0 else notify_url
-            try:
-                click.secho(f"Monitoring service target: {target}", fg="green")
-                requests.get(target, timeout=10)
-                click.secho("Successfully notified monitoring service", fg="green")
-            except RequestException as e:
-                click.secho(f"Failed to notify monitoring service: {e}", fg="red")
+        # Exit with non-zero status when detached datasets are found so the
+        # calling shell script can report to the monitoring service.
+        if datasets:
+            raise SystemExit(1)
 
     @classmethod
     def get_datasets(cls) -> set[model.Package]:
