@@ -366,7 +366,7 @@ dataset_fields:
   form_snippet: vic_custodian_autofill.html
   default_value: email
 
-- field_name: syndicate
+- field_name: skip_syndication
   display_snippet: null
   form_snippet: vic_hidden.html
   validators: default(false)
