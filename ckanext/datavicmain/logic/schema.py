@@ -45,19 +45,6 @@ def custom_user_create_schema() -> Schema:
 
 
 @validator_args
-def delwp_data_request_schema(
-    not_missing, unicode_safe, email_validator, package_id_or_name_exists
-) -> dict[str, list[Any]]:
-    return {
-        "username": [not_missing, unicode_safe],
-        "email": [not_missing, unicode_safe, email_validator],
-        "organisation": [not_missing, unicode_safe],
-        "message": [not_missing, unicode_safe],
-        "package_id": [not_missing, unicode_safe, package_id_or_name_exists],
-    }
-
-
-@validator_args
 def datatables_view_prioritize(not_empty):
     return {
         "resource_id": [
