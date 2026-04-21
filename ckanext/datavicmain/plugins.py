@@ -448,6 +448,10 @@ class DatasetForm(
     def skip_syndication(
         self, package: model.Package, profile: Profile
     ) -> bool:
+        if package.extras.get("skip_syndication", "false") == "true":
+            log.debug("Do not syndicate %s because it is marked as skipped", package.id)
+            return True
+
         if toolkit.h.datavic_is_org_restricted(package.owner_org):
             log.debug(
                 "Do not syndicate %s because its organisation is restricted",
