@@ -299,41 +299,6 @@ def _show_errors_in_sibling_resources(
         raise ValidationError(error_dict)
 
 
-@validate(vic_schema.delwp_data_request_schema)
-def send_delwp_data_request(context, data_dict):
-    """Send a notification to admin about a new data request"""
-    mailer = get_mailer()
-
-    data_dict.update(
-        {
-            "site_title": toolkit.config.get("ckan.site_title"),
-            "site_url": toolkit.config.get("ckan.site_url"),
-        }
-    )
-
-    pkg_title = data_dict["__extras"]["package_title"]
-    user = toolkit.g.userobj.fullname or toolkit.g.user
-    subject = f"Data request via VPS Data Directory - {pkg_title} requested by {user}"
-
-    try:
-        mailer.mail_recipients(
-            subject,
-            [toolkit.config["ckanext.datavicmain.data_request.contact_point"]],
-            body=toolkit.render(
-                "mailcraft/emails/request_delwp_data/body.txt",
-                data_dict,
-            ),
-            body_html=toolkit.render(
-                "mailcraft/emails/request_delwp_data/body.html",
-                data_dict,
-            ),
-        )
-    except MailerException:
-        return {"success": False}
-
-    return {"success": True}
-
-
 @toolkit.side_effect_free
 def datavic_list_incomplete_resources(context, data_dict):
     """Retrieves a list of resources that are missing at least one required field."""
