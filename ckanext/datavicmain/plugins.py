@@ -450,7 +450,8 @@ class DatasetForm(
         self, package: model.Package, profile: Profile
     ) -> bool:
         if package.extras.get("skip_syndication", "false") == "true":
-            log.debug("Do not syndicate %s because it is marked as skipped", package.id)
+            log.debug(
+                "Do not syndicate %s because it is marked as skipped", package.id)
             return True
 
         if toolkit.h.datavic_is_org_restricted(package.owner_org):
@@ -530,7 +531,7 @@ class DatasetForm(
         if toolkit.check_ckan_version("2.11"):
             session.modified = True
         else:
-            session.regenerate_id() # type: ignore
+            session.regenerate_id()  # type: ignore
 
 
 class DatavicIARXLoaderPlugin(xloaderPlugin, p.SingletonPlugin):
@@ -595,7 +596,7 @@ class DatavicIARXLoaderPlugin(xloaderPlugin, p.SingletonPlugin):
             return None
 
         try:
-            activities = tk.get_action("package_activity_list")(
+            activities = toolkit.get_action("package_activity_list")(
                 {"ignore_auth": True},
                 {
                     "id": pkg_id,
