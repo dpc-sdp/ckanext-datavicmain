@@ -20,7 +20,6 @@ from ckanext.datavic_harvester.harvesters.base import get_resource_size
 from ckanext.oidc_pkce.interfaces import IOidcPkce
 from ckanext.syndicate.interfaces import ISyndicate, Profile
 from ckanext.transmute.interfaces import ITransmute
-
 from ckanext.datavicmain import cli, helpers
 from ckanext.datavicmain.implementation import PermissionLabels
 from ckanext.datavicmain.syndication.odp import prepare_package_for_odp
@@ -447,6 +446,11 @@ class DatasetForm(
     def skip_syndication(
         self, package: model.Package, profile: Profile
     ) -> bool:
+        if package.extras.get("skip_syndication", "false") == "true":
+            log.debug(
+                "Do not syndicate %s because it is marked as skipped", package.id)
+            return True
+
         if toolkit.h.datavic_is_org_restricted(package.owner_org):
             log.debug(
                 "Do not syndicate %s because its organisation is restricted",
