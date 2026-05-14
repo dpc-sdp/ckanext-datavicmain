@@ -698,3 +698,19 @@ def datavic_allowable_parent_orgs(org_id: str = None) -> list[dict[str, Any]]:
             continue
         orgs.append(org)
     return orgs
+
+
+def datavic_is_datapusher_plus_format(format: str) -> bool:
+    """Check if the format is a DataPusher Plus format"""
+
+    # Copied and modifed from src/ckanext-datapusher-plus/ckanext/datapusher_plus/plugin.py
+    # to check for DataPusher Plus formats before submitting.
+    supported_formats = toolkit.config.get("ckan.datapusher.formats") or toolkit.config.get(
+        "ckanext.datapusher_plus.formats"
+    )
+    if not supported_formats:
+        supported_formats = [
+            "csv", "xls", "xlsx", "tsv", "ssv", "tab", "ods",
+            "geojson", "shp", "qgis", "zip",
+        ]
+    return format.lower() in supported_formats
