@@ -110,7 +110,7 @@ def organization_update(next_, context, data_dict):
                 file_data = f.read()
 
             patch["id"] = remote["id"]
-            return ckan.call_action(
+            ckan.call_action(
                 "organization_patch",
                 data_dict=patch,
                 files={"image_upload": (result["image_url"], file_data)},
