@@ -11,6 +11,7 @@ import click
 import ckan.model as model
 import ckan.plugins.toolkit as tk
 from ckanext.harvest.model import HarvestObject, HarvestSource
+from ckanext.syndicate.plugin import CONFIG_SYNC_ON_CHANGES
 
 log = logging.getLogger(__name__)
 
@@ -168,13 +169,13 @@ def _dd_custodian_values(
         ]
         return (
             contact_point,
-            data_owner or f"organization: {org_label}",
+            data_owner or org_label,
             True,
         )
 
     return (
         DEFAULT_DD_CONTACT_POINT,
-        f"organization: {org_label}",
+        org_label,
         False,
     )
 
@@ -226,22 +227,44 @@ def _dd_custodian_report_path(report_path: str | None) -> str:
     )
 
 
-# Update through package_update so validation, package hooks, indexing, and
-# syndication notifications run as they would for a normal dataset edit.
+# Write contact_point and data_owner directly to package_extra via ORM,
+# bypassing package_update to avoid validation and IPackageController hooks.
+# Syndication is suppressed by the caller disabling CONFIG_SYNC_ON_CHANGES for
+# the duration of the run. Session is committed by the caller per batch.
 def _package_update_custodian_fields(
-    context: dict[str, object],
     dataset_id: str,
     contact_point: str,
     data_owner: str,
     contact_point_action: str,
     data_owner_action: str,
 ) -> None:
-    pkg_dict = tk.get_action("package_show")(context, {"id": dataset_id})
+    updates = {}
     if contact_point_action in ("inserted", "updated"):
-        pkg_dict["contact_point"] = contact_point
+        updates["contact_point"] = contact_point
     if data_owner_action in ("inserted", "updated"):
-        pkg_dict["data_owner"] = data_owner
-    tk.get_action("package_update")(context, pkg_dict)
+        updates["data_owner"] = data_owner
+
+    if not updates:
+        return
+
+    for key, value in updates.items():
+        extra = (
+            model.Session.query(model.PackageExtra)
+            .filter_by(package_id=dataset_id, key=key)
+            .first()
+        )
+        if extra:
+            extra.value = value
+            extra.state = "active"
+        else:
+            model.Session.add(
+                model.PackageExtra(
+                    package_id=dataset_id,
+                    key=key,
+                    value=value,
+                    state="active",
+                )
+            )
 
 
 @click.command("backfill-dd-custodian-fields")
@@ -306,10 +329,8 @@ def backfill_dd_custodian_fields(
     if report_dir:
         os.makedirs(report_dir, exist_ok=True)
 
-    context = {"ignore_auth": True}
-    if do_execute:
-        site_user = tk.get_action("get_site_user")({"ignore_auth": True}, {})
-        context["user"] = site_user["name"]
+    _syndicate_original = tk.config.get(CONFIG_SYNC_ON_CHANGES)
+    tk.config[CONFIG_SYNC_ON_CHANGES] = False
 
     counters = {
         "checked": 0,
@@ -336,6 +357,8 @@ def backfill_dd_custodian_fields(
         ) in _iter_dd_dataset_rows(batch_size):
             counters["checked"] += 1
             if counters["checked"] % batch_size == 0:
+                if do_execute:
+                    model.Session.commit()
                 click.secho(
                     f"  Checked {counters['checked']} DD datasets...",
                     fg="blue",
@@ -384,19 +407,14 @@ def backfill_dd_custodian_fields(
                     dry_run=not do_execute,
                 )
 
-                if not do_execute:
-                    model.Session.rollback()
-                elif row["action"] == "updated":
+                if do_execute and row["action"] == "updated":
                     _package_update_custodian_fields(
-                        context,
                         dataset_id,
                         contact_point,
                         data_owner,
                         contact_point_result,
                         data_owner_result,
                     )
-                else:
-                    model.Session.rollback()
 
                 if row["action"] in ("would_backfill", "updated"):
                     counters["updated"] += 1
@@ -423,6 +441,12 @@ def backfill_dd_custodian_fields(
                     f"  ERROR updating {dataset_name}: {exc}",
                     fg="red",
                 )
+
+    try:
+        if do_execute:
+            model.Session.commit()
+    finally:
+        tk.config[CONFIG_SYNC_ON_CHANGES] = _syndicate_original
 
     # Print a compact operational summary after all rows have been scanned.
     click.secho("\n--- Summary ---", fg="cyan", bold=True)
