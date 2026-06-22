@@ -11,10 +11,6 @@ import ckan.lib.navl.dictization_functions as df
 import ckan.plugins.toolkit as tk
 import ckan.types as types
 
-from urllib.parse import urlparse
-from ckan.logic.validators import email_validator as ckan_email_validator
-from ckan.lib.navl.dictization_functions import Invalid
-
 log = logging.getLogger(__name__)
 
 
@@ -289,17 +285,13 @@ def url_email_validator(key, data, errors, context):
 
     # Try to validate as email
     try:
-        ckan_email_validator(value, context)
+        tk.get_validator("email_validator")(value, context)
         return
-    except Invalid:
+    except tk.Invalid:
         pass
 
     # Try to validate as URL
-    try:
-        parsed = urlparse(value)
-        if parsed.scheme and parsed.netloc and parsed.scheme in ("http", "https"):
-            return
-    except (ValueError, TypeError):
-        pass
+    if tk.h.is_url(value):
+        return
 
     errors[key].append(tk._("Must be a valid email address or URL"))
