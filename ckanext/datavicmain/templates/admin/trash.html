@@ -3,15 +3,15 @@
 {% block primary_content_inner %}
   {% for ent_type, entities in data.items() %}
     {% if ent_type == 'package' %}
-      <div class="accordion" id="accordion-group">
+      <div class="accordion" id="accordion-package">
         <div class="accordion-item">
-          <h2 class="accordion-header" id="heading-group">
-            <button class="accordion-button p-2" type="button" data-bs-toggle="collapse" data-bs-target="#group" aria-expanded="true" aria-controls="group">
-              <i class="fa fa-group p-2"></i>
-                Deleted datasets
+          <h2 class="accordion-header" id="heading-package">
+            <button class="accordion-button p-2" type="button" data-bs-toggle="collapse" data-bs-target="#package" aria-expanded="true" aria-controls="package">
+              <i class='fa fa-sitemap p-2'></i>
+                {{ _('Deleted datasets') }}
             </button>
           </h2>
-          <div id="group" class="accordion-collapse collapse show p-2" aria-labelledby="heading-group" data-bs-parent="#accordion-group">
+          <div id="package" class="accordion-collapse collapse show p-2" aria-labelledby="heading-package" data-bs-parent="#accordion-package">
             {% set truncate = truncate or 180 %}
             {% set truncate_title = truncate_title or 80 %}
             <ul class="user-list">
@@ -21,13 +21,13 @@
                   {{ h.link_to(title|truncate(truncate_title), h.url_for('dataset.read', id=pkg.name)) }}
                   <br />
                   <small><strong>Owner org ID:</strong> {{ pkg.owner_org }}</small>
-                  <a class="btn btn-danger" href="/dataset/purge/{{ pkg.id }}">Purge dataset</a>
+                  <a class="btn btn-danger" href="/dataset/purge/{{ pkg.id }}">{{ _('Purge dataset') }}</a>
                   <hr />
                 </li>
               {% else %}
-                  <li>
-                      <em>{{ _('No datasets in trash') }}</em>
-                  </li>
+                <li>
+                    <em>{{ _(messages.empty[ent_type]) }}</em>
+                </li>
               {% endfor %}
             </ul>
 
@@ -58,7 +58,7 @@
     </h2>
     <div class="module-content">
       {% trans %}
-        <p>Purge deleted datasets forever and irreversibly.</p>
+        Purge deleted datasets, organizations or groups forever and irreversibly.
       {% endtrans %}
     </div>
   </div>
