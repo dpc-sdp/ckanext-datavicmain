@@ -352,6 +352,8 @@ dataset_fields:
   display_group: Custodian
   form_snippet: vic_custodian_autofill.html
   default_value: display_name
+  help_text: The team or individual responsible for managing this dataset.
+  required: true
 
 - field_name: role
   label: Role
@@ -365,6 +367,15 @@ dataset_fields:
   display_group: Custodian
   form_snippet: vic_custodian_autofill.html
   default_value: email
+
+- field_name: contact_point
+  label: Point of contact
+  form_placeholder: Valid email or URL
+  validators: url_email_validator
+  display_group: Custodian
+  form_snippet: text.html
+  help_text: Shared inbox or contact form for user queries e.g. https://data.melbourne.vic.gov.au/pages/contact_us_form/
+  required: true
 
 - field_name: skip_syndication
   display_snippet: null

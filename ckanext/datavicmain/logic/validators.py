@@ -270,3 +270,28 @@ def datavic_filesize_validator(
                 "Enter file size in bytes (numeric values only), or leave blank"
             )
             return
+
+
+def url_email_validator(key, data, errors, context):
+    """
+    Validate that the value, when provided, is a valid email or URL.
+    """
+    value = data.get(key)
+    if value is tk.missing or value is None or (isinstance(value, str) and not value.strip()):
+        # Optional field: empty values are allowed.
+        return
+
+    value = value.strip() if isinstance(value, str) else str(value).strip()
+
+    # Try to validate as email
+    try:
+        tk.get_validator("email_validator")(value, context)
+        return
+    except tk.Invalid:
+        pass
+
+    # Try to validate as URL
+    if tk.h.is_url(value):
+        return
+
+    errors[key].append(tk._("Must be a valid email address or URL"))

@@ -6,6 +6,7 @@ from ckan.plugins.toolkit import enqueue_job
 
 from ckanext.datavicmain import jobs
 
+from . import backfill_dd_custodian
 from . import maintain
 
 log = logging.getLogger(__name__)
@@ -31,6 +32,9 @@ def ckan_worker_job_monitor():
 
 
 datavic_main.add_command(maintain.maintain)
+datavic_main.add_command(
+    backfill_dd_custodian.backfill_dd_custodian_fields
+)
 
 
 def get_commands():
