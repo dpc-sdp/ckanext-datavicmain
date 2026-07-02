@@ -159,16 +159,6 @@ def _synchronize_views(res: dict[str, Any], ckan: ckanapi.RemoteCKAN):
             log.error("Cannot synchronize view %s: %s", view["id"], e)
 
 
-_view_fields = [
-    "description",
-    "filter_fields",
-    "filter_values",
-    "resource_id",
-    "title",
-    "view_type",
-]
-
-
 def _view_data(view: dict[str, Any]) -> dict[str, Any]:
     """Extract fields allowed by view_create schema."""
     return {
