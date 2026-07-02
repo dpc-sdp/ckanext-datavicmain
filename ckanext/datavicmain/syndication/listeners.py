@@ -6,7 +6,6 @@ from typing import Any
 
 import ckanapi
 import requests
-from werkzeug.datastructures import FileStorage as FlaskFileStorage
 
 import ckan.model as model
 import ckan.plugins.toolkit as tk
@@ -18,6 +17,10 @@ CONFIG_INTERNAL_HOSTS = "ckan.datavic.syndication.internal_hosts"
 DEFAULT_INTERNAL_HOSTS = []
 
 log = logging.getLogger(__name__)
+
+
+class SyndicationResourceError(Exception):
+    """Raised when one or more resource files fail to syndicate."""
 
 
 def after_syndication_listener(package_id, **kwargs):
@@ -43,8 +46,23 @@ def after_syndication_listener(package_id, **kwargs):
 
     hosts.append(profile.ckan_url)
 
+    failed_resource_ids = []
+
     for res in resources:
-        _update_remote_resource(res, hosts, pkg, ckan)
+        try:
+            _update_remote_resource(res, hosts, pkg, ckan)
+        except Exception:
+            failed_resource_ids.append(res["id"])
+
+    if failed_resource_ids:
+        raise SyndicationResourceError(
+            "Failed to syndicate %d resource file(s) for dataset %s: %s"
+            % (
+                len(failed_resource_ids),
+                package_id,
+                ", ".join(failed_resource_ids),
+            )
+        )
 
 
 def _update_remote_resource(
@@ -88,7 +106,7 @@ def _update_remote_resource(
 
             ckan.action.resource_patch(
                 id=res["id"],
-                upload=FlaskFileStorage(file_data, name, name),
+                upload=(name, file_data),
                 size=None,
                 url=local_res.url,
             )
@@ -98,6 +116,7 @@ def _update_remote_resource(
             local_res.id,
             res["id"],
         )
+        raise
 
 
 def _get_original_resource(
