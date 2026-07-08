@@ -28,7 +28,7 @@ setup(
         [ckan.plugins]
         datavicmain_dataset = ckanext.datavicmain.plugins:DatasetForm
         datavicmain_home = ckanext.datavicmain_home.plugins:DatavicHomePlugin
-        datavic_datapusher_plus = ckanext.datavicmain.datapusher_plus_plugin:DatavicDatapusherPlusPlugin
+        datavic_iar_datapusher_plus = ckanext.datavicmain.datapusher_plus_plugin:DatavicIARDatapusherPlusPlugin
 
 
         [fanstatic.libraries]
