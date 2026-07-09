@@ -93,7 +93,7 @@ def organization_update(next_, context, data_dict):
             remote = ckan.action.organization_show(id=old_name)
         except ckanapi.NotFound:
             continue
-        except RequestException as e:
+        except Exception as e:
             log.error(
                 f"Error updating organization {old_name} in {profile.ckan_url}: {e}"
             )
@@ -101,22 +101,33 @@ def organization_update(next_, context, data_dict):
 
         patch = {f: result[f] for f in tracked_fields if f in result}
 
-        if "image_url" in tracked_fields and result.get("image_display_url"):
-            grp_uloader: uploader.PUploader = uploader.get_uploader("group")
-            file_data = None
-            with open(
-                grp_uloader.storage_path + "/" + result["image_url"], "rb"
-            ) as f:
-                file_data = f.read()
+        image_updated = (
+            "image_url" in tracked_fields
+            and result.get("image_display_url")
+            and old.get("image_url") != result.get("image_url")
+        )
 
-            patch["id"] = remote["id"]
-            ckan.call_action(
-                "organization_patch",
-                data_dict=patch,
-                files={"image_upload": (result["image_url"], file_data)},
+        try:
+            if image_updated:
+                grp_uloader: uploader.PUploader = uploader.get_uploader("group")
+                with open(
+                    grp_uloader.storage_path + "/" + result["image_url"], "rb"
+                ) as f:
+                    file_data = f.read()
+
+                patch["id"] = remote["id"]
+                ckan.call_action(
+                    "organization_patch",
+                    data_dict=patch,
+                    files={"image_upload": (result["image_url"], file_data)},
+                )
+            else:
+                ckan.action.organization_patch(id=remote["id"], **patch)
+        except Exception as e:
+            log.error(
+                f"Error patching organization {old_name} in {profile.ckan_url}: {e}"
             )
-        else:
-            ckan.action.organization_patch(id=remote["id"], **patch)
+            continue
 
     return result
 
