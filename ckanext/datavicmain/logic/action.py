@@ -109,9 +109,9 @@ def organization_update(next_, context, data_dict):
 
         try:
             if image_updated:
-                grp_uloader: uploader.PUploader = uploader.get_uploader("group")
+                grp_uploader: uploader.PUploader = uploader.get_uploader("group")
                 with open(
-                    grp_uloader.storage_path + "/" + result["image_url"], "rb"
+                    grp_uploader.storage_path + "/" + result["image_url"], "rb"
                 ) as f:
                     file_data = f.read()
 
@@ -122,7 +122,11 @@ def organization_update(next_, context, data_dict):
                     files={"image_upload": (result["image_url"], file_data)},
                 )
             else:
-                ckan.action.organization_patch(id=remote["id"], **patch)
+                patch_without_image = {}
+                for k, v in patch.items():
+                    if k != "image_url":
+                        patch_without_image[k] = v
+                ckan.action.organization_patch(id=remote["id"], **patch_without_image)
         except Exception as e:
             log.error(
                 f"Error patching organization {old_name} in {profile.ckan_url}: {e}"

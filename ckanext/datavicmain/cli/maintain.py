@@ -1530,6 +1530,6 @@ def _collect_referenced_group_images() -> set[str]:
 
             value = data.get("image_url") or ""
             if value:
-                referenced.add(value)
+                referenced.add(os.path.basename(value.rstrip("/")))
 
     return referenced
