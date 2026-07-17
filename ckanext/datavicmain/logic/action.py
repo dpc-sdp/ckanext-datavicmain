@@ -4,7 +4,6 @@ import logging
 from typing import Any, cast
 
 import ckanapi
-from requests.exceptions import RequestException
 from sqlalchemy import or_
 
 import ckan.lib.plugins as lib_plugins
@@ -16,8 +15,6 @@ from ckan.logic import validate
 from ckan.types import Action, Context, DataDict
 
 from ckanext.datavic_harvester.harvesters.base import get_resource_size
-from ckanext.mailcraft.exception import MailerException
-from ckanext.mailcraft.utils import get_mailer
 from ckanext.syndicate.utils import get_profiles, get_target
 
 from ckanext.datavicmain import const, utils
@@ -124,8 +121,11 @@ def organization_update(next_, context, data_dict):
             else:
                 patch_without_image = {}
                 for k, v in patch.items():
-                    if k != "image_url":
-                        patch_without_image[k] = v
+                    if k == "image_url" and v != "":
+                        # If the image_url is not empty, we want to keep the remote image_url,
+                        # so we can exclude it from the patch.
+                        continue
+                    patch_without_image[k] = v
                 ckan.action.organization_patch(id=remote["id"], **patch_without_image)
         except Exception as e:
             log.error(
