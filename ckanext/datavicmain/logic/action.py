@@ -4,7 +4,6 @@ import logging
 from typing import Any, cast
 
 import ckanapi
-from requests.exceptions import RequestException
 from sqlalchemy import or_
 
 import ckan.lib.plugins as lib_plugins
@@ -16,8 +15,6 @@ from ckan.logic import validate
 from ckan.types import Action, Context, DataDict
 
 from ckanext.datavic_harvester.harvesters.base import get_resource_size
-from ckanext.mailcraft.exception import MailerException
-from ckanext.mailcraft.utils import get_mailer
 from ckanext.syndicate.utils import get_profiles, get_target
 
 from ckanext.datavicmain import const, utils
@@ -93,7 +90,7 @@ def organization_update(next_, context, data_dict):
             remote = ckan.action.organization_show(id=old_name)
         except ckanapi.NotFound:
             continue
-        except RequestException as e:
+        except Exception as e:
             log.error(
                 f"Error updating organization {old_name} in {profile.ckan_url}: {e}"
             )
@@ -101,22 +98,40 @@ def organization_update(next_, context, data_dict):
 
         patch = {f: result[f] for f in tracked_fields if f in result}
 
-        if "image_url" in tracked_fields and result.get("image_display_url"):
-            grp_uloader: uploader.PUploader = uploader.get_uploader("group")
-            file_data = None
-            with open(
-                grp_uloader.storage_path + "/" + result["image_url"], "rb"
-            ) as f:
-                file_data = f.read()
+        image_updated = (
+            "image_url" in tracked_fields
+            and result.get("image_display_url")
+            and old.get("image_url") != result.get("image_url")
+        )
 
-            patch["id"] = remote["id"]
-            ckan.call_action(
-                "organization_patch",
-                data_dict=patch,
-                files={"image_upload": (result["image_url"], file_data)},
+        try:
+            if image_updated:
+                grp_uploader: uploader.PUploader = uploader.get_uploader("group")
+                with open(
+                    grp_uploader.storage_path + "/" + result["image_url"], "rb"
+                ) as f:
+                    file_data = f.read()
+
+                patch["id"] = remote["id"]
+                ckan.call_action(
+                    "organization_patch",
+                    data_dict=patch,
+                    files={"image_upload": (result["image_url"], file_data)},
+                )
+            else:
+                patch_without_image = {}
+                for k, v in patch.items():
+                    if k == "image_url" and v != "":
+                        # If the image_url is not empty, we want to keep the remote image_url,
+                        # so we can exclude it from the patch.
+                        continue
+                    patch_without_image[k] = v
+                ckan.action.organization_patch(id=remote["id"], **patch_without_image)
+        except Exception as e:
+            log.error(
+                f"Error patching organization {old_name} in {profile.ckan_url}: {e}"
             )
-        else:
-            ckan.action.organization_patch(id=remote["id"], **patch)
+            continue
 
     return result
 
