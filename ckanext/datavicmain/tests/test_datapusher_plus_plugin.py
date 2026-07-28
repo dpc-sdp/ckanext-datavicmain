@@ -1,9 +1,9 @@
-"""Unit tests for :class:`DatavicIARDatapusherPlusPlugin`.
+"""Unit tests for :class:`DatavicDatapusherPlusPlugin`.
 
-Dispatch and format-inference logic is tested directly with
-``_submit_to_datapusher`` patched on the instance. Parent-plugin paths
-(``resource_create``, ``IResourceUrlChange``, ``task_status`` idempotency)
-are not duplicated here.
+A standalone ``SingletonPlugin`` (not a ``DatapusherPlusPlugin`` subclass,
+to avoid a ``notify()`` collision between ``IResourceUrlChange`` and
+``IDomainObjectModification``). ``ckan.plugins.get_plugin`` is patched so no
+real ``datapusher_plus`` instance is needed.
 """
 from __future__ import annotations
 
@@ -17,18 +17,32 @@ from ckan.model.resource import Resource
 from ckan.plugins import toolkit
 
 from ckanext.datavicmain.datapusher_plus_plugin import (
-    DatavicIARDatapusherPlusPlugin,
+    REQUIRED_PLUGIN,
+    DatavicDatapusherPlusPlugin,
 )
 
 PLUGIN_MODULE = "ckanext.datavicmain.datapusher_plus_plugin"
 
 
 @pytest.fixture
-def plugin(mocker):
-    # Bypass SingletonPlugin when base datapusher_plus is already loaded.
-    instance = object.__new__(DatavicIARDatapusherPlusPlugin)
-    mocker.patch.object(instance, "_submit_to_datapusher")
-    return instance
+def mock_get_plugin(mocker):
+    """Patch get_plugin so no real datapusher_plus instance is needed."""
+    mock = mocker.patch(f"{PLUGIN_MODULE}.p.get_plugin")
+    mock.return_value = MagicMock()
+    return mock
+
+
+@pytest.fixture
+def mock_dpp(mock_get_plugin):
+    """The mocked live ``datapusher_plus`` plugin instance."""
+    return mock_get_plugin.return_value
+
+
+@pytest.fixture
+def plugin(mock_dpp):
+    # Bypass SingletonPlugin's instance-sharing machinery — this class
+    # isn't loaded as a real CKAN plugin in the test config.
+    return object.__new__(DatavicDatapusherPlusPlugin)
 
 
 @pytest.fixture
@@ -46,44 +60,87 @@ def package_entity():
     return entity
 
 
-class TestNotifyDispatch:
-    """``notify`` should only call ``_submit_to_datapusher`` for *new*
-    ``Resource`` entities — every other path is the parent plugin's
-    responsibility (or no-op)."""
+class TestConfigure:
+    """Fails fast at load time if datapusher_plus isn't enabled, rather
+    than a confusing AttributeError deep inside notify()."""
 
-    def test_ignores_non_resource_non_package_entities(self, plugin, mocker):
+    def test_raises_when_required_plugin_not_loaded(self, plugin, mocker):
+        mocker.patch(f"{PLUGIN_MODULE}.p.plugin_loaded", return_value=False)
+
+        with pytest.raises(Exception, match=REQUIRED_PLUGIN):
+            plugin.configure({})
+
+    def test_does_not_raise_when_required_plugin_loaded(self, plugin, mocker):
+        mocker.patch(f"{PLUGIN_MODULE}.p.plugin_loaded", return_value=True)
+
+        plugin.configure({})
+
+    def test_checks_the_datapusher_plus_plugin_name(self, plugin, mocker):
+        mock_plugin_loaded = mocker.patch(
+            f"{PLUGIN_MODULE}.p.plugin_loaded", return_value=True
+        )
+
+        plugin.configure({})
+
+        mock_plugin_loaded.assert_called_once_with("datapusher_plus")
+
+
+class TestSubmitDelegation:
+    """Submission goes through the live datapusher_plus instance by name."""
+
+    def test_looks_up_datapusher_plus_by_name(self, plugin, mock_get_plugin):
+        resource = {"id": "r", "url": "https://example.com/data.csv", "format": "CSV"}
+
+        plugin._infer_format_and_submit(resource)
+
+        mock_get_plugin.assert_called_once_with("datapusher_plus")
+
+    def test_submits_to_the_looked_up_instance(self, plugin, mock_dpp):
+        resource = {"id": "r", "url": "https://example.com/data.csv", "format": "CSV"}
+
+        plugin._infer_format_and_submit(resource)
+
+        mock_dpp._submit_to_datapusher.assert_called_once_with(resource)
+
+
+class TestNotifyDispatch:
+    """Only submits for new Resources and changed Packages; every other
+    combination is out of scope (IResourceUrlChange's job) or a no-op."""
+
+    def test_operation_is_required_no_default(self, plugin):
+        """Regression guard: a default here would silently mask a future
+        mistake reintroducing the IResourceUrlChange collision."""
+        with pytest.raises(TypeError):
+            plugin.notify(MagicMock())
+
+    def test_ignores_non_resource_non_package_entities(self, plugin, mock_dpp, mocker):
         get_action = mocker.patch(f"{PLUGIN_MODULE}.toolkit.get_action")
         other = MagicMock()
 
         plugin.notify(other, DomainObjectOperation.new)
 
         get_action.assert_not_called()
-        plugin._submit_to_datapusher.assert_not_called()
+        mock_dpp._submit_to_datapusher.assert_not_called()
 
-    def test_ignores_changed_resources(
-        self, plugin, resource_entity, mocker
-    ):
+    def test_ignores_changed_resources(self, plugin, mock_dpp, resource_entity, mocker):
         get_action = mocker.patch(f"{PLUGIN_MODULE}.toolkit.get_action")
 
         plugin.notify(resource_entity, DomainObjectOperation.changed)
 
         get_action.assert_not_called()
-        plugin._submit_to_datapusher.assert_not_called()
+        mock_dpp._submit_to_datapusher.assert_not_called()
 
-    def test_ignores_deleted_resources(
-        self, plugin, resource_entity, mocker
-    ):
+    def test_ignores_deleted_resources(self, plugin, mock_dpp, resource_entity, mocker):
         get_action = mocker.patch(f"{PLUGIN_MODULE}.toolkit.get_action")
 
         plugin.notify(resource_entity, DomainObjectOperation.deleted)
 
         get_action.assert_not_called()
-        plugin._submit_to_datapusher.assert_not_called()
+        mock_dpp._submit_to_datapusher.assert_not_called()
 
     def test_new_resource_submits_with_resource_dict(
-        self, plugin, resource_entity, mocker
+        self, plugin, mock_dpp, resource_entity, mocker
     ):
-        """Inline resource via ``notify(Resource, new)``."""
         resource_dict = {
             "id": "res-1",
             "url": "https://example.com/data.csv",
@@ -99,10 +156,10 @@ class TestNotifyDispatch:
         resource_show.assert_called_once_with(
             {"ignore_auth": True}, {"id": "res-1"}
         )
-        plugin._submit_to_datapusher.assert_called_once_with(resource_dict)
+        mock_dpp._submit_to_datapusher.assert_called_once_with(resource_dict)
 
     def test_new_resource_swallows_object_not_found(
-        self, plugin, resource_entity, mocker
+        self, plugin, mock_dpp, resource_entity, mocker
     ):
         resource_show = MagicMock(side_effect=toolkit.ObjectNotFound)
         mocker.patch(
@@ -111,30 +168,31 @@ class TestNotifyDispatch:
 
         plugin.notify(resource_entity, DomainObjectOperation.new)
 
-        plugin._submit_to_datapusher.assert_not_called()
+        mock_dpp._submit_to_datapusher.assert_not_called()
 
-    def test_ignores_package_new_operation(self, plugin, package_entity, mocker):
+    def test_ignores_package_new_operation(
+        self, plugin, mock_dpp, package_entity, mocker
+    ):
         get_action = mocker.patch(f"{PLUGIN_MODULE}.toolkit.get_action")
 
         plugin.notify(package_entity, DomainObjectOperation.new)
 
         get_action.assert_not_called()
-        plugin._submit_to_datapusher.assert_not_called()
+        mock_dpp._submit_to_datapusher.assert_not_called()
 
     def test_ignores_package_deleted_operation(
-        self, plugin, package_entity, mocker
+        self, plugin, mock_dpp, package_entity, mocker
     ):
         get_action = mocker.patch(f"{PLUGIN_MODULE}.toolkit.get_action")
 
         plugin.notify(package_entity, DomainObjectOperation.deleted)
 
         get_action.assert_not_called()
-        plugin._submit_to_datapusher.assert_not_called()
+        mock_dpp._submit_to_datapusher.assert_not_called()
 
     def test_package_changed_submits_resources_needing_ingest(
-        self, plugin, package_entity, mocker
+        self, plugin, mock_dpp, package_entity, mocker
     ):
-        """Package update where a resource still needs ingest."""
         pkg_dict = {
             "id": "pkg-1",
             "resources": [
@@ -157,12 +215,12 @@ class TestNotifyDispatch:
         package_show.assert_called_once_with(
             {"ignore_auth": True}, {"id": "pkg-1"}
         )
-        plugin._submit_to_datapusher.assert_called_once_with(
+        mock_dpp._submit_to_datapusher.assert_called_once_with(
             pkg_dict["resources"][0]
         )
 
     def test_package_changed_skips_already_ingested_resources(
-        self, plugin, package_entity, mocker
+        self, plugin, mock_dpp, package_entity, mocker
     ):
         pkg_dict = {
             "id": "pkg-1",
@@ -181,10 +239,10 @@ class TestNotifyDispatch:
 
         plugin.notify(package_entity, DomainObjectOperation.changed)
 
-        plugin._submit_to_datapusher.assert_not_called()
+        mock_dpp._submit_to_datapusher.assert_not_called()
 
     def test_package_changed_submits_only_resources_needing_reingest(
-        self, plugin, package_entity, mocker
+        self, plugin, mock_dpp, package_entity, mocker
     ):
         needs_reingest = {
             "id": "res-needs",
@@ -209,10 +267,10 @@ class TestNotifyDispatch:
 
         plugin.notify(package_entity, DomainObjectOperation.changed)
 
-        plugin._submit_to_datapusher.assert_called_once_with(needs_reingest)
+        mock_dpp._submit_to_datapusher.assert_called_once_with(needs_reingest)
 
     def test_package_changed_swallows_object_not_found(
-        self, plugin, package_entity, mocker
+        self, plugin, mock_dpp, package_entity, mocker
     ):
         package_show = MagicMock(side_effect=toolkit.ObjectNotFound)
         mocker.patch(
@@ -221,10 +279,10 @@ class TestNotifyDispatch:
 
         plugin.notify(package_entity, DomainObjectOperation.changed)
 
-        plugin._submit_to_datapusher.assert_not_called()
+        mock_dpp._submit_to_datapusher.assert_not_called()
 
     def test_combined_resource_new_and_package_changed_signals(
-        self, plugin, resource_entity, package_entity, mocker
+        self, plugin, mock_dpp, resource_entity, package_entity, mocker
     ):
         resource_dict = {
             "id": "res-1",
@@ -249,7 +307,7 @@ class TestNotifyDispatch:
         plugin.notify(resource_entity, DomainObjectOperation.new)
         plugin.notify(package_entity, DomainObjectOperation.changed)
 
-        assert plugin._submit_to_datapusher.call_count == 2
+        assert mock_dpp._submit_to_datapusher.call_count == 2
 
 
 class TestShouldReingest:
@@ -269,7 +327,6 @@ class TestShouldReingest:
             {"hash": "abc", "datastore_active": False}
         ) is False
 
-
     def test_false_when_only_datastore_active(self, plugin):
         assert plugin._should_reingest(
             {"hash": "", "datastore_active": True}
@@ -277,12 +334,10 @@ class TestShouldReingest:
 
 
 class TestInferFormatAndSubmit:
-    """``_infer_format_and_submit`` always submits — only the ``format`` it
-    submits with varies. This fallback exists because DPP's
-    ``_submit_to_datapusher`` silently no-ops on a missing format, which
-    would drop any harvested resource that didn't carry one."""
+    """Always submits — only the format varies. datapusher_plus silently
+    no-ops on a missing format, so this fills one in first."""
 
-    def test_existing_format_is_preserved(self, plugin):
+    def test_existing_format_is_preserved(self, plugin, mock_dpp):
         resource = {
             "id": "r",
             "url": "https://example.com/data.csv",
@@ -292,17 +347,17 @@ class TestInferFormatAndSubmit:
         plugin._infer_format_and_submit(resource)
 
         assert resource["format"] == "XLSX"
-        plugin._submit_to_datapusher.assert_called_once_with(resource)
+        mock_dpp._submit_to_datapusher.assert_called_once_with(resource)
 
-    def test_format_inferred_from_url_extension(self, plugin):
+    def test_format_inferred_from_url_extension(self, plugin, mock_dpp):
         resource = {"id": "r", "url": "https://example.com/data.CSV"}
 
         plugin._infer_format_and_submit(resource)
 
         assert resource["format"] == "csv"
-        plugin._submit_to_datapusher.assert_called_once_with(resource)
+        mock_dpp._submit_to_datapusher.assert_called_once_with(resource)
 
-    def test_format_inference_strips_query_string(self, plugin):
+    def test_format_inference_strips_query_string(self, plugin, mock_dpp):
         resource = {
             "id": "r",
             "url": "https://example.com/data.json?token=abc&v=1",
@@ -311,9 +366,9 @@ class TestInferFormatAndSubmit:
         plugin._infer_format_and_submit(resource)
 
         assert resource["format"] == "json"
-        plugin._submit_to_datapusher.assert_called_once_with(resource)
+        mock_dpp._submit_to_datapusher.assert_called_once_with(resource)
 
-    def test_empty_format_treated_as_missing(self, plugin):
+    def test_empty_format_treated_as_missing(self, plugin, mock_dpp):
         resource = {
             "id": "r",
             "url": "https://example.com/data.tsv",
@@ -323,9 +378,9 @@ class TestInferFormatAndSubmit:
         plugin._infer_format_and_submit(resource)
 
         assert resource["format"] == "tsv"
-        plugin._submit_to_datapusher.assert_called_once_with(resource)
+        mock_dpp._submit_to_datapusher.assert_called_once_with(resource)
 
-    def test_url_type_set_skips_inference(self, plugin):
+    def test_url_type_set_skips_inference(self, plugin, mock_dpp):
         resource = {
             "id": "r",
             "url": "https://example.com/dataset/res-1/download/x",
@@ -335,17 +390,17 @@ class TestInferFormatAndSubmit:
         plugin._infer_format_and_submit(resource)
 
         assert "format" not in resource
-        plugin._submit_to_datapusher.assert_called_once_with(resource)
+        mock_dpp._submit_to_datapusher.assert_called_once_with(resource)
 
-    def test_submit_called_even_without_inferable_format(self, plugin):
+    def test_submit_called_even_without_inferable_format(self, plugin, mock_dpp):
         resource = {"id": "r", "url": "https://example.com/data"}
 
         plugin._infer_format_and_submit(resource)
 
-        plugin._submit_to_datapusher.assert_called_once_with(resource)
+        mock_dpp._submit_to_datapusher.assert_called_once_with(resource)
 
-    def test_non_ingestible_format_still_calls_submit(self, plugin):
-        """Format gate is the parent's job; we still call through."""
+    def test_non_ingestible_format_still_calls_submit(self, plugin, mock_dpp):
+        """Format support is datapusher_plus's own gate to enforce."""
         resource = {
             "id": "r",
             "url": "https://example.com/page.html",
@@ -354,12 +409,12 @@ class TestInferFormatAndSubmit:
 
         plugin._infer_format_and_submit(resource)
 
-        plugin._submit_to_datapusher.assert_called_once_with(resource)
+        mock_dpp._submit_to_datapusher.assert_called_once_with(resource)
 
 
 class TestNotifyEndToEnd:
     def test_new_harvested_resource_without_format_is_inferred_and_submitted(
-        self, plugin, resource_entity, mocker
+        self, plugin, mock_dpp, resource_entity, mocker
     ):
         resource_dict = {
             "id": "res-1",
@@ -372,7 +427,7 @@ class TestNotifyEndToEnd:
 
         plugin.notify(resource_entity, DomainObjectOperation.new)
 
-        plugin._submit_to_datapusher.assert_called_once()
-        submitted = plugin._submit_to_datapusher.call_args[0][0]
+        mock_dpp._submit_to_datapusher.assert_called_once()
+        submitted = mock_dpp._submit_to_datapusher.call_args[0][0]
         assert submitted["id"] == "res-1"
         assert submitted["format"] == "geojson"
