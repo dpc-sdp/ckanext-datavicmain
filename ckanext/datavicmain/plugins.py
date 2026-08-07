@@ -377,6 +377,12 @@ class DatasetForm(
                 helpers.set_private_activity(pkg_dict, context, str("changed"))
 
     def before_dataset_index(self, pkg_dict: dict[str, Any]) -> dict[str, Any]:
+        if pkg_dict.get("type") == "harvest":
+            # A harvest job's error/status summary has no size limit and can grow
+            # past Solr's per-field term size limit, breaking indexing for the
+            # harvest source. Drop it - it's not stored/searched in Solr anyway.
+            pkg_dict.pop("status", None)
+
         if pkg_dict.get("res_format"):
             pkg_dict["res_format"] = [
                 res_format.upper().split(".")[-1]
