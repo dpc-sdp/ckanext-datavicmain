@@ -1,18 +1,10 @@
 {% extends "mailcraft/emails/base.html" %}
-
 {% block main_text %}
-
-{% trans %}
-<p>Hi {{ user_name }},</p>
-
-<p>Your request for access to the {{ site_title }} has been declined. This service is only available to the Victorian Public Service.</p>
-
-<p>Thank you.</p>
-
-<p>The Data.Vic Team</p>
---
-
-<p>Message sent by the {{ site_title }} ({{ site_url }})</p>
-{% endtrans %}
-
+    {% trans %}
+        <p>Hi {{ user_name }}</p>
+        <p>Your request to access the {{ site_title }} has been denied.</p>
+        <p>Access is restricted to the Victorian Public Service.</p>
+        <p>You can access Victorian Government open data on <a href="https://www.data.vic.gov.au">DataVic</a>.</p>
+        <p>If you require any assistance, please <a href="mailto:datavic@dpc.vic.gov.au">contact us</a>.</p>
+    {% endtrans %}
 {% endblock %}

@@ -209,7 +209,7 @@ class ApproveRequestView(MethodView):
         try:
             get_mailer().mail_recipients(
                 tk._(
-                    f"Request for {role.title()} - {organization.title} access approved"
+                    f"Request for {role.title()} access approved"
                 ),
                 [data_dict["email"]],
                 body=tk.render(
@@ -301,7 +301,7 @@ class DenyRequestView(MethodView):
         try:
             get_mailer().mail_recipients(
                 tk._(
-                    f"Request for {role.title()} - {organization.title} access denied"
+                    f"Request for {role.title()} access denied"
                 ),
                 [data_dict["email"]],
                 body=tk.render(
