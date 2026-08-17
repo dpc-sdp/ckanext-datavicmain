@@ -12,14 +12,11 @@ extra variables:
 #}
 
 {% extends "mailcraft/emails/base.html" %}
-
 {% block main_text %}
-    <p>Dear {{ admin_fullname or username }},</p>
-
-    <p>{{ requester_fullname or requester }} has requested {{ role }} access for {{ org_name | safe }} in the VPS Data Directory.</p>
-
-    <p><a href="{{ link }}">Click here to approve or deny this request.</a></p>
-
-    <p>Kind regards,</p>
-    <p>DataVic team</p>
+    {% set requester_name = requester_fullname or requester %}
+    {% trans %}
+        <p>Hi {{ username }}</p>
+        <p>{{ requester_name }} has requested {{ role }} access to {{ org_name }}.</p>
+        <p><a href="{{ link }}">Approve or deny this request</a>.</p>
+    {% endtrans %}
 {% endblock %}

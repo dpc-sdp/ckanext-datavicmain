@@ -403,7 +403,7 @@ def approve(user_id: str):
 
         try:
             get_mailer().mail_recipients(
-                tk._("New account approved"),
+                tk._("Request for {} access approved").format(tk.config.get("ckan.site_title")),
                 [user.get("email", "")],
                 body=tk.render(
                     "mailcraft/emails/new_account_approved/body.txt",
@@ -464,7 +464,7 @@ def deny(id):
 
         try:
             get_mailer().mail_recipients(
-                tk._("New account denied"),
+                tk._("Request for {} access denied").format(tk.config.get("ckan.site_title")),
                 [user.get("email", "")],
                 body=tk.render(
                     "mailcraft/emails/new_account_denied/body.txt",
