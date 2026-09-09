@@ -12,10 +12,12 @@ extra variables:
 {% extends "mailcraft/emails/base.html" %}
 
 {% block main_text %}
-    <p>Hi <b>{{ fullname or username }}</b>,</p>
+    {% set article = "a" if role == "member" else "an" %}
+    {% set role_title = role | title %}
 
-    <p>Your request to become a{% if role != "member" %}n{% endif %} {{ role | title }} of <a href="{{ org_url }}">{{ org_name | safe }}</a> has been approved.</p>
+    {% trans %}
+        <p>Hi {{ username }}</p>
 
-    <p>Regards,</p>
-    <p>Data.Vic Team</p>
+        <p>Your request to become {{ article }} {{ role_title }} of <a href="{{ org_url }}">{{ org_name }}</a> has been approved.</p>
+    {% endtrans %}
 {% endblock %}

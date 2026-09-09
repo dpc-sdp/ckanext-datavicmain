@@ -1,10 +1,12 @@
-Hi {{ user_name }},
+{% extends "mailcraft/emails/base.txt" %}
+{% block main_text %}
+{% trans %}Hi {{ user_name }}{% endtrans %}
 
-Your request for access to the {{ site_title }} has been declined. This service is only available to the Victorian Public Service.
+{% trans %}Your request to access the {{ site_title }} has been denied.{% endtrans %}
 
-Thank you.
+{% trans %}Access is restricted to the Victorian Public Service.{% endtrans %}
 
-The Data.Vic Team
---
+{% trans %}You can access Victorian Government open data on DataVic (https://www.data.vic.gov.au).{% endtrans %}
 
-Message sent by the {{ site_title }} ({{ site_url }})
+{% trans %}If you require any assistance, please contact us at datavic@dpc.vic.gov.au.{% endtrans %}
+{% endblock %}
