@@ -1,8 +1,8 @@
-Dear {{ username }},
+{% extends "mailcraft/emails/base.txt" %}
+{% block main_text %}
+{% set requester_name = requester_fullname or requester %}
+{% trans %}Hi {{ username }}{% endtrans %}
 
-{{ username }} has requested {{ role }} access for {{ org_name }} in the VPS Data Directory.
-
-Click here to approve or deny this request: {{ link }}
-
-Kind regards,
-{{ requester }}
+{% trans %}{{ requester_name }} has requested {{ role }} access to {{ org_name }}.{% endtrans %}
+{% trans %}Approve or deny this request here: {{ link }}{% endtrans %}
+{% endblock %}

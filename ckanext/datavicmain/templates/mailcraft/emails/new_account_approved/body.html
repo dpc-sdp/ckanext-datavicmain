@@ -1,18 +1,11 @@
 {% extends "mailcraft/emails/base.html" %}
-
 {% block main_text %}
-
-{% trans %}
-<p>Hi {{ user_name }},</p>
-
-<p>Your request for access to the {{ site_title }} has been approved, and you can now login at {{ login_url }}.</p>
-
-<p>Thank you.</p>
-
-<p>The Data.Vic Team</p>
---
-
-<p>Message sent by the {{ site_title }} ({{ site_url }})</p>
-{% endtrans %}
-
+    {% trans %}
+        <p>Hi {{ user_name }}</p>
+        <p>Your request to access the {{ site_title }} has been approved. <a href="{{ login_url }}">Login here</a>.</p>
+        <p>The {{ site_title }} is an internal metadata catalogue where you can discover open and restricted Victorian Government datasets.</p>
+        <p>You can also register your department or agency's metadata and, where appropriate, publish to DataVic. <a href="https://www.data.vic.gov.au/data-publishing-victorian-public-service">Learn more about data publishing for the Victorian Public Service.</a></p>
+        <p>Access to the {{ site_title }} is restricted to the Victorian Public Service.</p>
+        <p>If you require any assistance, please <a href="mailto:datavic@dpc.vic.gov.au">contact us</a>.</p>
+    {% endtrans %}
 {% endblock %}
