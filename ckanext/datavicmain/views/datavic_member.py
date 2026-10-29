@@ -177,13 +177,21 @@ def remove_member():
     user_id: str = tk.get_or_bust(data_dict, "user_id")
     new_member_id: str | None = data_dict.get("new_member")  # type: ignore
 
-    if new_member_id:
-        reassign_user_packages(org_id, user_id, new_member_id)
-        tk.h.flash_notice(tk._("User's packages have been reassigned."))
-
     context = make_context()
 
     try:
+        # reassign_user_packages commits on its own, so authorise first.
+        # group_member_delete auth is a no-op; member_delete is the real check.
+        tk.check_access(
+            "member_delete",
+            context,
+            {"id": org_id, "object": user_id, "object_type": "user"},
+        )
+
+        if new_member_id:
+            reassign_user_packages(org_id, user_id, new_member_id)
+            tk.h.flash_notice(tk._("User's packages have been reassigned."))
+
         tk.get_action("group_member_delete")(
             context, {"id": org_id, "user_id": user_id}
         )
@@ -191,8 +199,8 @@ def remove_member():
         return tk.abort(
             403, tk._("Unauthorized to delete group %s members") % ""
         )
-    except tk.ObjectNotFound:
-        return tk.abort(404, tk._("Organization not found"))
+    except tk.ObjectNotFound as e:
+        return tk.abort(404, e.message or tk._("Organization not found"))
 
     tk.h.flash_notice(tk._("Organisation member has been deleted."))
     return tk.h.redirect_to("organization.members", id=org_id)
