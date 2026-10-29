@@ -30,6 +30,8 @@ class PackageFactory(factories.Dataset):
     update_frequency = "unknown"
     workflow_status = "test"
     protective_marking = "official"
+    data_owner = factory.Faker("name")
+    contact_point = factory.Faker("email")
 
 
 @register
