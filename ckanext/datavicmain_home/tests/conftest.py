@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from uuid import uuid4
 
 import factory
 import pytest
@@ -29,8 +30,9 @@ class HomeSectionItemFactory(CKANFactory):
     title = factory.Faker("sentence")
     description = factory.Faker("sentence")
     # image_id = factory.Faker("uuid4")
-    upload = factory.LazyAttribute(
-        lambda _: MockFileStorage(BytesIO(PNG_IMAGE), "image.png")
+    # Public file storage refuses a name that already exists.
+    upload = factory.LazyFunction(
+        lambda: MockFileStorage(BytesIO(PNG_IMAGE), f"{uuid4()}.png")
     )
 
     url = factory.Faker("url")
