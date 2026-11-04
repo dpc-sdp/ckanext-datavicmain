@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Union, cast
 
-from flask import Blueprint, Response
+from flask import Blueprint, Response, current_app
 from flask.views import MethodView
 
 import ckan.lib.authenticator as authenticator
@@ -403,7 +403,7 @@ def approve(user_id: str):
 
         try:
             get_mailer().mail_recipients(
-                tk._("New account approved"),
+                tk._("Request for {} access approved").format(tk.config.get("ckan.site_title")),
                 [user.get("email", "")],
                 body=tk.render(
                     "mailcraft/emails/new_account_approved/body.txt",
@@ -464,7 +464,7 @@ def deny(id):
 
         try:
             get_mailer().mail_recipients(
-                tk._("New account denied"),
+                tk._("Request for {} access denied").format(tk.config.get("ckan.site_title")),
                 [user.get("email", "")],
                 body=tk.render(
                     "mailcraft/emails/new_account_denied/body.txt",
@@ -611,6 +611,16 @@ class RegisterView(MethodView):
 @datavicuser.before_request
 def before_request() -> None:
     _, action = tk.get_endpoint()
+
+    # Call protect() directly: CKAN skips the CSRF check for this blueprint
+    # (ignore_extensions) and for any request without a session user, except
+    # on core user.login/user.register, which these views replace.
+    if current_app.config["WTF_CSRF_ENABLED"]:
+        current_app.extensions["csrf"].protect()
+
+    # These pages embed a per-session CSRF token, so shared caches must not
+    # serve them.
+    tk.request.environ["__no_cache__"] = True
 
     # Skip recaptcha check for login if 2FA is enabled, it will be checked with ckanext-auth
     if (

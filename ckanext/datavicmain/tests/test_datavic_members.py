@@ -228,6 +228,42 @@ class TestRemoveMemberView:
 
         assert resp.status_code == 403
 
+    @pytest.mark.parametrize("attacker_capacity", [None, "editor"])
+    def test_non_admin_cannot_reassign_packages(
+        self,
+        app,
+        user,
+        user_factory,
+        organization_factory,
+        package_factory,
+        attacker_capacity,
+    ):
+        owner = user_factory()
+        target = user_factory()
+        members = [
+            {"name": owner["name"], "capacity": "editor"},
+            {"name": target["name"], "capacity": "admin"},
+        ]
+        if attacker_capacity:
+            members.append(
+                {"name": user["name"], "capacity": attacker_capacity}
+            )
+        organization = organization_factory(users=members)
+        package = package_factory(user=owner, owner_org=organization["id"])
+
+        resp = app.post(
+            url=tk.h.url_for("datavic_member.remove_member"),
+            data={
+                "org_id": organization["id"],
+                "user_id": owner["id"],
+                "new_member": target["id"],
+            },
+            headers={"Authorization": user["token"]},
+        )
+
+        assert resp.status_code == 403
+        assert model.Package.get(package["id"]).creator_user_id == owner["id"]
+
     def test_sysadmin_user(self, app, sysadmin, user, organization_factory):
         organization = organization_factory(
             users=[

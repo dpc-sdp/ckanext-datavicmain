@@ -1,15 +1,13 @@
-{% trans %}
-Hi {{ username }},
+{% extends "mailcraft/emails/base.txt" %}
+{% block main_text %}
+{% set article = "a" if role == "member" else "an" %}
+{% set role_title = role | title %}
+{% trans %}Hi {{ username }}{% endtrans %}
 
-Your request to become a {{ role }} of {{ org_name }} has been denied.
-URL to an organisation {{ org_url }}.
+{% trans %}Your request to become {{ article }} {{ role_title }} of {{ org_name }} ({{ org_url }}) has been denied.{% endtrans %}
 
-Please see the reason below:
-
+{% trans %}Please see the reason below:{% endtrans %}
 {{ reason }}
 
-Please contact datavic@dpc.vic.gov.au if you wish to challenge the decision.
-
-Regards,
-Data.Vic Team
-{% endtrans %}
+{% trans %}If you require any assistance, please contact us at datavic@dpc.vic.gov.au.{% endtrans %}
+{% endblock %}

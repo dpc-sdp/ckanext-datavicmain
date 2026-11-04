@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest import mock
 
 import pytest
+from bs4 import BeautifulSoup
 
 import ckan.model as model
 import ckan.plugins.toolkit as tk
@@ -55,6 +56,53 @@ class TestDatavicUserEndpoints:
         response = app.get(url=url, headers=env, status=403)
 
         assert "Unauthorized to reject user" in response
+
+
+@pytest.mark.usefixtures("clean_db", "with_plugins")
+@pytest.mark.ckan_config("WTF_CSRF_ENABLED", True)
+@pytest.mark.ckan_config("ckan.cache_enabled", True)
+class TestDatavicUserCSRF:
+    # endpoint: (form data, status when the token is accepted)
+    FORMS = {
+        "datavicuser.login": ({"login": "a", "password": "b"}, 200),
+        "datavicuser.register": (
+            {"name": "csrf-test", "email": "a@b.invalid"},
+            200,
+        ),
+        "datavicuser.request_reset": ({"user": "a@b.invalid"}, 302),
+    }
+
+    @pytest.mark.parametrize("endpoint", FORMS)
+    def test_post_without_csrf_token_is_rejected(self, app, endpoint):
+        app.post(url_for(endpoint), data=self.FORMS[endpoint][0], status=400)
+
+    def test_edit_without_csrf_token_is_rejected(self, app, user):
+        app.post(
+            url_for("datavicuser.edit", id=user["id"]),
+            data={"fullname": "changed"},
+            headers={"Authorization": user["token"]},
+            status=400,
+        )
+
+        assert call_action("user_show", id=user["id"])["fullname"] != "changed"
+
+    @pytest.mark.parametrize("endpoint", FORMS)
+    def test_post_with_csrf_token_is_processed(self, app, endpoint):
+        data, expected_status = self.FORMS[endpoint]
+        client = app.test_client()
+        page = client.get(url_for(endpoint))
+        assert page.headers["Cache-Control"] == "private"
+        token = BeautifulSoup(page.data, "html.parser").select_one(
+            "input[name=_csrf_token]"
+        )["value"]
+
+        response = client.post(
+            url_for(endpoint),
+            data=dict(data, _csrf_token=token),
+            follow_redirects=False,
+        )
+
+        assert response.status_code == expected_status
 
 
 @pytest.mark.usefixtures("clean_db", "with_plugins")

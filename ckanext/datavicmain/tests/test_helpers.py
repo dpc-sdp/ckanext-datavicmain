@@ -3,6 +3,12 @@ import pytest
 import ckan.plugins.toolkit as tk
 
 
+def dtv_resources(package_id: str) -> list[dict]:
+    """Return the DTV resources of a dataset, read after its resources were added."""
+    pkg = tk.get_action("package_show")({"ignore_auth": True}, {"id": package_id})
+    return tk.h.get_digital_twin_resources(pkg)
+
+
 @pytest.mark.usefixtures("clean_db", "with_plugins")
 class TestIsDigitalTwinSupported:
     @pytest.mark.parametrize(
@@ -21,17 +27,15 @@ class TestIsDigitalTwinSupported:
     )
     def test_formats(self, package, resource_factory, fmt, supported):
         resource_factory(package_id=package["id"], format=fmt)
-        assert (
-            bool(tk.h.get_digital_twin_resources(package["id"])) is supported
-        )
+        assert bool(dtv_resources(package["id"])) is supported
 
     def test_empty_package_is_not_supported(self, package):
-        assert not tk.h.get_digital_twin_resources(package["id"])
+        assert not dtv_resources(package["id"])
 
     def test_non_single_shp(self, package, resource_factory):
         resource_factory(package_id=package["id"], format="kml")
         resource_factory(package_id=package["id"], format="shp")
-        assert tk.h.get_digital_twin_resources(package["id"]) == []
+        assert dtv_resources(package["id"]) == []
 
     def test_dga_wms(self, package, resource_factory):
         resource_factory(
@@ -39,4 +43,4 @@ class TestIsDigitalTwinSupported:
             format="wms",
             url="https://data.gov.au/geoserver/1",
         )
-        assert tk.h.get_digital_twin_resources(package["id"]) == []
+        assert dtv_resources(package["id"]) == []
